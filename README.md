@@ -32,3 +32,7 @@ Since this project is open source, any contributions are welcomed!
 - `HoYoPlay by HoYoVerse/miHoYo`
 - `WebView2Utilities by david-risney`
 - `HoYoPlay-Launcher-Background by UIGF-org`
+
+# License
+
+![GPL-v3](https://www.gnu.org/graphics/gplv3-127x51.png)
