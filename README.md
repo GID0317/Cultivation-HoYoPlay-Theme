@@ -1,6 +1,6 @@
 # Cultivation-HoYoPlay-Theme WIP
 Home:
-![image](https://github.com/user-attachments/assets/4ffab5cb-e133-44fb-be3a-bd9bc7d8ff1d)
+![image](https://github.com/user-attachments/assets/9d75b9c3-99e4-4c2a-880e-e8b04db58206)
 
 Settings:
 ![Screenshot 2025-07-03 182351](https://github.com/user-attachments/assets/dafa348a-4565-460e-ad0b-dee8bf4ea2c0)
