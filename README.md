@@ -1,15 +1,34 @@
-# Cultivation-HoYoPlay-Theme WIP
-Home:
-![image](https://github.com/user-attachments/assets/9d75b9c3-99e4-4c2a-880e-e8b04db58206)
+<div align="center">
+  <h1 align="center">
+    <br/>
+    Cultivation HoYoPlay Theme
+    <br/>
+  </h1>
+    <a href="https://github.com/GID0317/SilverMation/releases">
+      <img alt="Total" src="https://img.shields.io/github/downloads/GID0317/Cultivation-HoYoPlay-Theme/total?logo=github&style=flat-square&color=1E9BFA">
+    </a>
+    <a href="https://github.com/GID0317/SilverMation/releases">
+      <img alt="Release" src="https://img.shields.io/github/v/release/GID0317/Cultivation-HoYoPlay-Theme?logo=visualstudio&style=flat-square&color=1E9BFA">
+    </a>
+<div align="center">
+</div>
+  
+  <p align="left">The Cultivation HoYoPlay theme is a project aimed at porting the latest HoYoPlay User Interface into the Cultivation aplication from GrassCutters.</p>
+</div>
 
-Settings:
-![Screenshot 2025-07-03 182351](https://github.com/user-attachments/assets/dafa348a-4565-460e-ad0b-dee8bf4ea2c0)
+Since this project is open source, any contributions are welcomed!
 
-Download:
-![Screenshot 2025-07-03 182359](https://github.com/user-attachments/assets/7609a48a-210b-4c59-b053-dfb3c0aa44b2)
+# How Can I Download It?
+> [!NOTE]
+> Go to the Release Page > Click At the Assets > [Download The Latest Version](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest "Download The Latest Version") (Recomended) Or [Download Apropriate Version  You Need](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases "Download Apropriate Versions You Need") don't forget to Raise an [Feedback](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/issues/new/choose) issue if you have any!
 
-Mod Discovery:
-![Screenshot 2025-07-03 182410](https://github.com/user-attachments/assets/d6fea600-92a7-455a-a35f-7f22235627c2)
+- Currently, this theme was only optimized for the English language.
 
-Extra dialog:
-![Screenshot 2025-07-03 182418](https://github.com/user-attachments/assets/f3d63918-a3f0-4d32-8f0e-1c067778234f)
+# UI Aplication Overview
+![Banners](https://github.com/user-attachments/assets/84351423-cc40-4902-9658-6039c98d19d7)
+
+# This app made possible by
+- `Template Provided by Cultivation`
+- `HoYoPlay by HoYoVerse/miHoYo`
+- `WebView2Utilities by david-risney`
+- `HoYoPlay-Launcher-Background by UIGF-org`
