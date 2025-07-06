@@ -22,7 +22,7 @@ Since this project is open source, any contributions are welcomed!
 > [!NOTE]
 > Go to the Release Page > Click At the Assets > [Download The Latest Version](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest "Download The Latest Version") (Recomended) Or [Download Apropriate Version  You Need](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases "Download Apropriate Versions You Need") don't forget to Raise an [Feedback](https://github.com/GID0317/Cultivation-HoYoPlay-Theme/issues/new/choose) issue if you have any!
 
-- Currently, this theme was only optimized for the English language.
+- Currently, this theme was only optimized for the English language. But，it shouldn't effect the overall displayed language!
 - You can get bunch of HoYoPlay Wallpapers from here! [HoYoPlay-Launcher-Background](https://github.com/UIGF-org/HoYoPlay-Launcher-Background).
 
 # UI Aplication Overview
