@@ -25,6 +25,8 @@ Since this project is open source, any contributions are welcomed!
 - Currently, this theme was only optimized for the English language. But，it shouldn't effect the overall displayed language!
 - You can get bunch of HoYoPlay Wallpapers from here! [HoYoPlay-Launcher-Background](https://github.com/UIGF-org/HoYoPlay-Launcher-Background).
 
+Virus Total Check: [Virus Total Result](https://www.virustotal.com/gui/file/eef9ff2d6700412be29ecf1c3513ecb28e7d7e40a70620d75909c9cb6b6a7b88?nocache=1)
+
 # UI Aplication Overview
 ![Banners](https://github.com/user-attachments/assets/84351423-cc40-4902-9658-6039c98d19d7)
 
