@@ -27,6 +27,12 @@ Since this project is open source, any contributions are welcomed!
 
 Virus Total Check: [Virus Total Result](https://www.virustotal.com/gui/file/eef9ff2d6700412be29ecf1c3513ecb28e7d7e40a70620d75909c9cb6b6a7b88?nocache=1)
 
+# How Can I Install This Theme?
+1. Start by downloading the file from the release link above.  
+2. Once downloaded, extract it and move the file to %appdata%/cultivation/themes
+3. Open Cultivation > go to Settings > scroll down > and locate the theme dropdown menu > Select the HoYoPlay Theme.  
+4. Enjoy!  
+
 # UI Aplication Overview
 ![Banners](https://github.com/user-attachments/assets/84351423-cc40-4902-9658-6039c98d19d7)
 
