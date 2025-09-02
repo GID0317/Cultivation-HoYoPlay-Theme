@@ -1139,5 +1139,112 @@ if (document.readyState === 'loading') {
   setInterval(updateIcon, 2000); // Backup periodic check
 })();
 
+(function createHoYoPlaySelector() {
+  // Create full-width shadow background
+  const shadowBg = document.createElement('div');
+  shadowBg.id = 'hoyoplay-shadow-bg';
+  shadowBg.style.position = 'fixed';
+  shadowBg.style.top = '0';
+  shadowBg.style.left = '0';
+  shadowBg.style.width = '100vw';
+  shadowBg.style.height = '64px';
+  shadowBg.style.zIndex = '9998';
+  shadowBg.style.background = 'linear-gradient(0deg,rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.69) 100%)';
+  shadowBg.style.pointerEvents = 'none';
+  shadowBg.style.opacity = '0';
+  shadowBg.style.transition = 'opacity 0.25s cubic-bezier(.4,0,.2,1)';
+
+  document.body.appendChild(shadowBg);
+
+  // Create selector container
+  const overlay = document.createElement('div');
+  overlay.id = 'hoyoplay-selector';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0px';
+  overlay.style.left = '50%';
+  overlay.style.transform = 'translateX(-50%)';
+  overlay.style.zIndex = '9999';
+  overlay.style.width = '80px';
+  overlay.style.height = '48px';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'space-evenly';
+  overlay.style.pointerEvents = 'none';
+  overlay.style.transition = 'top 0.25s cubic-bezier(.4,0,.2,1), opacity 0.18s';
+  overlay.style.opacity = '0';
+
+  // Helper to create a circle
+  function makeCircle(id) {
+    const c = document.createElement('div');
+    c.className = 'hoyoplay-circle';
+    c.id = id;
+    c.style.width = '12px';
+    c.style.height = '12px';
+    c.style.borderRadius = '50%';
+    c.style.position = 'relative';
+    c.style.pointerEvents = 'auto';
+    c.style.cursor = 'pointer';
+    c.style.transition = 'box-shadow 0.18s cubic-bezier(.4,0,.2,1), background 0.18s cubic-bezier(.4,0,.2,1)';
+    return c;
+  }
+
+  // Create two circles
+  const leftCircle = makeCircle('hoyoplay-left');
+  const rightCircle = makeCircle('hoyoplay-right');
+
+  // By default, right circle is selected
+  function updateCircles(selected) {
+    if (selected === 'left') {
+      leftCircle.classList.add('selected');
+      rightCircle.classList.remove('selected');
+      leftCircle.style.background = 'rgba(255,255,255,0.95)';
+      rightCircle.style.background = 'rgba(180, 180, 180, 0.59)';
+    } else {
+      leftCircle.classList.remove('selected');
+      rightCircle.classList.add('selected');
+      leftCircle.style.background = 'rgba(180, 180, 180, 0.59)';
+      rightCircle.style.background = 'rgba(255,255,255,0.95)';
+    }
+  }
+  updateCircles('right');
+
+  // Add circles to overlay
+  overlay.appendChild(leftCircle);
+  overlay.appendChild(rightCircle);
+  document.body.appendChild(overlay);
+
+  // Selection logic
+  leftCircle.addEventListener('mouseenter', () => updateCircles('left'));
+  rightCircle.addEventListener('mouseenter', () => updateCircles('right'));
+
+  // Optional: click handler
+  leftCircle.onclick = () => alert('Left circle clicked!');
+  rightCircle.onclick = () => alert('Right circle clicked!');
+
+  // Show/hide overlay and shadow on mouse movement near top center
+  let isVisible = false;
+  document.addEventListener('mousemove', function(e) {
+    const y = e.clientY;
+    const x = e.clientX;
+    const winW = window.innerWidth;
+    // Only show if mouse is near top (e.g. < 80px) and near center (within 60px of center)
+    if (y < 80 && Math.abs(x - winW/2) < 60) {
+      if (!isVisible) {
+        overlay.style.top = '15px';
+        overlay.style.opacity = '1';
+        shadowBg.style.opacity = '1';
+        isVisible = true;
+      }
+    } else {
+      if (isVisible) {
+        overlay.style.top = '0px';
+        overlay.style.opacity = '0';
+        shadowBg.style.opacity = '0';
+        isVisible = false;
+      }
+    }
+  });
+})();
+
 // Also check periodically in case menu is recreated
 setInterval(injectCustomOptionSection, 1000);
