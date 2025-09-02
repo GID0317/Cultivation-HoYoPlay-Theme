@@ -2180,3 +2180,39 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #ffc800;
   text-decoration: none;
 }
+
+#hoyoplay-selector {
+  pointer-events: none !important;
+}
+#hoyoplay-selector .hoyoplay-circle {
+  pointer-events: auto !important;
+}
+#hoyoplay-outline {
+  pointer-events: none !important;
+}
+
+.hoyoplay-circle {
+  border-radius: 50%;
+   border: 0.5px solid #0000007f;
+}
+
+.hoyoplay-circle.selected {
+  position: relative;
+  background: #fff !important;
+  border-radius: 50%;
+   border: 0.5px solid #0000007f;
+}
+
+/* Add a white border with a gap using a pseudo-element */
+.hoyoplay-circle.selected::after {
+  content: "";
+  position: absolute;
+  top: -6px; left: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border-radius: 50%;
+  border: 2.3px solid #ffffffb5;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: transparent;
+}
