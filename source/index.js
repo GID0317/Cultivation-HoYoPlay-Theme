@@ -66,7 +66,7 @@ if (!document.getElementById('leftBar')) {
   leftBar.style.position = 'fixed'; // Use fixed for overlay-style sidebars
   leftBar.style.left = '0';
   leftBar.style.top = '0';
-  leftBar.style.zIndex = '0'; // Adjust as needed
+  leftBar.style.zIndex = '2'; // Keep above background fade overlay
   leftBar.style.display = 'flex';
   leftBar.style.flexDirection = 'column';
   leftBar.style.justifyContent = 'flex-start';
@@ -1056,10 +1056,16 @@ notificationObserver.observe(document.body, {
 function startMenuObserver() {
   const menuContainer = document.getElementById('menuContainer');
   if (menuContainer) {
-    injectCustomOptionSection();
-    
+    // injectCustomOptionSection may be commented out in some theme copies.
+    // Guard the call to avoid runtime ReferenceError when it's not defined.
+    if (typeof injectCustomOptionSection === 'function') {
+      try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
+    }
+
     const observer = new MutationObserver(() => {
-      injectCustomOptionSection();
+      if (typeof injectCustomOptionSection === 'function') {
+        try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
+      }
     });
     
     observer.observe(menuContainer, {
@@ -1165,7 +1171,7 @@ if (document.readyState === 'loading') {
   overlay.style.transform = 'translateX(-50%)';
   overlay.style.zIndex = '9999';
   overlay.style.width = '80px';
-  overlay.style.height = '48px';
+  overlay.style.height = '28px';
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
   overlay.style.justifyContent = 'space-evenly';
@@ -1192,6 +1198,10 @@ if (document.readyState === 'loading') {
   const leftCircle = makeCircle('hoyoplay-left');
   const rightCircle = makeCircle('hoyoplay-right');
 
+  // Example background keys (lookups will use cache + prefetch)
+  const leftBgKey = 'left-default';
+  const rightBgKey = 'right-default';
+
   // By default, right circle is selected
   function updateCircles(selected) {
     if (selected === 'left') {
@@ -1213,13 +1223,17 @@ if (document.readyState === 'loading') {
   overlay.appendChild(rightCircle);
   document.body.appendChild(overlay);
 
-  // Selection logic
-  leftCircle.addEventListener('mouseenter', () => updateCircles('left'));
-  rightCircle.addEventListener('mouseenter', () => updateCircles('right'));
-
-  // Optional: click handler
-  leftCircle.onclick = () => alert('Left circle clicked!');
-  rightCircle.onclick = () => alert('Right circle clicked!');
+// Selection logic + background change on hover
+leftCircle.addEventListener('mouseenter', () => {
+  updateCircles('left');
+  const url = getCachedBackgroundUrl(leftBgKey) || getCachedBackgroundUrl(rightBgKey);
+  if (url) setCustomBackground(url);
+});
+rightCircle.addEventListener('mouseenter', () => {
+  updateCircles('right');
+  const url = getCachedBackgroundUrl(rightBgKey) || getCachedBackgroundUrl(leftBgKey);
+  if (url) setCustomBackground(url);
+});
 
   // Show/hide overlay and shadow on mouse movement near top center
   let isVisible = false;
@@ -1230,7 +1244,7 @@ if (document.readyState === 'loading') {
     // Only show if mouse is near top (e.g. < 80px) and near center (within 60px of center)
     if (y < 80 && Math.abs(x - winW/2) < 60) {
       if (!isVisible) {
-        overlay.style.top = '15px';
+        overlay.style.top = '30px';
         overlay.style.opacity = '1';
         shadowBg.style.opacity = '1';
         isVisible = true;
@@ -1246,5 +1260,222 @@ if (document.readyState === 'loading') {
   });
 })();
 
+// Fast cross-fade state for wallpaper-only transitions
+let __BG_FADE_STATE = { overlay: null, timer: null, current: null, duration: 180 };
+
+function setCustomBackground(url) {
+  const appElement = document.querySelector('.App');
+  if (!appElement) return;
+
+  // Skip if same URL as already applied
+  if (__BG_FADE_STATE.current && __BG_FADE_STATE.current === url) return;
+
+  // Create or get the fade overlay
+  let fadeOverlay = __BG_FADE_STATE.overlay || document.getElementById('bg-fade-overlay');
+  if (!fadeOverlay) {
+    fadeOverlay = document.createElement('div');
+    fadeOverlay.id = 'bg-fade-overlay';
+    fadeOverlay.style.position = 'absolute';
+    fadeOverlay.style.top = '0';
+    fadeOverlay.style.left = '0';
+    fadeOverlay.style.right = '0';
+    fadeOverlay.style.bottom = '0';
+    fadeOverlay.style.width = '100%';
+    fadeOverlay.style.height = '100%';
+    // Place overlay before other children so they paint above it
+    fadeOverlay.style.zIndex = '0';
+    fadeOverlay.style.pointerEvents = 'none';
+    fadeOverlay.style.transition = 'opacity 0.22s cubic-bezier(.4,0,.2,1)';
+    fadeOverlay.style.willChange = 'opacity';
+    fadeOverlay.style.opacity = '0';
+    fadeOverlay.style.backgroundSize = 'cover';
+    fadeOverlay.style.backgroundPosition = 'center';
+    fadeOverlay.style.backgroundRepeat = 'no-repeat';
+    // Ensure .App is a positioning context and insert overlay first so other content stays above
+    appElement.style.position = 'relative';
+    if (appElement.firstChild) {
+      appElement.insertBefore(fadeOverlay, appElement.firstChild);
+    } else {
+      appElement.appendChild(fadeOverlay);
+    }
+    __BG_FADE_STATE.overlay = fadeOverlay;
+  }
+
+  // Ensure key UI elements render above the overlay (targeted, non-invasive)
+  try {
+    const elevateSelectors = [
+      '#title',
+      '#settingsBtn',
+      '#minBtn',
+      '#closeBtn',
+      '#serverLaunch',
+      '#officialPlay',
+      '.TopButton',
+      '.Menu',
+      '.NewsSection',
+      '#newsContainer',
+      '#newsTabsContainer',
+      '#newsContent',
+      '#customNewsButton',
+      '#leftBar'
+    ];
+    elevateSelectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (window.getComputedStyle(el).position === 'static') {
+          el.style.position = 'relative';
+        }
+        // A small positive z-index keeps these above the overlay (z=0)
+        if (!el.style.zIndex || parseInt(el.style.zIndex, 10) <= 0 || isNaN(parseInt(el.style.zIndex, 10))) {
+          el.style.zIndex = '2';
+        }
+      });
+    });
+  } catch (e) { /* ignore */ }
+
+  // Preload image, then cross-fade quickly
+  const img = new Image();
+  const apply = () => {
+    // Cancel any running timer
+    if (__BG_FADE_STATE.timer) {
+      clearTimeout(__BG_FADE_STATE.timer);
+      __BG_FADE_STATE.timer = null;
+    }
+    fadeOverlay.style.backgroundImage = `url("${url}")`;
+    // Fade in overlay quickly
+    requestAnimationFrame(() => {
+      // Crossfade: keep old background visible; fade in the new image on the overlay
+      fadeOverlay.style.opacity = '1';
+    });
+    __BG_FADE_STATE.timer = setTimeout(() => {
+      appElement.style.background = `url("${url}") center/cover no-repeat fixed`;
+      fadeOverlay.style.opacity = '0';
+      __BG_FADE_STATE.current = url;
+      __BG_FADE_STATE.timer = null;
+    }, __BG_FADE_STATE.duration);
+  };
+  img.onload = apply;
+  img.onerror = apply; // even if it errors, attempt to set; browser may still cache/render
+  img.src = url;
+}
+
+// Make it available globally for console testing
+window.setCustomBackground = setCustomBackground;
+
+// --- HoYoPlay background cache & prefetch helpers ----------------------
+const HOYO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
+
+function setCachedBackgrounds(key, urls) {
+  const payload = { ts: Date.now(), urls };
+  try { localStorage.setItem(`hoyoplay-cache-${key}`, JSON.stringify(payload)); } catch (e) { console.warn('Failed to set hoyoplay cache', e); }
+}
+
+function getCachedBackgrounds(key) {
+  try {
+    const raw = localStorage.getItem(`hoyoplay-cache-${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.ts || !parsed.urls) return null;
+    if (Date.now() - parsed.ts > HOYO_CACHE_TTL) return null;
+    return parsed.urls;
+  } catch (e) { console.warn('Failed to read hoyoplay cache', e); return null; }
+}
+
+function getCachedBackgroundUrl(key) {
+  const list = getCachedBackgrounds(key);
+  if (!list || !list.length) return null;
+  return list[0];
+}
+
+function prefetchImage(url) {
+  try {
+    const i = new Image();
+    i.src = url;
+  } catch (e) { /* ignore */ }
+}
+
+// Minimal fetcher that tries to load an array of example backgrounds
+// (Replace with real API fetch via a proxy if you can run one).
+async function refreshHoYoPlayCache(key, exampleUrls) {
+  if (!key || !exampleUrls || !exampleUrls.length) return null;
+  // Try to validate reachable URL by preloading first reachable
+  const reachable = [];
+  for (const u of exampleUrls) {
+    // Simple attempt: create Image and wait for load/error with timeout
+    const p = new Promise((res) => {
+      const img = new Image();
+      let done = false;
+      const t = setTimeout(() => { if (!done) { done = true; res(null); } }, 3000);
+      img.onload = () => { if (!done) { done = true; clearTimeout(t); res(u); } };
+      img.onerror = () => { if (!done) { done = true; clearTimeout(t); res(null); } };
+      img.src = u;
+    });
+    const ok = await p;
+    if (ok) reachable.push(ok);
+  }
+
+  if (reachable.length) {
+    setCachedBackgrounds(key, reachable);
+    // Prefetch first two
+    prefetchImage(reachable[0]);
+    if (reachable[1]) prefetchImage(reachable[1]);
+    return reachable;
+  }
+  return null;
+}
+
+// Console helper to refresh caches for selector usage
+window.hoyoplayRefresh = async function() {
+  console.log('[hoyoplayRefresh] Using GitHub-hosted fallback images only');
+
+  const leftExamples = [
+    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image1.webp'
+  ];
+  const rightExamples = [
+    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image2.webp'
+  ];
+
+  const l = await refreshHoYoPlayCache('left-default', leftExamples);
+  const r = await refreshHoYoPlayCache('right-default', rightExamples);
+  console.log('[hoyoplayRefresh] fallback-only done', { left: !!l, right: !!r });
+  return { left: l, right: r };
+};
+
+
+// Ensure the cache is populated on launcher/theme startup
+function _runHoyoplayRefreshOnStartup() {
+  try {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        window.hoyoplayRefresh().catch(()=>{});
+      });
+    } else {
+      // DOM already ready
+      window.hoyoplayRefresh().catch(()=>{});
+    }
+  } catch (e) { /* ignore */ }
+}
+
+_runHoyoplayRefreshOnStartup();
+
+
 // Also check periodically in case menu is recreated
-setInterval(injectCustomOptionSection, 1000);
+//setInterval(injectCustomOptionSection, 1000);
+
+// Auto-apply cached background after refresh (prefer right-default, then left)
+async function _applyCachedBackgroundOnStartup() {
+  try {
+    const res = await window.hoyoplayRefresh();
+    // res.left/res.right are arrays returned by refreshHoYoPlayCache
+    const right = res && res.right && res.right[0];
+    const left = res && res.left && res.left[0];
+    const toApply = right || left;
+    if (toApply) {
+      // small delay to ensure .App exists
+      setTimeout(() => {
+        try { window.setCustomBackground(toApply); } catch (e) {}
+      }, 180);
+    }
+  } catch (e) { /* ignore */ }
+}
+
+_applyCachedBackgroundOnStartup();
