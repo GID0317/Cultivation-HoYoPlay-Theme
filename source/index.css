@@ -325,6 +325,16 @@
   outline: none;
 }
 
+#settingsBtn:active,
+#downloadsBtn:active,
+#modsBtn:active,
+#backbtn:active,
+#minBtn:active,
+#closeBtn:active {
+  background: rgba(0, 0, 0, 0.552) !important;
+  outline: none;
+}
+
 .GameInstallNotify {
   position: fixed;
   top: 32px;
@@ -641,6 +651,11 @@
     position: relative;
     padding-bottom: 1px; /* Add padding to prevent text from being cramped */
     color: #FFFFFF;
+}
+
+.NewsTab:hover {
+  color: #FFFFFF;
+  transition: color 0.3s ease;
 }
 
 .NewsTab.selected::after {
