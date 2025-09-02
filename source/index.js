@@ -1179,6 +1179,41 @@ if (document.readyState === 'loading') {
   overlay.style.transition = 'top 0.25s cubic-bezier(.4,0,.2,1), opacity 0.18s';
   overlay.style.opacity = '0';
 
+  // Helper: detect if Mods page is active
+  const isModsActive = () => {
+    const mods = document.querySelector('.Mods');
+    if (!mods) return false;
+    const cs = window.getComputedStyle(mods);
+    // Visible in layout
+    const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && mods.offsetParent !== null;
+    return visible;
+  };
+
+  // Keep Mods above selector and disable selector when Mods is active
+  function updateModsState() {
+    const mods = document.querySelector('.Mods');
+    const active = isModsActive();
+    if (active) {
+      // Hide selector and shadow entirely
+      overlay.style.display = 'none';
+      shadowBg.style.display = 'none';
+      // Ensure Mods pane is on top of everything
+      if (mods) {
+        if (window.getComputedStyle(mods).position === 'static') mods.style.position = 'relative';
+        mods.style.zIndex = '10000';
+      }
+    } else {
+      // Restore selector visibility controls and layout
+      overlay.style.display = 'flex';
+      shadowBg.style.display = 'block';
+      // Optionally reset Mods z-index if we set it
+      if (mods && mods.style) {
+        if (mods.style.zIndex === '10000') mods.style.zIndex = '';
+        if (mods.style.position === 'relative') mods.style.position = ''; // allow CSS to decide
+      }
+    }
+  }
+
   // Helper to create a circle
   function makeCircle(id) {
     const c = document.createElement('div');
@@ -1225,11 +1260,13 @@ if (document.readyState === 'loading') {
 
 // Selection logic + background change on hover
 leftCircle.addEventListener('mouseenter', () => {
+  if (isModsActive()) return; // disabled on Mods page
   updateCircles('left');
   const url = getCachedBackgroundUrl(leftBgKey) || getCachedBackgroundUrl(rightBgKey);
   if (url) setCustomBackground(url);
 });
 rightCircle.addEventListener('mouseenter', () => {
+  if (isModsActive()) return; // disabled on Mods page
   updateCircles('right');
   const url = getCachedBackgroundUrl(rightBgKey) || getCachedBackgroundUrl(leftBgKey);
   if (url) setCustomBackground(url);
@@ -1238,6 +1275,14 @@ rightCircle.addEventListener('mouseenter', () => {
   // Show/hide overlay and shadow on mouse movement near top center
   let isVisible = false;
   document.addEventListener('mousemove', function(e) {
+    if (isModsActive()) {
+      // Force hide when Mods is open
+      overlay.style.top = '0px';
+      overlay.style.opacity = '0';
+      shadowBg.style.opacity = '0';
+      isVisible = false;
+      return;
+    }
     const y = e.clientY;
     const x = e.clientX;
     const winW = window.innerWidth;
@@ -1258,6 +1303,12 @@ rightCircle.addEventListener('mouseenter', () => {
       }
     }
   });
+
+  // Watch for Mods appearing/disappearing
+  const modsObserver = new MutationObserver(() => updateModsState());
+  modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  // Initial state
+  updateModsState();
 })();
 
 // Fast cross-fade state for wallpaper-only transitions
@@ -1312,6 +1363,7 @@ function setCustomBackground(url) {
       '#officialPlay',
       '.TopButton',
       '.Menu',
+      '.Mods',
       '.NewsSection',
       '#newsContainer',
       '#newsTabsContainer',
