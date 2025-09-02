@@ -1076,5 +1076,68 @@ if (document.readyState === 'loading') {
   startMenuObserver();
 }
 
+(function changeSettingsIconSrc() {
+  function updateIcon() {
+    const btn = document.getElementById('settingsBtn');
+    if (!btn) return;
+    const img = btn.querySelector('img');
+    if (!img) return;
+    // Only update if not already set
+    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png') {
+      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png';
+      img.style.height = '190%';
+      img.style.filter = 'invert(100%) brightness(100%)';
+      console.log('[SettingsBtn] Icon src changed!');
+    }
+  }
+  updateIcon();
+  // Watch for DOM changes (in case the button is re-rendered)
+  const observer = new MutationObserver(updateIcon);
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(updateIcon, 2000); // Backup periodic check
+})();
+
+(function changeMinimizeIconSrc() {
+  function updateIcon() {
+    const btn = document.getElementById('minBtn');
+    if (!btn) return;
+    const img = btn.querySelector('img');
+    if (!img) return;
+    // Only update if not already set
+    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Minimize.png') {
+      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Minimize.png';
+      img.style.height = '300%';
+      img.style.filter = 'invert(100%) brightness(100%)';
+      console.log('[MinBtn] Icon src changed!');
+    }
+  }
+  updateIcon();
+  // Watch for DOM changes (in case the button is re-rendered)
+  const observer = new MutationObserver(updateIcon);
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(updateIcon, 2000); // Backup periodic check
+})();
+
+(function changeCloseIconSrc() {
+  function updateIcon() {
+    const btn = document.getElementById('closeBtn');
+    if (!btn) return;
+    const img = btn.querySelector('img');
+    if (!img) return;
+    // Only update if not already set
+    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Close.png') {
+      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Close.png';
+      img.style.height = '300%';
+      img.style.filter = 'invert(100%) brightness(100%)';
+      console.log('[CloseBtn] Icon src changed!');
+    }
+  }
+  updateIcon();
+  // Watch for DOM changes (in case the button is re-rendered)
+  const observer = new MutationObserver(updateIcon);
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(updateIcon, 2000); // Backup periodic check
+})();
+
 // Also check periodically in case menu is recreated
 setInterval(injectCustomOptionSection, 1000);
