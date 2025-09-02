@@ -118,9 +118,25 @@
   box-shadow: none;
 }
 
+#officialPlay:active {
+  background: #000000;
+  color: #FFDB29;
+  box-shadow: none;
+}
+
 #officialPlay:hover .icon {
   background: #FFDB29;     /* yellow circle on hover */
   color: #212429;          /* dark arrow on hover */
+}
+
+#officialPlay:active img {
+  filter:
+    invert(69%)
+    sepia(94%)
+    saturate(749%)
+    hue-rotate(1deg)
+    brightness(110%)
+    contrast(102%) !important;
 }
 
 /* Change the play icon image color on hover */
