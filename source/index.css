@@ -44,7 +44,6 @@
   border: none !important;
 }
 
-
 /* Mimic Windows 11 default border style with transparency */
 .App, #root, body {
   border-radius: 8px !important;
@@ -53,8 +52,8 @@
   box-sizing: border-box;
 
   /* Add a semi-transparent border */
-  outline: 1.5px solid rgba(47, 47, 47, 0.5); /* Semi-transparent dark gray border */
-  outline-offset: -2px;
+  outline: 1.5px solid rgb(103 103 103 / 62%); /* Semi-transparent dark gray border */
+  outline-offset: -0.8px;
 
   /* Add a subtle shadow for the glow effect */
   box-shadow: 0 0 8px rgba(47, 47, 47, 0.3); /* Glow effect with transparency */
@@ -2221,4 +2220,9 @@ body:has(#ExtrasMenuButton) .NotifShow {
   box-sizing: border-box;
   pointer-events: none;
   background: transparent;
+}
+
+#hoyoplay-shadow-bg {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
 }
