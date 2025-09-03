@@ -33,6 +33,7 @@
   box-shadow: none !important;
   border: none !important;
   margin-top: 8px !important;
+  width: 66px;
 }
 
 /* Optional: Remove background on the Discord and GitHub buttons themselves if needed */
@@ -216,8 +217,13 @@
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
-  padding: 0 8px !important;
+  padding: 0 0px !important;
+  margin-right: 6px;
   -webkit-app-region: no-drag;    /* so clicks register on the buttons */
+}
+
+.TopButton {
+    margin: 0 8.5px;
 }
 
 #title {
