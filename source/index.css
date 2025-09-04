@@ -937,6 +937,10 @@
   background: #2C2F34 !important;
 }
 
+#menuButtonCloseContainer:active {
+  background: #32353a !important;
+}
+
 /* make the “X” white */
 #menuButtonCloseIcon {
   filter: invert(100%) brightness(60%) !important;
@@ -1156,6 +1160,12 @@
 .DownloadMenuSection .BigButton:hover,
 .ModDownloadItem .BigButton:hover {     /* slightly lighter */
   border-color: #8A8C90 !important;     /* brighter border */
+}
+
+.OptionSection .BigButton:active,
+.DownloadMenuSection .BigButton:active,
+.ModDownloadItem .BigButton:active {     /* slightly lighter */
+  border-color: #626468 !important;     /* brighter border */
 }
 
 /* If you have an icon inside the button: */
@@ -2141,6 +2151,11 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 }
 #secretMenuContainer .FooterButton.secondary:hover {
   border-color: #8A8C90 !important;
+  color: #fff;
+}
+
+#secretMenuContainer .FooterButton.secondary:active {
+  border-color: #626468 !important;
   color: #fff;
 }
 
