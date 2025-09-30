@@ -243,9 +243,11 @@
   border-bottom-right-radius: 0;
   overflow: hidden; /* Clip content that overflows the rounded corners */
 
-  /* Keep the existing outline */
-  outline: 1.5px solid rgba(166, 166, 166, 0.5); /* Semi-transparent dark gray border */
-  outline-offset: -1px;
+  /* Replace outline with per-side borders (no right edge) */
+  border-top: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-left: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-bottom: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-right: 1.5px solid rgb(13 13 13 / 13%);
 
   /* Position relative for pseudo-element */
   position: relative;
@@ -258,18 +260,26 @@
   cursor: default !important; /* Use default cursor instead of pointer */
 }
 
-#leftBar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0; /* Target the right side */
-  width: 1px; /* Match the outline thickness */
-  height: 100%;
-  background-color: #0000003b; /* Example: Red for the right-side outline */
-  pointer-events: none; /* Ensure it doesn't interfere with interactions */
+/* Pseudo-element no longer used for right divider; using border-right instead */
+
+/* While HoYoPlay video is playing, fade the left bar and its right-edge line */
+body.hoyoplay-video-playing #leftBar {
+  background: transparent !important;
+  /* Preserve borders on three sides while playing */
+  border-left: 1.5px solid rgba(166, 166, 166, 0.5) !important;
+  border-top: 1.5px solid rgba(166, 166, 166, 0.5) !important;
+  border-bottom: 1.5px solid rgba(166, 166, 166, 0.5) !important;
+  border-right: none !important;
 }
+/* No ::after needed during playback either */
 
 /* 1) Make both controls flex–centered squares */
+
+/* Add the same border “brush” look over the video while playing */
+body.hoyoplay-video-playing #hoyoplay-video-overlay {
+  box-shadow: inset 0 0 0 1.5px rgb(103 103 103 / 62%);
+  border-radius: 8px; /* match the App’s rounded corners */
+}
 #closeBtn,
 #minBtn {
   display: inline-flex;
@@ -2241,4 +2251,38 @@ body:has(#ExtrasMenuButton) .NotifShow {
 #hoyoplay-shadow-bg {
   border-top-left-radius: 8px !important;
   border-top-right-radius: 8px !important;
+}
+
+/* HoYoPlay video control button styles */
+.hoyoplay-video-control {
+  position: absolute;
+  z-index: 3; /* low, so it doesn't cover core UI */
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,10,20,0.85); /* dark circular button */
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+.hoyoplay-video-control.hidden {
+  display: none !important;
+}
+.hoyoplay-video-control:hover {
+  background: rgba(255, 255, 255, 0.252);
+}
+.hoyoplay-video-control .hp-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  color: #ffffff;
 }
