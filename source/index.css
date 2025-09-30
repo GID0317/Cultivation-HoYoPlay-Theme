@@ -395,19 +395,20 @@
   }
 }
 
-/* Optional: Add slide-up animation when hiding */
+/* Hide animation: fade out only (no vertical slide) */
 .GameInstallNotify.hiding {
-  animation: notifySlideUp 0.3s ease forwards;
+  /* Fade out only so the element doesn't slide - preserves horizontal centering */
+  animation: notifyFadeOut 0.3s ease forwards;
 }
 
-@keyframes notifySlideUp {
+@keyframes notifyFadeOut {
   0% {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
+    transform: translateX(-50%) translateY(0);
   }
 }
 
