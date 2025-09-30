@@ -265,7 +265,7 @@
   right: 0; /* Target the right side */
   width: 1px; /* Match the outline thickness */
   height: 100%;
-  background-color: #2a2a2c; /* Example: Red for the right-side outline */
+  background-color: #0000003b; /* Example: Red for the right-side outline */
   pointer-events: none; /* Ensure it doesn't interfere with interactions */
 }
 
@@ -641,7 +641,7 @@
 #version {
   margin-left: 80px !important; /* or adjust to your liking */
   font-size: 14px;              /* optional: tweak size */
-  color: #ccc;                  /* optional: make it subtle */
+  color: #ffffff;                  /* optional: make it subtle */
 }
 
 #unassumingButton {
