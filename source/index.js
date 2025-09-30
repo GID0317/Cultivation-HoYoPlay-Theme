@@ -422,7 +422,8 @@ function showDownloadCompleteNotification() {
   if (!notification) {
     // Create notification if it doesn't exist
     notification = document.createElement('div');
-    notification.className = '.GameInstallNotify';
+  // class names should not include the '.' prefix
+  notification.className = 'GameInstallNotify';
     document.body.appendChild(notification);
   }
   
@@ -1170,7 +1171,7 @@ if (document.readyState === 'loading') {
   overlay.style.left = '50%';
   overlay.style.transform = 'translateX(-50%)';
   overlay.style.zIndex = '9999';
-  overlay.style.width = '80px';
+  overlay.style.width = '80px'; // will be adjusted dynamically based on circle count
   overlay.style.height = '28px';
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
@@ -1178,6 +1179,20 @@ if (document.readyState === 'loading') {
   overlay.style.pointerEvents = 'none';
   overlay.style.transition = 'top 0.25s cubic-bezier(.4,0,.2,1), opacity 0.18s';
   overlay.style.opacity = '0';
+
+  // Helper: adjust selector width based on visible circle count
+  function updateOverlayWidth() {
+    try {
+      const circles = overlay.querySelectorAll('.hoyoplay-circle');
+      let visible = 0;
+      circles.forEach(el => {
+        const cs = window.getComputedStyle(el);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') visible++;
+      });
+      // If 3 buttons: 100px, else (2 or fewer) keep current 80px sizing
+      overlay.style.width = visible >= 3 ? '100px' : '80px';
+    } catch (e) { /* ignore */ }
+  }
 
   // Helper: detect if Mods page is active
   const isModsActive = () => {
@@ -1197,6 +1212,8 @@ if (document.readyState === 'loading') {
       // Hide selector and shadow entirely
       overlay.style.display = 'none';
       shadowBg.style.display = 'none';
+      // Hide any video overlay when Mods is active
+      try { showVideoOverlay(false); } catch (e) {}
       // Ensure Mods pane is on top of everything
       if (mods) {
         if (window.getComputedStyle(mods).position === 'static') mods.style.position = 'relative';
@@ -1226,50 +1243,292 @@ if (document.readyState === 'loading') {
     c.style.pointerEvents = 'auto';
     c.style.cursor = 'pointer';
     c.style.transition = 'box-shadow 0.18s cubic-bezier(.4,0,.2,1), background 0.18s cubic-bezier(.4,0,.2,1)';
+    // Base subtle appearance so hover white-translucent stands out
+    c.style.background = 'rgba(255,255,255,0.12)';
+    // Accessibility: allow keyboard focus and announce purpose
+    c.setAttribute('tabindex', '0');
+    c.setAttribute('role', 'button');
+    c.setAttribute('aria-label', id === 'hoyoplay-left' ? 'Left background (video)' : id === 'hoyoplay-mid' ? 'Middle background' : 'Right background');
     return c;
   }
 
-  // Create two circles
+  // Create three circles (left, middle, right) to support up to 3 backgrounds per side
   const leftCircle = makeCircle('hoyoplay-left');
+  const midCircle = makeCircle('hoyoplay-mid');
   const rightCircle = makeCircle('hoyoplay-right');
 
   // Example background keys (lookups will use cache + prefetch)
   const leftBgKey = 'left-default';
   const rightBgKey = 'right-default';
 
-  // By default, right circle is selected
-  function updateCircles(selected) {
-    if (selected === 'left') {
-      leftCircle.classList.add('selected');
-      rightCircle.classList.remove('selected');
-      leftCircle.style.background = 'rgba(255,255,255,0.95)';
-      rightCircle.style.background = 'rgba(180, 180, 180, 0.59)';
-    } else {
-      leftCircle.classList.remove('selected');
-      rightCircle.classList.add('selected');
-      leftCircle.style.background = 'rgba(180, 180, 180, 0.59)';
-      rightCircle.style.background = 'rgba(255,255,255,0.95)';
-    }
+  // Helper to get nth cached URL for a key (graceful fallback to first available)
+  function getCachedUrlByIndex(key, idx) {
+    const list = getCachedBackgrounds(key);
+    if (!list || !list.length) return null;
+    return list[idx] || list[0] || null;
   }
-  updateCircles('right');
 
-  // Add circles to overlay
+  // By default, select the center/right-most (index 1 if present)
+  function updateCircles(selectedIndex) {
+    // selectedIndex: 0=left,1=mid,2=right
+    const circles = [leftCircle, midCircle, rightCircle];
+    circles.forEach((c, i) => {
+      if (i === selectedIndex) {
+        c.classList.add('selected');
+        c.style.background = 'rgba(255,255,255,0.95)';
+      } else {
+        c.classList.remove('selected');
+        c.style.background = 'rgba(180, 180, 180, 0.59)';
+      }
+    });
+    // Style the Version Highlights button when middle/right is selected
+    try {
+      const btn = document.getElementById('customNewsButton');
+      if (btn) {
+        if (selectedIndex === 1 || selectedIndex === 2) {
+          // Only change text color and border color per request
+          btn.style.color = '#2f469e';
+          btn.style.borderColor = '#2f469e';
+        } else {
+          // revert to default - clear inline overrides so CSS can control it
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+  // Default to the left (video+image1) as selected
+  updateCircles(0);
+
+  // Add circles to overlay (left -> mid -> right)
   overlay.appendChild(leftCircle);
+  overlay.appendChild(midCircle);
   overlay.appendChild(rightCircle);
   document.body.appendChild(overlay);
+  // Set width according to circle count (3 => 100px, else 80px)
+  updateOverlayWidth();
+
+  // --- Video overlay + control (for left circle) -----------------
+  let hoyoVideoOverlay = null;
+  let hoyoVideo = null;
+  let hoyoVideoControl = null;
+  let hoyoVideoPlaying = false;
+  const HOYO_VIDEO_SRC = 'https://fastcdn.hoyoverse.com/static-resource-v2/2025/09/29/ee380f6d03d954be7f3e340a8c9b38a7_5530986403387782.webm';
+  // Foreground image shown on top of video (matches HoYoPlay behavior)
+  let hoyoVideoOverlayImg = null;
+  const HOYO_OVERLAY_IMG_SRC = 'https://fastcdn.hoyoverse.com/static-resource-v2/2025/09/29/63758733d4696044a04bcf9fe2b73242_5996096519712711970.webp';
+
+  function ensureVideoElements() {
+    if (hoyoVideoOverlay) return;
+    const app = document.querySelector('.App') || document.body;
+
+    hoyoVideoOverlay = document.createElement('div');
+    hoyoVideoOverlay.id = 'hoyoplay-video-overlay';
+    Object.assign(hoyoVideoOverlay.style, {
+      position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+      width: '100%', height: '100%', zIndex: '0', pointerEvents: 'none', overflow: 'hidden',
+      opacity: '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
+    });
+
+    hoyoVideo = document.createElement('video');
+    hoyoVideo.id = 'hoyoplay-video';
+    hoyoVideo.src = HOYO_VIDEO_SRC;
+    hoyoVideo.muted = true;
+    hoyoVideo.loop = true;
+    hoyoVideo.preload = 'auto';
+  // Enhance compatibility
+  try { hoyoVideo.setAttribute('playsinline', ''); hoyoVideo.setAttribute('webkit-playsinline', ''); } catch (e) {}
+  try { hoyoVideo.crossOrigin = 'anonymous'; } catch (e) {}
+    Object.assign(hoyoVideo.style, { width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' });
+    hoyoVideoOverlay.appendChild(hoyoVideo);
+
+    // Add foreground image above the video
+    try { if (typeof prefetchImage === 'function') prefetchImage(HOYO_OVERLAY_IMG_SRC); } catch (e) {}
+    hoyoVideoOverlayImg = document.createElement('img');
+    hoyoVideoOverlayImg.id = 'hoyoplay-video-overlay-img';
+    hoyoVideoOverlayImg.src = HOYO_OVERLAY_IMG_SRC;
+    Object.assign(hoyoVideoOverlayImg.style, {
+      position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+      width: '100%', height: '100%', objectFit: 'cover',
+      pointerEvents: 'none', userSelect: 'none',
+      opacity: '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
+    });
+    // Append after video to ensure it paints above
+    hoyoVideoOverlay.appendChild(hoyoVideoOverlayImg);
+
+  if (app.firstChild) app.insertBefore(hoyoVideoOverlay, app.firstChild); else app.appendChild(hoyoVideoOverlay);
+  // Ensure the app is a positioning context for absolute children
+  try {
+    const cs = window.getComputedStyle(app);
+    if (cs.position === 'static') app.style.position = 'relative';
+  } catch (e) { /* ignore */ }
+
+    // Elevate key UI so it stays above the overlay (including BottomSection/footer)
+    try {
+      const elevateSelectors = [
+        '#title', '#settingsBtn', '#minBtn', '#closeBtn', '#serverLaunch', '#officialPlay',
+        '.TopButton', '.Menu', '.Mods', '.NewsSection', '#newsContainer', '#newsTabsContainer',
+        '#newsContent', '#customNewsButton', '#leftBar', '.BottomSection', '#BottomSection', '#bottomSection', '.Footer', '#footer'
+      ];
+      elevateSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+          if (window.getComputedStyle(el).position === 'static') {
+            el.style.position = 'relative';
+          }
+          if (!el.style.zIndex || parseInt(el.style.zIndex, 10) <= 0 || isNaN(parseInt(el.style.zIndex, 10))) {
+            el.style.zIndex = '2';
+          }
+        });
+      });
+    } catch (e) { /* ignore */ }
+
+    // Control button placed near Version Highlights button
+    hoyoVideoControl = document.createElement('button');
+    hoyoVideoControl.id = 'hoyoplay-video-control';
+    // Use class-based styling defined in CSS
+    hoyoVideoControl.className = 'hoyoplay-video-control hidden';
+  // inner icon element using Segoe Fluent glyphs (play/pause)
+  const icon = document.createElement('span');
+  icon.className = 'hp-icon';
+  // Play glyph: \uF5B0, Pause glyph: \uF8AE (Segoe Fluent / MDL2 glyphs)
+  icon.textContent = '\uF5B0';
+  hoyoVideoControl.appendChild(icon);
+  // Append control under the app root so absolute positioning is relative to it
+  app.appendChild(hoyoVideoControl);
+
+    function positionControl() {
+      const appEl = document.querySelector('.App') || document.body;
+      const ref = document.getElementById('customNewsButton');
+      const appRect = appEl.getBoundingClientRect();
+      if (ref) {
+        const r = ref.getBoundingClientRect();
+        // Keep vertical centering with the button, but fix left to requested value
+        const topPx = (r.top - appRect.top) + (r.height - 40) / 2;
+        const leftPx = 255.662;
+        hoyoVideoControl.style.top = topPx + 'px';
+        hoyoVideoControl.style.left = leftPx + 'px';
+        hoyoVideoControl.style.right = '';
+      } else {
+        // Fallback: pin to top-right inside the app
+        hoyoVideoControl.style.top = '12px';
+        hoyoVideoControl.style.right = '12px';
+        hoyoVideoControl.style.left = '';
+      }
+    }
+    positionControl();
+    window.addEventListener('resize', positionControl);
+
+    hoyoVideoControl.addEventListener('click', () => {
+      if (!hoyoVideo) return;
+      if (hoyoVideoPlaying) {
+        // Pause video and fall back to image1 (left circle)
+        hoyoVideo.pause();
+        try { hoyoVideo.currentTime = 0; } catch (e) {}
+        hoyoVideoPlaying = false;
+        try {
+          // Use image1 specifically (left circle's fallback image)
+          const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(rightBgKey, 1);
+          if (url) setCustomBackground(url);
+        } catch (e) {}
+        // Reflect selection to the left circle and hide only overlay (keep control visible)
+        try { updateCircles(0); } catch (e) {}
+        try { showVideoOverlay(false, { hideControl: false }); } catch (e) {}
+        if (hoyoVideoControl) {
+          const ic = hoyoVideoControl.querySelector('.hp-icon');
+          if (ic) { ic.textContent = '\uF5B0'; }
+        }
+      } else {
+        // Resume: fade overlay in then play
+        try { showVideoOverlay(true); } catch (e) {}
+        try { hoyoVideo.currentTime = 0; } catch (e) {}
+        hoyoVideo.play().catch(() => {});
+        hoyoVideoPlaying = true;
+        if (hoyoVideoControl) {
+          const ic = hoyoVideoControl.querySelector('.hp-icon');
+          if (ic) { ic.textContent = '\uF8AE'; }
+        }
+      }
+    });
+  }
+
+  function showVideoOverlay(show, opts = {}) {
+    if (!hoyoVideoOverlay || !hoyoVideoControl) ensureVideoElements();
+    if (!hoyoVideoOverlay) return;
+    const hideControl = !!opts.hideControl;
+    // Helper: reflect playing state on the document for CSS hooks
+    const setPlayingClass = (on) => {
+      try { document.body.classList.toggle('hoyoplay-video-playing', !!on); } catch (_) {}
+    };
+    if (show) {
+      hoyoVideoOverlay.style.opacity = '1';
+      if (hoyoVideoControl) hoyoVideoControl.style.display = 'block';
+      if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '1';
+      setPlayingClass(true);
+    } else {
+      if (hoyoVideo) { try { hoyoVideo.pause(); } catch (e) {} }
+      if (hoyoVideo) { try { hoyoVideo.currentTime = 0; } catch (e) {} }
+      hoyoVideoPlaying = false;
+      if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
+      if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '0';
+      setPlayingClass(false);
+      if (hoyoVideoControl) {
+        if (hideControl) {
+          hoyoVideoControl.style.display = 'none';
+        } else {
+          hoyoVideoControl.style.display = 'block';
+        }
+        // Ensure the icon shows the Play glyph instead of plain text
+        const ic = hoyoVideoControl.querySelector('.hp-icon');
+        if (ic) {
+          ic.textContent = '\uF5B0'; // Play glyph
+          ic.classList.remove('pause');
+          ic.classList.add('play');
+        }
+      }
+    }
+  }
+
+  // Prepare video UI for default-left selection: show control (paused), hide overlay with fade
+  try {
+    ensureVideoElements();
+    if (hoyoVideoControl) {
+      hoyoVideoControl.classList.remove('hidden');
+      const ic = hoyoVideoControl.querySelector('.hp-icon');
+      if (ic) { ic.classList.remove('pause'); ic.classList.add('play'); }
+    }
+    if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
+    hoyoVideoPlaying = false;
+  } catch (e) {}
 
 // Selection logic + background change on hover
+// Map circle hover to index 0/1/2 (left/mid/right). Try left key first, then right as fallback.
 leftCircle.addEventListener('mouseenter', () => {
   if (isModsActive()) return; // disabled on Mods page
-  updateCircles('left');
-  const url = getCachedBackgroundUrl(leftBgKey) || getCachedBackgroundUrl(rightBgKey);
+  updateCircles(0);
+  const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
   if (url) setCustomBackground(url);
+  // On left: keep control visible; overlay shown only if currently playing
+  if (typeof hoyoVideoPlaying !== 'undefined' && hoyoVideoPlaying) {
+    showVideoOverlay(true);
+  } else {
+    showVideoOverlay(false, { hideControl: false });
+  }
+});
+midCircle.addEventListener('mouseenter', () => {
+  if (isModsActive()) return; // disabled on Mods page
+  updateCircles(1);
+  // Middle circle should use image2 (right key index 0)
+  const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
+  if (url) setCustomBackground(url);
+  showVideoOverlay(false, { hideControl: true });
 });
 rightCircle.addEventListener('mouseenter', () => {
   if (isModsActive()) return; // disabled on Mods page
-  updateCircles('right');
-  const url = getCachedBackgroundUrl(rightBgKey) || getCachedBackgroundUrl(leftBgKey);
+  updateCircles(2);
+  // Right circle should use image3 (right key index 1)
+  const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
   if (url) setCustomBackground(url);
+  showVideoOverlay(false, { hideControl: true });
 });
 
   // Show/hide overlay and shadow on mouse movement near top center
@@ -1477,13 +1736,18 @@ async function refreshHoYoPlayCache(key, exampleUrls) {
 
 // Console helper to refresh caches for selector usage
 window.hoyoplayRefresh = async function() {
-  console.log('[hoyoplayRefresh] Using GitHub-hosted fallback images only');
+  console.log('[hoyoplayRefresh] Using GitHub-hosted placeholder mapping: Left=image1, Mid=image2, Right=image3');
 
+  // Mapping:
+  // - Left key (index 0): image1 (used with video overlay)
+  // - Right key (index 0): image2 (middle circle)
+  // - Right key (index 1): image3 (right circle)
   const leftExamples = [
     'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image1.webp'
   ];
   const rightExamples = [
-    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image2.webp'
+    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image2.webp',
+    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image3.webp'
   ];
 
   const l = await refreshHoYoPlayCache('left-default', leftExamples);
@@ -1513,18 +1777,30 @@ _runHoyoplayRefreshOnStartup();
 // Also check periodically in case menu is recreated
 //setInterval(injectCustomOptionSection, 1000);
 
-// Auto-apply cached background after refresh (prefer right-default, then left)
+// Auto-apply cached background after refresh (prefer left-default image1, then right)
 async function _applyCachedBackgroundOnStartup() {
   try {
     const res = await window.hoyoplayRefresh();
     // res.left/res.right are arrays returned by refreshHoYoPlayCache
-    const right = res && res.right && res.right[0];
     const left = res && res.left && res.left[0];
-    const toApply = right || left;
+    const right = res && res.right && res.right[0];
+    const toApply = left || right;
     if (toApply) {
       // small delay to ensure .App exists
       setTimeout(() => {
         try { window.setCustomBackground(toApply); } catch (e) {}
+        try {
+          // keep control visible on startup in left-selected state
+          if (typeof ensureVideoElements === 'function') ensureVideoElements();
+          if (typeof updateCircles === 'function') updateCircles(0);
+          if (typeof showVideoOverlay === 'function' && window) {
+            // hide overlay but show control
+            const btn = document.getElementById('hoyoplay-video-control');
+            if (btn) btn.style.display = 'block';
+            const ov = document.getElementById('hoyoplay-video-overlay');
+            if (ov) ov.style.opacity = '0';
+          }
+        } catch (e) {}
       }, 180);
     }
   } catch (e) { /* ignore */ }
