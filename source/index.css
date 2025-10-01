@@ -1,3 +1,25 @@
+/* LoadingCircle: use theme asset image */
+.LoadingCircle {
+  position: relative; /* keep original layout */
+}
+.LoadingCircle > div {
+  width: 32px;               /* adjust as desired */
+  height: 32px;
+  background-image: url("https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/loading.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: loading-icon-spin 1s linear infinite; /* spin if default is removed */
+  border: none !important;            /* override default ring */
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+@keyframes loading-icon-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 /* Here we disable the bottom blur */
 .BottomSection {
   backdrop-filter: none;
