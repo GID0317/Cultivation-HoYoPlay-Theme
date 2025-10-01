@@ -56,6 +56,7 @@
   border: none !important;
   margin-top: 8px !important;
   width: 66px;
+  z-index: 1;
 }
 
 /* Optional: Remove background on the Discord and GitHub buttons themselves if needed */
