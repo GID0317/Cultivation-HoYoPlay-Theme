@@ -76,7 +76,7 @@ if (!document.getElementById('leftBar')) {
   const icon = document.createElement('img');
 
   // Use the GitHub-hosted URL for the image
-  icon.src = 'https://raw.githubusercontent.com/Grasscutters/Cultivation/refs/heads/main/src-tauri/icons/Square89x89Logo.png';
+  icon.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/source/assets/CultivationIcon.png.png';
   console.log('Icon source:', icon.src); // Debugging: Check the resolved path
 
   // Set styles for the icon
