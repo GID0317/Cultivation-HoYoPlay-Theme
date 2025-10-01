@@ -1324,6 +1324,96 @@ if (document.readyState === 'loading') {
   // Set width according to circle count (3 => 100px, else 80px)
   updateOverlayWidth();
 
+  // Hide circles when their corresponding cached background is missing.
+  // This allows the selector to gracefully adapt if GitHub Action didn't produce image files.
+  function updateCircleVisibility() {
+    try {
+      const leftList = getCachedBackgrounds(leftBgKey) || [];
+      const rightList = getCachedBackgrounds(rightBgKey) || [];
+      // Check actual index presence; do NOT fallback to index 0 here
+      const hasLeft = leftList.length >= 1;      // left uses index 0
+      const hasMid = rightList.length >= 1;      // mid uses right index 0
+      const hasRight = rightList.length >= 2;    // right uses right index 1
+
+      leftCircle.style.display = hasLeft ? 'block' : 'none';
+      midCircle.style.display = hasMid ? 'block' : 'none';
+      rightCircle.style.display = hasRight ? 'block' : 'none';
+
+      // Recalc overlay width when visibility changes
+      updateOverlayWidth();
+
+      // If the currently selected circle is hidden, pick a visible one (left > mid > right)
+      const visible = [hasLeft, hasMid, hasRight];
+      if (!visible[selectedCircleIndex]) {
+        let newIndex = 0;
+        if (hasLeft) newIndex = 0;
+        else if (hasMid) newIndex = 1;
+        else if (hasRight) newIndex = 2;
+        // If none visible, keep selection but nothing will show
+        if (visible[newIndex]) updateCircles(newIndex);
+      }
+
+      // Ensure video control visibility follows left availability and selection
+      try {
+        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+          if (hasLeft && selectedCircleIndex === 0) {
+            hoyoVideoControl.style.display = 'block';
+          } else {
+            hoyoVideoControl.style.display = 'none';
+          }
+        }
+      } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Optional: actively probe URLs to handle 404/redirects
+  async function validateCircleUrls() {
+    const rightList = getCachedBackgrounds(rightBgKey) || [];
+    // Helper that resolves to boolean load success
+    function probe(url) {
+      return new Promise(res => {
+        if (!url) return res(false);
+        const img = new Image();
+        let done = false;
+        const t = setTimeout(() => { if (!done) { done = true; res(false); } }, 4000);
+        img.onload = () => { if (!done) { done = true; clearTimeout(t); res(true); } };
+        img.onerror = () => { if (!done) { done = true; clearTimeout(t); res(false); } };
+        img.src = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
+      });
+    }
+
+    const midUrl = rightList[0];
+    const rightUrl = rightList[1];
+    const [midOk, rightOk] = await Promise.all([probe(midUrl), probe(rightUrl)]);
+
+    // If a URL fails, remove it from cache so updateCircleVisibility hides the circle
+    const rightKey = rightBgKey;
+    const current = getCachedBackgrounds(rightKey) || [];
+    let changed = false;
+    if (current[0] && !midOk) { current.splice(0, 1); changed = true; }
+    if (current[1] && !rightOk) {
+      // If index 0 was removed above, right is now at index 0; ensure we remove the correct one
+      const newList = current.filter((_, idx) => (midOk ? idx !== 1 : idx !== 0));
+      if (newList.length !== current.length) { changed = true; current.length = 0; current.push(...newList); }
+    }
+    if (changed) setCachedBackgrounds(rightKey, current);
+
+    updateCircleVisibility();
+  }
+
+  // Kick initial visibility and then validate URLs one time at startup
+  updateCircleVisibility();
+  try {
+    if (!window.__hoyoplayValidated) {
+      window.__hoyoplayValidated = true;
+      validateCircleUrls().catch(() => {});
+    }
+  } catch (e) {}
+  try { window._hoyoplayValidateCircles = validateCircleUrls; } catch (e) {}
+
+  // Expose a hook so refresh routines can trigger visibility recalculation
+  try { window._hoyoplayUpdateCircles = updateCircleVisibility; } catch (e) {}
+
   // --- Video overlay + control (for left circle) -----------------
   let hoyoVideoOverlay = null;
   let hoyoVideo = null;
@@ -1797,6 +1887,7 @@ window.hoyoplayRefresh = async function() {
   const l = await refreshHoYoPlayCache('left-default', leftExamples);
   const r = await refreshHoYoPlayCache('right-default', rightExamples);
   console.log('[hoyoplayRefresh] fallback-only done', { left: !!l, right: !!r });
+  try { if (window && typeof window._hoyoplayUpdateCircles === 'function') window._hoyoplayUpdateCircles(); } catch (e) {}
   return { left: l, right: r };
 };
 
@@ -1837,6 +1928,7 @@ async function _applyCachedBackgroundOnStartup() {
           // keep control visible on startup in left-selected state
           if (typeof ensureVideoElements === 'function') ensureVideoElements();
           if (typeof updateCircles === 'function') updateCircles(0);
+          try { if (window && typeof window._hoyoplayUpdateCircles === 'function') window._hoyoplayUpdateCircles(); } catch (e) {}
           if (typeof showVideoOverlay === 'function' && window) {
             // hide overlay but show control
             const btn = document.getElementById('hoyoplay-video-control');
