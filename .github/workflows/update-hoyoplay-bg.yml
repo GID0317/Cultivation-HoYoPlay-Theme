@@ -39,11 +39,12 @@ jobs:
               const list = j?.data?.game_info_list || [];
               if (!list.length) throw new Error('no game_info_list');
               const backgrounds = list[0].backgrounds || [];
-              const urls = backgrounds.map(b => (b && b.background && b.background.url) || b?.url).filter(Boolean);
+              const urls = backgrounds.map(b => (b && b.background && b.background.url) || b?.url || '').filter(Boolean);
 
-              const first = urls[0];
-              const second = urls[1] || urls[0];
-              const third  = urls[2] || urls[1] || urls[0];
+              // Keep strict positions: only write image2 if a second url exists, and same for image3
+              const first = urls[0] || '';
+              const second = urls[1] || '';
+              const third  = urls[2] || '';
 
               if (!first) throw new Error('no background urls found');
 
@@ -63,30 +64,72 @@ jobs:
                 console.log('Saved', outPath);
               }
 
-              await downloadTo(first, path.join(outDir, 'image1.webp'));
-              await downloadTo(second, path.join(outDir, 'image2.webp'));
-              await downloadTo(third,  path.join(outDir, 'image3.webp'));
+              function removeIfExists(outPath) {
+                try {
+                  if (fs.existsSync(outPath)) {
+                    fs.unlinkSync(outPath);
+                    console.log('Removed', outPath);
+                  }
+                } catch (e) {
+                  console.warn('Failed to remove', outPath, e.message);
+                }
+              }
+
+              const img1Path = path.join(outDir, 'image1.webp');
+              const img2Path = path.join(outDir, 'image2.webp');
+              const img3Path = path.join(outDir, 'image3.webp');
+
+              if (first) {
+                try { await downloadTo(first, img1Path); } catch (e) { console.warn('image1 download failed', e.message); removeIfExists(img1Path); }
+              } else {
+                removeIfExists(img1Path);
+              }
+
+              if (second) {
+                try { await downloadTo(second, img2Path); } catch (e) { console.warn('image2 download failed', e.message); removeIfExists(img2Path); }
+              } else {
+                removeIfExists(img2Path);
+              }
+
+              if (third) {
+                try { await downloadTo(third, img3Path); } catch (e) { console.warn('image3 download failed', e.message); removeIfExists(img3Path); }
+              } else {
+                removeIfExists(img3Path);
+              }
 
               // Download video and overlay/icon assets if available
+              const videoPath = path.join(outDir, 'video1.webm');
+              const overlayPath = path.join(outDir, 'overlay1.webp');
+              const iconPath = path.join(outDir, 'icon.png');
+              const iconHoverPath = path.join(outDir, 'icon-hover.png');
+
               if (videoUrl) {
-                try { await downloadTo(videoUrl, path.join(outDir, 'video1.webm')); } catch(e) { console.warn('video download failed', e.message); }
+                try { await downloadTo(videoUrl, videoPath); } catch(e) { console.warn('video download failed', e.message); removeIfExists(videoPath); }
+              } else {
+                removeIfExists(videoPath);
               }
               if (themeOverlayUrl) {
-                try { await downloadTo(themeOverlayUrl, path.join(outDir, 'overlay1.webp')); } catch(e) { console.warn('overlay download failed', e.message); }
+                try { await downloadTo(themeOverlayUrl, overlayPath); } catch(e) { console.warn('overlay download failed', e.message); removeIfExists(overlayPath); }
+              } else {
+                removeIfExists(overlayPath);
               }
               if (iconUrl) {
-                try { await downloadTo(iconUrl, path.join(outDir, 'icon.png')); } catch(e) { console.warn('icon download failed', e.message); }
+                try { await downloadTo(iconUrl, iconPath); } catch(e) { console.warn('icon download failed', e.message); removeIfExists(iconPath); }
+              } else {
+                removeIfExists(iconPath);
               }
               if (iconHoverUrl) {
-                try { await downloadTo(iconHoverUrl, path.join(outDir, 'icon-hover.png')); } catch(e) { console.warn('icon-hover download failed', e.message); }
+                try { await downloadTo(iconHoverUrl, iconHoverPath); } catch(e) { console.warn('icon-hover download failed', e.message); removeIfExists(iconHoverPath); }
+              } else {
+                removeIfExists(iconHoverPath);
               }
 
               // commit & push changes
               const execSync = require('child_process').execSync;
               execSync('git config user.name "github-actions[bot]"');
               execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
-              // Stage all potential outputs; some may not exist if API didn't provide them
-              execSync('git add ' + path.join('Background','image1.webp') + ' ' + path.join('Background','image2.webp') + ' ' + path.join('Background','image3.webp') + ' ' + path.join('Background','video1.webm') + ' ' + path.join('Background','overlay1.webp') + ' ' + path.join('Background','icon.png') + ' ' + path.join('Background','icon-hover.png'));
+              // Stage all changes in Background (including deletions)
+              execSync('git add -A Background');
               try { execSync('git commit -m "Auto-update HoYoPlay backgrounds + media (1/2/3 + video1/overlay1/icon)"'); } catch(e) { console.log('No changes to commit'); }
               execSync('git push');
               console.log('Done');
