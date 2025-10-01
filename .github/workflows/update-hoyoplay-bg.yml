@@ -43,8 +43,16 @@ jobs:
 
               const first = urls[0];
               const second = urls[1] || urls[0];
+              const third  = urls[2] || urls[1] || urls[0];
 
               if (!first) throw new Error('no background urls found');
+
+              // Also extract video/theme/icon from the primary background entry (if present)
+              const primary = backgrounds[0] || {};
+              const videoUrl = (primary.video && primary.video.url) || '';
+              const themeOverlayUrl = (primary.theme && primary.theme.url) || '';
+              const iconUrl = (primary.icon && primary.icon.url) || '';
+              const iconHoverUrl = (primary.icon && primary.icon.hover_url) || '';
 
               async function downloadTo(url, outPath) {
                 console.log('Downloading', url);
@@ -57,13 +65,29 @@ jobs:
 
               await downloadTo(first, path.join(outDir, 'image1.webp'));
               await downloadTo(second, path.join(outDir, 'image2.webp'));
+              await downloadTo(third,  path.join(outDir, 'image3.webp'));
+
+              // Download video and overlay/icon assets if available
+              if (videoUrl) {
+                try { await downloadTo(videoUrl, path.join(outDir, 'video1.webm')); } catch(e) { console.warn('video download failed', e.message); }
+              }
+              if (themeOverlayUrl) {
+                try { await downloadTo(themeOverlayUrl, path.join(outDir, 'overlay1.webp')); } catch(e) { console.warn('overlay download failed', e.message); }
+              }
+              if (iconUrl) {
+                try { await downloadTo(iconUrl, path.join(outDir, 'icon.png')); } catch(e) { console.warn('icon download failed', e.message); }
+              }
+              if (iconHoverUrl) {
+                try { await downloadTo(iconHoverUrl, path.join(outDir, 'icon-hover.png')); } catch(e) { console.warn('icon-hover download failed', e.message); }
+              }
 
               // commit & push changes
               const execSync = require('child_process').execSync;
               execSync('git config user.name "github-actions[bot]"');
               execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
-              execSync('git add ' + path.join('Background','image1.webp') + ' ' + path.join('Background','image2.webp'));
-              try { execSync('git commit -m "Auto-update HoYoPlay backgrounds"'); } catch(e) { console.log('No changes to commit'); }
+              // Stage all potential outputs; some may not exist if API didn't provide them
+              execSync('git add ' + path.join('Background','image1.webp') + ' ' + path.join('Background','image2.webp') + ' ' + path.join('Background','image3.webp') + ' ' + path.join('Background','video1.webm') + ' ' + path.join('Background','overlay1.webp') + ' ' + path.join('Background','icon.png') + ' ' + path.join('Background','icon-hover.png'));
+              try { execSync('git commit -m "Auto-update HoYoPlay backgrounds + media (1/2/3 + video1/overlay1/icon)"'); } catch(e) { console.log('No changes to commit'); }
               execSync('git push');
               console.log('Done');
             } catch (e) {
