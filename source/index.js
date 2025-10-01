@@ -1329,10 +1329,10 @@ if (document.readyState === 'loading') {
   let hoyoVideo = null;
   let hoyoVideoControl = null;
   let hoyoVideoPlaying = false;
-  const HOYO_VIDEO_SRC = 'https://fastcdn.hoyoverse.com/static-resource-v2/2025/09/29/ee380f6d03d954be7f3e340a8c9b38a7_5530986403387782.webm';
+  const HOYO_VIDEO_SRC = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/video1.webm';
   // Foreground image shown on top of video (matches HoYoPlay behavior)
   let hoyoVideoOverlayImg = null;
-  const HOYO_OVERLAY_IMG_SRC = 'https://fastcdn.hoyoverse.com/static-resource-v2/2025/09/29/63758733d4696044a04bcf9fe2b73242_5996096519712711970.webp';
+  const HOYO_OVERLAY_IMG_SRC = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/overlay1.webp';
 
   function ensureVideoElements() {
     if (hoyoVideoOverlay) return;
