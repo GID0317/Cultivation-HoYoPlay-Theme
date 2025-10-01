@@ -2264,7 +2264,7 @@ body:has(#ExtrasMenuButton) .NotifShow {
   width: calc(100% + 12px);
   height: calc(100% + 12px);
   border-radius: 50%;
-  border: 2.3px solid #ffffffb5;
+  border: 2.3px solid #ffffff65;
   box-sizing: border-box;
   pointer-events: none;
   background: transparent;
