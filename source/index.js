@@ -1194,40 +1194,52 @@ if (document.readyState === 'loading') {
     } catch (e) { /* ignore */ }
   }
 
-  // Helper: detect if Mods page is active
+  // Helper: detect if Mods page is active (broadened selectors)
   const isModsActive = () => {
-    const mods = document.querySelector('.Mods');
-    if (!mods) return false;
-    const cs = window.getComputedStyle(mods);
-    // Visible in layout
-    const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && mods.offsetParent !== null;
-    return visible;
+    const candidates = ['.Mods', '.Menu.ModMenu', '#menuContainer.ModMenu', '.ModList', '.ModDownloadList'];
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      const cs = window.getComputedStyle(el);
+      const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
+      if (visible) return true;
+    }
+    return false;
   };
 
   // Keep Mods above selector and disable selector when Mods is active
   function updateModsState() {
-    const mods = document.querySelector('.Mods');
     const active = isModsActive();
+    const modCandidates = Array.from(document.querySelectorAll('.Mods, .Menu.ModMenu, #menuContainer.ModMenu, .ModList, .ModDownloadList'));
     if (active) {
-      // Hide selector and shadow entirely
+      // Hide selector and shadow entirely, and hide video control too
       overlay.style.display = 'none';
       shadowBg.style.display = 'none';
-      // Hide any video overlay when Mods is active
-      try { showVideoOverlay(false); } catch (e) {}
-      // Ensure Mods pane is on top of everything
-      if (mods) {
-        if (window.getComputedStyle(mods).position === 'static') mods.style.position = 'relative';
-        mods.style.zIndex = '10000';
+      try { showVideoOverlay(false, { hideControl: true }); } catch (e) {}
+      if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+        hoyoVideoControl.style.display = 'none';
       }
+      // Ensure Mods pane(s) are on top of everything
+      modCandidates.forEach(el => {
+        if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        el.style.zIndex = '10000';
+      });
     } else {
-      // Restore selector visibility controls and layout
+      // Restore selector visibility and control based on current selection
       overlay.style.display = 'flex';
       shadowBg.style.display = 'block';
-      // Optionally reset Mods z-index if we set it
-      if (mods && mods.style) {
-        if (mods.style.zIndex === '10000') mods.style.zIndex = '';
-        if (mods.style.position === 'relative') mods.style.position = ''; // allow CSS to decide
+      if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+        if (selectedCircleIndex === 0) {
+          hoyoVideoControl.style.display = 'block';
+        } else {
+          hoyoVideoControl.style.display = 'none';
+        }
       }
+      // Optionally reset Mods z-index we set
+      modCandidates.forEach(el => {
+        if (el.style.zIndex === '10000') el.style.zIndex = '';
+        if (el.style.position === 'relative') el.style.position = '';
+      });
     }
   }
 
@@ -1252,6 +1264,9 @@ if (document.readyState === 'loading') {
     return c;
   }
 
+  // Track which circle is currently selected (0=left,1=mid,2=right)
+  let selectedCircleIndex = 0;
+
   // Create three circles (left, middle, right) to support up to 3 backgrounds per side
   const leftCircle = makeCircle('hoyoplay-left');
   const midCircle = makeCircle('hoyoplay-mid');
@@ -1270,6 +1285,7 @@ if (document.readyState === 'loading') {
 
   // By default, select the center/right-most (index 1 if present)
   function updateCircles(selectedIndex) {
+    selectedCircleIndex = selectedIndex;
     // selectedIndex: 0=left,1=mid,2=right
     const circles = [leftCircle, midCircle, rightCircle];
     circles.forEach((c, i) => {
@@ -1365,20 +1381,40 @@ if (document.readyState === 'loading') {
 
     // Elevate key UI so it stays above the overlay (including BottomSection/footer)
     try {
-      const elevateSelectors = [
+      // Base elevation for common UI
+      const baseSelectors = [
         '#title', '#settingsBtn', '#minBtn', '#closeBtn', '#serverLaunch', '#officialPlay',
-        '.TopButton', '.Menu', '.Mods', '.NewsSection', '#newsContainer', '#newsTabsContainer',
-        '#newsContent', '#customNewsButton', '#leftBar', '.BottomSection', '#BottomSection', '#bottomSection', '.Footer', '#footer'
+        '.TopButton', '.Menu', '#leftBar'
       ];
-      elevateSelectors.forEach(sel => {
+      baseSelectors.forEach(sel => {
         document.querySelectorAll(sel).forEach(el => {
-          if (window.getComputedStyle(el).position === 'static') {
-            el.style.position = 'relative';
-          }
-          if (!el.style.zIndex || parseInt(el.style.zIndex, 10) <= 0 || isNaN(parseInt(el.style.zIndex, 10))) {
-            el.style.zIndex = '2';
-          }
+          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
+          if (!el.style.zIndex || isNaN(parseInt(el.style.zIndex, 10))) el.style.zIndex = '2';
         });
+      });
+
+      // Ensure News stack above Bottom for interactions
+      const newsSelectors = ['.NewsSection', '#newsContainer', '#newsTabsContainer', '#newsContent', '#customNewsButton'];
+      newsSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '3';
+        });
+      });
+
+      // Push Bottom/footer lower so it won't block News
+      const bottomSelectors = ['.BottomSection', '#BottomSection', '#bottomSection', '.Footer', '#footer'];
+      bottomSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '1';
+        });
+      });
+
+      // Prepare Mods containers with higher stacking (reinforced when active)
+      document.querySelectorAll('.Mods, .Menu.ModMenu, #menuContainer.ModMenu').forEach(el => {
+        if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        el.style.zIndex = '1000';
       });
     } catch (e) { /* ignore */ }
 
@@ -1563,8 +1599,16 @@ rightCircle.addEventListener('mouseenter', () => {
     }
   });
 
-  // Watch for Mods appearing/disappearing
-  const modsObserver = new MutationObserver(() => updateModsState());
+  // Watch for Mods appearing/disappearing (throttled)
+  let __modsScheduled = null;
+  const scheduleModsUpdate = () => {
+    if (__modsScheduled) return;
+    __modsScheduled = requestAnimationFrame(() => {
+      __modsScheduled = null;
+      try { updateModsState(); } catch (_) {}
+    });
+  };
+  const modsObserver = new MutationObserver(() => scheduleModsUpdate());
   modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
   // Initial state
   updateModsState();
