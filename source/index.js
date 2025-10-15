@@ -1,15 +1,3 @@
-/**
- * Let's take advantage of some JS!
- * 
- * You can run any kind of JS in here that you'd like. Intervals, events, whatever.
- * This is however sandboxed within the launcher, so you cannot make system calls or
- * anything Tauri-related. Even if you could, the backend permissions are heavily locked
- * down and you wouldn't be able to do much anyways. 
- *
- */
-
-
-
 // Change play button label
 
 function injectPlayIcon() {
@@ -1194,9 +1182,25 @@ if (document.readyState === 'loading') {
     } catch (e) { /* ignore */ }
   }
 
-  // Helper: detect if Mods page is active (broadened selectors)
+  // Helper: detect if Mods page OR any menu/dialog is active (broadened selectors)
   const isModsActive = () => {
-    const candidates = ['.Mods', '.Menu.ModMenu', '#menuContainer.ModMenu', '.ModList', '.ModDownloadList'];
+    const candidates = [
+      // Mods-related containers
+      '.Mods',
+      '.Menu.ModMenu',
+      '#menuContainer.ModMenu',
+      '.ModList',
+      '.ModDownloadList',
+      // Menu/dialog containers
+      '#secretMenuContainer',
+      '#menuContainer .Menu',
+      '#menuContainer .MenuTop',
+      '#menuContainer .MenuInner',
+      '#menuContainer .OptionSection',
+      '#menuContainer .Dialog',
+      '#menuContainer .Modal',
+      '#menuContainer .Popup'
+    ];
     for (const sel of candidates) {
       const el = document.querySelector(sel);
       if (!el) continue;
@@ -1210,7 +1214,9 @@ if (document.readyState === 'loading') {
   // Keep Mods above selector and disable selector when Mods is active
   function updateModsState() {
     const active = isModsActive();
-    const modCandidates = Array.from(document.querySelectorAll('.Mods, .Menu.ModMenu, #menuContainer.ModMenu, .ModList, .ModDownloadList'));
+    const modCandidates = Array.from(document.querySelectorAll(
+      '.Mods, .Menu.ModMenu, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
+    ));
     if (active) {
       // Hide selector and shadow entirely, and hide video control too
       overlay.style.display = 'none';
