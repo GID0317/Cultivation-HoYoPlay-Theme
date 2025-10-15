@@ -1379,12 +1379,14 @@ if (document.readyState === 'loading') {
     const modCandidates = Array.from(document.querySelectorAll(
       '.Mods, .Menu.ModMenu, #menuContainer, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
     ));
+    const menuEls = Array.from(document.querySelectorAll('#menuContainer, .Menu.ModMenu, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'));
+    const modListEls = Array.from(document.querySelectorAll('.ModList, .ModListInner, .Mods .ModList, .Mods .ModListInner'));
     if (active) {
       // Hide selector and shadow entirely, and hide video control too
       overlay.style.display = 'none';
       shadowBg.style.display = 'none';
       // Show darkening backdrop only for menus/dialogs, not Mods
-      if (menuActive) {
+      if (menuActive && !modsActive) {
         ensureBackdropPanels();
         layoutBackdropPanels();
         dialogBackdrop.style.display = 'block';
@@ -1416,6 +1418,32 @@ if (document.readyState === 'loading') {
         if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
         el.style.zIndex = '10000';
       });
+      // When a menu is active inside Mods, raise the menu above any ModList
+      if (menuActive) {
+        menuEls.forEach(el => {
+          if (!el) return;
+          const cs = window.getComputedStyle(el);
+          if (cs.position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '10020';
+        });
+        // Nudge mod lists below the menu
+        modListEls.forEach(el => {
+          if (!el) return;
+          const cs = window.getComputedStyle(el);
+          if (cs.position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '10005';
+        });
+      }
+
+      // Ensure ModDownloadList is above ModList but without backdrop (Mods context)
+      const modDownloadEls = Array.from(document.querySelectorAll('.ModDownloadList'));
+      modDownloadEls.forEach(el => {
+        const cs = window.getComputedStyle(el);
+        if (cs.position === 'static') el.style.position = 'relative';
+        el.style.zIndex = '10012';
+        el.style.pointerEvents = 'auto';
+        try { el.setAttribute('data-mod-z-boosted', 'true'); } catch (_) {}
+      });
     } else {
       // Restore selector visibility and control based on current selection
       overlay.style.display = 'flex';
@@ -1438,6 +1466,11 @@ if (document.readyState === 'loading') {
         if (el.style.zIndex === '10000') el.style.zIndex = '';
         if (el.style.position === 'relative') el.style.position = '';
       });
+      // Clear any elevated menu/list stacking set above
+      menuEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
+      modListEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
+      const modDownloadEls = Array.from(document.querySelectorAll('.ModDownloadList'));
+      modDownloadEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
     }
 
   // Update tab navigation disables according to current page state
@@ -1980,8 +2013,14 @@ rightCircle.addEventListener('mouseenter', () => {
     try {
       const newsBtn = document.getElementById('customNewsButton');
       const videoBtn = document.getElementById('hoyoplay-video-control');
-      if (newsBtn) setTabDisabled(newsBtn, true);
-      if (videoBtn) setTabDisabled(videoBtn, true);
+  if (newsBtn) setTabDisabled(newsBtn, true);
+  if (videoBtn) setTabDisabled(videoBtn, true);
+
+  // Also disable main page IP/Port inputs from tab order
+  const ip = document.getElementById('ip');
+  const port = document.getElementById('port');
+  if (ip) setTabDisabled(ip, true);
+  if (port) setTabDisabled(port, true);
 
       // Disable News content regardless of DOM variant/casing
       const newsRoots = Array.from(document.querySelectorAll([
@@ -2036,6 +2075,15 @@ rightCircle.addEventListener('mouseenter', () => {
 
   // Apply tab stop rules initially as well
   try { updateTabStops({ modsActive: isModsActive() }); } catch (e) {}
+
+  // Re-apply tab disabling for IP/Port and News when DOM changes dynamically
+  try {
+    const reapplyTabDisables = () => {
+      try { updateTabStops({}); } catch (_) {}
+    };
+    const tabObserver = new MutationObserver(reapplyTabDisables);
+    tabObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  } catch (_) {}
 })();
 
 // Fast cross-fade state for wallpaper-only transitions
