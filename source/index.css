@@ -990,6 +990,17 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   height: 10px !important;
 }
 
+/* Sync icon state with parent hover/focus so they animate together */
+#menuButtonCloseContainer:hover #menuButtonCloseIcon,
+#menuButtonCloseContainer:focus #menuButtonCloseIcon {
+  filter: invert(100%) brightness(200%) !important;
+}
+
+/* Slightly dim on active press, matching container active state */
+#menuButtonCloseContainer:active #menuButtonCloseIcon {
+  filter: invert(100%) brightness(160%) !important;
+}
+
 .MenuExit {
     margin-top: 0px;
     margin-bottom: 35px;
@@ -1386,7 +1397,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   white-space: nowrap;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   pointer-events: none;
-  vertical-align: middle;
+  /* vertical-align not applicable on block elements */
 
 /* Animation properties - horizontal scaling only */
   transform: scaleX(0);
@@ -1734,6 +1745,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 /* Hover effect */
 .ModHeaderTitle:hover {
+  color: #d0d1d6;
 }
 
 /* Selected (active) tab */
@@ -2113,13 +2125,7 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
     padding-right: 20px !important;
 }
 
-/* Ensure all other menu styles apply normally */
-#secretMenuContainer .MenuTop,
-#secretMenuContainer .MenuInner,
-#secretMenuContainer .OptionSection,
-#secretMenuContainer .BigButton {
-  /* These will inherit from the existing #menuContainer styles automatically */
-}
+/* Inherit menu styles; no overrides needed for these selectors */
 
 #secretMenuContainer .FooterOptions {
   display: flex;
