@@ -1156,14 +1156,109 @@ if (document.readyState === 'loading') {
   dialogBackdrop.id = 'menu-dialog-backdrop';
   Object.assign(dialogBackdrop.style, {
     position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-    background: 'rgba(0,0,0,0.45)',
+    background: 'transparent',
     zIndex: '9996', // below menus (10000), above app content
-    pointerEvents: 'auto',
+    pointerEvents: 'none', // container doesn't block, panels do
     opacity: '0',
     transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)',
     display: 'none'
   });
   document.body.appendChild(dialogBackdrop);
+
+  // Backdrop blocking panels (leave a top-center hole for window drag)
+  let panelTop = null, panelBottom = null, panelLeft = null, panelRight = null, holeVeil = null;
+  function ensureBackdropPanels() {
+    if (panelTop) return;
+    const make = () => {
+      const d = document.createElement('div');
+      Object.assign(d.style, {
+        position: 'fixed',
+        background: 'rgba(0,0,0,0.45)',
+        pointerEvents: 'auto',
+        top: '0', left: '0', width: '0', height: '0'
+      });
+      return d;
+    };
+    panelTop = make();
+    panelBottom = make();
+    panelLeft = make();
+    panelRight = make();
+    // Non-blocking veil to visually darken the draggable hole area
+    holeVeil = document.createElement('div');
+    Object.assign(holeVeil.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'none', // do not block drag interactions underneath
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    dialogBackdrop.appendChild(panelTop);
+    dialogBackdrop.appendChild(panelBottom);
+    dialogBackdrop.appendChild(panelLeft);
+    dialogBackdrop.appendChild(panelRight);
+    // Append veil last so it renders above blocking panels for uniform look
+    dialogBackdrop.appendChild(holeVeil);
+  }
+
+  function layoutBackdropPanels() {
+    try {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const bar = document.getElementById('topBarContainer');
+      const btns = document.getElementById('topBarButtonContainer');
+      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
+      const btnRect = btns ? btns.getBoundingClientRect() : null;
+      // Define a hole centered on the top bar, but not overlapping the buttons
+      const holeHeight = Math.max(36, Math.min(64, barRect.height));
+      const centerX = vw / 2;
+      // Wider and left-biased hole: make left side larger than right
+      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
+  const leftBias = 0.70; // 70% of width extends to the left of center
+      let holeLeft = centerX - holeWidth * leftBias;
+      let holeRight = centerX + holeWidth * (1 - leftBias);
+      const safety = 4;
+      if (btnRect) {
+        // Ensure the hole doesn't overlap the right buttons; expand to reach them if short
+        const maxRight = Math.max(0, btnRect.left - safety);
+        if (holeRight < maxRight) {
+          holeRight = maxRight; // allow more width on the right up to buttons
+        } else if (holeRight > maxRight) {
+          const overlap = holeRight - maxRight;
+          holeRight -= overlap;
+          holeLeft -= overlap; // shift left to avoid overlap
+        }
+      }
+      // Clamp within viewport
+      holeLeft = Math.max(8, holeLeft);
+      holeRight = Math.min(vw - 8, holeRight);
+      // Enforce a larger minimum width, prefer expanding left if constrained
+      const minHoleWidth = 200;
+      if (holeRight - holeLeft < minHoleWidth) {
+        holeLeft = Math.max(8, holeRight - minHoleWidth);
+      }
+      const holeTop = Math.max(0, barRect.top);
+      const holeBottom = Math.min(vh, holeTop + holeHeight);
+
+      // Top panel: above the hole, full width
+      Object.assign(panelTop.style, {
+        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
+      });
+      // Bottom panel: below the hole, full width
+      Object.assign(panelBottom.style, {
+        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
+      });
+      // Left panel: from holeTop..holeBottom, left area
+      Object.assign(panelLeft.style, {
+        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      // Right panel: from holeTop..holeBottom, right area
+      Object.assign(panelRight.style, {
+        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      // Veil over the hole: visually dim without blocking interactions
+      Object.assign(holeVeil.style, {
+        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+    } catch (e) { /* ignore */ }
+  }
 
   // Create selector container
   const overlay = document.createElement('div');
@@ -1248,6 +1343,8 @@ if (document.readyState === 'loading') {
       shadowBg.style.display = 'none';
       // Show darkening backdrop only for menus/dialogs, not Mods
       if (menuActive) {
+        ensureBackdropPanels();
+        layoutBackdropPanels();
         dialogBackdrop.style.display = 'block';
         requestAnimationFrame(() => { dialogBackdrop.style.opacity = '1'; });
       } else {
@@ -1761,6 +1858,15 @@ rightCircle.addEventListener('mouseenter', () => {
   modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
   // Initial state
   updateModsState();
+
+  // Re-layout backdrop panels on resize; only when visible
+  window.addEventListener('resize', () => {
+    try {
+      if (dialogBackdrop && dialogBackdrop.style.display !== 'none') {
+        layoutBackdropPanels();
+      }
+    } catch (e) {}
+  });
 })();
 
 // Fast cross-fade state for wallpaper-only transitions
