@@ -1,15 +1,3 @@
-/**
- * Let's take advantage of some JS!
- * 
- * You can run any kind of JS in here that you'd like. Intervals, events, whatever.
- * This is however sandboxed within the launcher, so you cannot make system calls or
- * anything Tauri-related. Even if you could, the backend permissions are heavily locked
- * down and you wouldn't be able to do much anyways. 
- *
- */
-
-
-
 // Change play button label
 
 function injectPlayIcon() {
