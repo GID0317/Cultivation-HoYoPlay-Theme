@@ -1,3 +1,15 @@
+/**
+ * Let's take advantage of some JS!
+ * 
+ * You can run any kind of JS in here that you'd like. Intervals, events, whatever.
+ * This is however sandboxed within the launcher, so you cannot make system calls or
+ * anything Tauri-related. Even if you could, the backend permissions are heavily locked
+ * down and you wouldn't be able to do much anyways. 
+ *
+ */
+
+
+
 // Change play button label
 
 function injectPlayIcon() {
@@ -1151,6 +1163,20 @@ if (document.readyState === 'loading') {
 
   document.body.appendChild(shadowBg);
 
+  // Create dialog/menu backdrop to darken background when menus/dialogs are open
+  const dialogBackdrop = document.createElement('div');
+  dialogBackdrop.id = 'menu-dialog-backdrop';
+  Object.assign(dialogBackdrop.style, {
+    position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: '9996', // below menus (10000), above app content
+    pointerEvents: 'auto',
+    opacity: '0',
+    transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)',
+    display: 'none'
+  });
+  document.body.appendChild(dialogBackdrop);
+
   // Create selector container
   const overlay = document.createElement('div');
   overlay.id = 'hoyoplay-selector';
@@ -1182,17 +1208,24 @@ if (document.readyState === 'loading') {
     } catch (e) { /* ignore */ }
   }
 
-  // Helper: detect if Mods page OR any menu/dialog is active (broadened selectors)
+  // Detect if Mods page is active (only Mods-related containers)
   const isModsActive = () => {
+    const candidates = ['.Mods', '.Menu.ModMenu', '#menuContainer.ModMenu', '.ModList', '.ModDownloadList'];
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      const cs = window.getComputedStyle(el);
+      const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
+      if (visible) return true;
+    }
+    return false;
+  };
+
+  // Detect if any menu/dialog from the options/secret menu is active
+  const isMenuDialogActive = () => {
     const candidates = [
-      // Mods-related containers
-      '.Mods',
-      '.Menu.ModMenu',
-      '#menuContainer.ModMenu',
-      '.ModList',
-      '.ModDownloadList',
-      // Menu/dialog containers
       '#secretMenuContainer',
+      '#menuContainer',
       '#menuContainer .Menu',
       '#menuContainer .MenuTop',
       '#menuContainer .MenuInner',
@@ -1211,19 +1244,45 @@ if (document.readyState === 'loading') {
     return false;
   };
 
+  const isUiOverlayActive = () => isModsActive() || isMenuDialogActive();
+
   // Keep Mods above selector and disable selector when Mods is active
   function updateModsState() {
-    const active = isModsActive();
+    const modsActive = isModsActive();
+    const menuActive = isMenuDialogActive();
+    const active = modsActive || menuActive;
     const modCandidates = Array.from(document.querySelectorAll(
-      '.Mods, .Menu.ModMenu, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
+      '.Mods, .Menu.ModMenu, #menuContainer, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
     ));
     if (active) {
       // Hide selector and shadow entirely, and hide video control too
       overlay.style.display = 'none';
       shadowBg.style.display = 'none';
-      try { showVideoOverlay(false, { hideControl: true }); } catch (e) {}
-      if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-        hoyoVideoControl.style.display = 'none';
+      // Show darkening backdrop only for menus/dialogs, not Mods
+      if (menuActive) {
+        dialogBackdrop.style.display = 'block';
+        requestAnimationFrame(() => { dialogBackdrop.style.opacity = '1'; });
+      } else {
+        dialogBackdrop.style.opacity = '0';
+        setTimeout(() => { if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none'; }, 200);
+      }
+      // Pause/hide video overlay only for Mods. Keep playing when menus/dialogs are open.
+      if (modsActive) {
+        try { showVideoOverlay(false, { hideControl: true }); } catch (e) {}
+        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+          hoyoVideoControl.style.display = 'none';
+        }
+      } else {
+        // Menu/dialog open: keep video playing and control visible if left circle is active
+        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+          if (selectedCircleIndex === 0) {
+            hoyoVideoControl.style.display = 'block';
+            // Render under the dark backdrop (backdrop=9996), but visible through it
+            hoyoVideoControl.style.zIndex = '9995';
+          } else {
+            hoyoVideoControl.style.display = 'none';
+          }
+        }
       }
       // Ensure Mods pane(s) are on top of everything
       modCandidates.forEach(el => {
@@ -1234,6 +1293,12 @@ if (document.readyState === 'loading') {
       // Restore selector visibility and control based on current selection
       overlay.style.display = 'flex';
       shadowBg.style.display = 'block';
+      // Hide backdrop
+      dialogBackdrop.style.opacity = '0';
+      // After transition, hide display to avoid intercepting clicks
+      setTimeout(() => {
+        if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none';
+      }, 200);
       if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
         if (selectedCircleIndex === 0) {
           hoyoVideoControl.style.display = 'block';
@@ -1635,7 +1700,7 @@ if (document.readyState === 'loading') {
 // Selection logic + background change on hover
 // Map circle hover to index 0/1/2 (left/mid/right). Try left key first, then right as fallback.
 leftCircle.addEventListener('mouseenter', () => {
-  if (isModsActive()) return; // disabled on Mods page
+  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   updateCircles(0);
   const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
   if (url) setCustomBackground(url);
@@ -1647,7 +1712,7 @@ leftCircle.addEventListener('mouseenter', () => {
   }
 });
 midCircle.addEventListener('mouseenter', () => {
-  if (isModsActive()) return; // disabled on Mods page
+  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   updateCircles(1);
   // Middle circle should use image2 (right key index 0)
   const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
@@ -1655,7 +1720,7 @@ midCircle.addEventListener('mouseenter', () => {
   showVideoOverlay(false, { hideControl: true });
 });
 rightCircle.addEventListener('mouseenter', () => {
-  if (isModsActive()) return; // disabled on Mods page
+  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   updateCircles(2);
   // Right circle should use image3 (right key index 1)
   const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
@@ -1666,7 +1731,7 @@ rightCircle.addEventListener('mouseenter', () => {
   // Show/hide overlay and shadow on mouse movement near top center
   let isVisible = false;
   document.addEventListener('mousemove', function(e) {
-    if (isModsActive()) {
+    if (isUiOverlayActive()) {
       // Force hide when Mods is open
       overlay.style.top = '0px';
       overlay.style.opacity = '0';
