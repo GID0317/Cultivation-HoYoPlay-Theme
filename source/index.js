@@ -91,6 +91,16 @@ function addCommitTooltips() {
   const commitRows = document.querySelectorAll('.Commit');
 
   commitRows.forEach(row => {
+    // Force non-tabbable for commit rows and descendants in news table
+    try {
+      row.setAttribute('tabindex', '-1');
+      row.querySelectorAll('*').forEach(el => {
+        if (el.matches('a, button, input, select, textarea, [tabindex]')) {
+          el.setAttribute('tabindex', '-1');
+        }
+      });
+    } catch (e) {}
+
     const commitMessageCell = row.querySelector('.CommitMessage span');
     if (commitMessageCell) {
       const fullMessage = commitMessageCell.textContent || commitMessageCell.innerText;
@@ -126,7 +136,21 @@ const observer = new MutationObserver(function(mutations) {
     if (mutation.type === 'childList') {
       const newsContent = document.getElementById('newsContent');
       if (newsContent && (mutation.target === newsContent || newsContent.contains(mutation.target))) {
-        setTimeout(addCommitTooltips, 100); // Small delay to ensure content is rendered
+        setTimeout(() => {
+          addCommitTooltips();
+          // Re-apply tab disabling for News in case of re-render
+          try {
+            const newsRoots = Array.from(document.querySelectorAll('#newsContent, .NewsContent, .newsContent, #newsContainer, .NewsSection'));
+            if (newsRoots.length) {
+              newsRoots.forEach(root => {
+                // Disable container + descendants
+                setGroupTabDisabled(root, true);
+                const tableNodes = root.querySelectorAll('table, tbody, thead, tfoot, tr, th, td');
+                tableNodes.forEach(node => setTabDisabled(node, true));
+              });
+            }
+          } catch (_) {}
+        }, 100); // Small delay to ensure content is rendered
       }
     }
   });
@@ -1293,7 +1317,25 @@ if (document.readyState === 'loading') {
 
   // Detect if Mods page is active (only Mods-related containers)
   const isModsActive = () => {
-    const candidates = ['.Mods', '.Menu.ModMenu', '#menuContainer.ModMenu', '.ModList', '.ModDownloadList'];
+    const candidates = [
+      '.Mods',
+      '.mods',
+      '.Menu.ModMenu',
+      '.menu.modmenu',
+      '#menuContainer.ModMenu',
+      '#menuContainer.modmenu',
+      '.ModList',
+      '.modlist',
+      '.ModDownloadList',
+      '.moddownloadlist',
+      // Also detect when Mods are rendered inside menu container
+      '#menuContainer .Mods',
+      '#menuContainer .mods',
+      '#menuContainer .ModList',
+      '#menuContainer .modlist',
+      '#menuContainer .ModDownloadList',
+      '#menuContainer .moddownloadlist'
+    ];
     for (const sel of candidates) {
       const el = document.querySelector(sel);
       if (!el) continue;
@@ -1397,6 +1439,9 @@ if (document.readyState === 'loading') {
         if (el.style.position === 'relative') el.style.position = '';
       });
     }
+
+  // Update tab navigation disables according to current page state
+  try { updateTabStops({ modsActive, menuActive }); } catch (e) {}
   }
 
   // Helper to create a circle
@@ -1867,6 +1912,130 @@ rightCircle.addEventListener('mouseenter', () => {
       }
     } catch (e) {}
   });
+
+  // --- Tab navigation management -----------------------------------------
+  function setTabDisabled(el, disabled) {
+    if (!el) return;
+    try {
+      if (disabled) {
+        if (!el.hasAttribute('data-prev-tabindex')) {
+          el.setAttribute('data-prev-tabindex', el.getAttribute('tabindex') ?? '');
+        }
+        el.setAttribute('tabindex', '-1');
+      } else {
+        if (el.hasAttribute('data-prev-tabindex')) {
+          const prev = el.getAttribute('data-prev-tabindex');
+          if (prev === '' || prev === null) {
+            el.removeAttribute('tabindex');
+          } else {
+            el.setAttribute('tabindex', prev);
+          }
+          el.removeAttribute('data-prev-tabindex');
+        } else if (el.getAttribute('tabindex') === '-1') {
+          // If we set it earlier but no prev recorded, just remove
+          el.removeAttribute('tabindex');
+        }
+      }
+    } catch (_) {}
+  }
+
+  function getFocusableDescendants(root) {
+    if (!root) return [];
+    const selector = [
+      'a[href]',
+      'area[href]',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      'iframe',
+      'summary',
+      // Elements explicitly tabbable
+      '[tabindex]:not([tabindex="-1"])',
+      // Contenteditable regions
+      '[contenteditable]',
+      '[contenteditable="true"]',
+      // Common ARIA interactive roles (we’ll force tabindex off even if missing)
+      '[role="button"]', '[role="link"]', '[role="checkbox"]', '[role="radio"]', '[role="switch"]',
+      '[role="tab"]', '[role="menuitem"]', '[role="option"]', '[role="combobox"]',
+      '[role="textbox"]', '[role="searchbox"]'
+    ].join(',');
+    return Array.from(root.querySelectorAll(selector));
+  }
+
+  function setGroupTabDisabled(root, disabled) {
+    const nodes = Array.isArray(root) ? root : [root];
+    nodes.forEach(r => {
+      if (!r) return;
+      setTabDisabled(r, disabled);
+      getFocusableDescendants(r).forEach(el => setTabDisabled(el, disabled));
+    });
+  }
+
+  function updateTabStops(state = {}) {
+    // Re-evaluate modsActive defensively in case caller is stale
+    const { modsActive: modsActiveArg = undefined } = state;
+    const modsActive = typeof modsActiveArg === 'boolean' ? modsActiveArg : isModsActive();
+    // Main page: always disable these from tab order
+    try {
+      const newsBtn = document.getElementById('customNewsButton');
+      const videoBtn = document.getElementById('hoyoplay-video-control');
+      if (newsBtn) setTabDisabled(newsBtn, true);
+      if (videoBtn) setTabDisabled(videoBtn, true);
+
+      // Disable News content regardless of DOM variant/casing
+      const newsRoots = Array.from(document.querySelectorAll([
+        '#newsContent',
+        '.NewsContent',
+        '.newsContent',
+        '#newsContainer',
+        '.NewsSection'
+      ].join(',')));
+      if (newsRoots.length) {
+        setGroupTabDisabled(newsRoots, true);
+        // Also force-disable typical table nodes inside News to avoid tbody/tr/td being tabbable
+        newsRoots.forEach(root => {
+          const tableNodes = root.querySelectorAll('table, tbody, thead, tfoot, tr, th, td');
+          tableNodes.forEach(node => setTabDisabled(node, true));
+        });
+      }
+    } catch (_) {}
+
+    // Mods page: when active, disable search and mod list from tab nav; restore when not
+    try {
+      // Identify likely Mods roots (for scoping) and target areas (search + lists)
+  const modsRoots = Array.from(document.querySelectorAll('.Mods, .mods, .Menu.ModMenu, .menu.modmenu, #menuContainer.ModMenu, #menuContainer.modmenu, #menuContainer .Mods, #menuContainer .mods'));
+      // Helper: check containment within any Mods root
+      const withinAnyRoot = (el) => {
+        if (!el) return false;
+        if (!modsRoots.length) return true; // fallback: if we couldn't find a root, allow global match
+        return modsRoots.some(r => r.contains(el));
+      };
+
+      // Search fields can vary; cover common patterns
+      const searchCandidates = Array.from(document.querySelectorAll([
+        'input[type="search"]',
+        'input[type="text"]',
+        '.TextInput',
+        '.SearchInput',
+        '[role="searchbox"]',
+        'input[placeholder*="search" i]'
+      ].join(','))).filter(withinAnyRoot);
+
+      // Mod list containers (cover a few variants)
+      const listCandidates = Array.from(document.querySelectorAll(
+        '.ModList, .modlist, .ModListInner, .modlistinner, .ModDownloadList, #ModList, .Mods .List, .ModsList'
+      )).filter(withinAnyRoot);
+
+      const targets = [...searchCandidates, ...listCandidates];
+      if (targets.length) setGroupTabDisabled(targets, !!modsActive);
+      // When leaving Mods, restore any items we disabled
+      if (!modsActive && targets.length) targets.forEach(t => setGroupTabDisabled(t, false));
+    } catch (_) {}
+  }
+
+  // Apply tab stop rules initially as well
+  try { updateTabStops({ modsActive: isModsActive() }); } catch (e) {}
 })();
 
 // Fast cross-fade state for wallpaper-only transitions
