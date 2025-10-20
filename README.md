@@ -39,10 +39,10 @@ Virus Total Check: [Virus Total Result](https://www.virustotal.com/gui/file/eef9
 ![Banners](https://github.com/user-attachments/assets/84351423-cc40-4902-9658-6039c98d19d7)
 
 # This app made possible by
-- `Template Provided by Cultivation`
-- `HoYoPlay by HoYoVerse/miHoYo`
-- `WebView2Utilities by david-risney`
-- `HoYoPlay-Launcher-Background by UIGF-org`
+- [Template](https://github.com/Grasscutters/Cultivation/blob/main/docs/ExampleTheme.zip) Provided by `Cultivation`
+- [HoYoPlay](https://hoyoplay.hoyoverse.com/) by `HoYoVerse/miHoYo`
+- [WebView2Utilities](https://github.com/david-risney/WebView2Utilities) by `david-risney`
+- [HoYoPlay-Launcher-Background](https://github.com/UIGF-org/HoYoPlay-Launcher-Background) by `UIGF-org`
 
 # License
 
