@@ -1512,11 +1512,18 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   border-radius: 8px;
   text-align: center;
   padding: 12px 30px;
-  transition: background 0.3s;
+  transition: background 0.1s;
 }
 
 #menuContainer.ExtrasMenu #ExtraLaunch:hover {
   background: #FFC800;
+}
+
+/* ExtrasMenu: hold (mouse down) color only */
+#menuContainer.ExtrasMenu #ExtraLaunch:has(:active),
+#menuContainer.ExtrasMenu #ExtraLaunch:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
 }
 
 /* Optional: Style the button text */
@@ -2205,9 +2212,17 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
   color: #000;
   padding-right: 20px;
   padding-left: 20px;
+  transition: background 0.1s;
 }
 #secretMenuContainer .FooterButton.primary:hover {
   background: #ffc800;
+}
+
+/* SecretMenu: hold (mouse down) color only */
+#secretMenuContainer .FooterButton.primary:has(:active),
+#secretMenuContainer .FooterButton.primary:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
 }
 
 .NotifShow {
