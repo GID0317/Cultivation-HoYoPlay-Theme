@@ -2018,9 +2018,10 @@ rightCircle.addEventListener('mouseenter', () => {
   }
 
   function updateTabStops(state = {}) {
-    // Re-evaluate modsActive defensively in case caller is stale
-    const { modsActive: modsActiveArg = undefined } = state;
+    // Re-evaluate flags defensively in case caller is stale
+    const { modsActive: modsActiveArg = undefined, menuActive: menuActiveArg = undefined } = state;
     const modsActive = typeof modsActiveArg === 'boolean' ? modsActiveArg : isModsActive();
+    const menuActive = typeof menuActiveArg === 'boolean' ? menuActiveArg : isMenuDialogActive();
     // Main page: always disable these from tab order
     try {
       const newsBtn = document.getElementById('customNewsButton');
@@ -2082,6 +2083,20 @@ rightCircle.addEventListener('mouseenter', () => {
       if (targets.length) setGroupTabDisabled(targets, !!modsActive);
       // When leaving Mods, restore any items we disabled
       if (!modsActive && targets.length) targets.forEach(t => setGroupTabDisabled(t, false));
+    } catch (_) {}
+
+    // Dialogs: when Downloads menu is open, disable tabbing inside its content area
+    try {
+      const downloadsMenus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
+      if (downloadsMenus.length) {
+        downloadsMenus.forEach(menu => {
+          const content = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner');
+          if (!content) return;
+          setGroupTabDisabled(content, !!menuActive);
+          // On close, restore
+          if (!menuActive) setGroupTabDisabled(content, false);
+        });
+      }
     } catch (_) {}
   }
 
