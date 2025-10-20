@@ -1,3 +1,9 @@
+/* Keep install notifications above backdrop but below wallpaper selector */
+.GameInstallNotify,
+.GameInstallNotify.download-complete {
+  z-index: 9997 !important;
+}
+
 /* Force Extras and Server Launch icons to white only on hover/hold */
 #ExtrasMenuButton:hover img,
 #ExtrasMenuButton:hover svg,
