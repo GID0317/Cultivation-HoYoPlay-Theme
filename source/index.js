@@ -1204,9 +1204,20 @@ if (document.readyState === 'loading') {
       return d;
     };
     panelTop = make();
+    panelTop.className = 'backdrop-panel panel-top';
     panelBottom = make();
+    panelBottom.className = 'backdrop-panel panel-bottom';
+    // Round only the bottom panel's bottom corners as requested
+    panelBottom.style.borderBottomLeftRadius = '8px';
+    panelBottom.style.borderBottomRightRadius = '8px';
     panelLeft = make();
+    panelLeft.className = 'backdrop-panel panel-left';
+  // Round top-left outer corner on the left (blue) panel
+  panelLeft.style.borderTopLeftRadius = '8px';
     panelRight = make();
+    panelRight.className = 'backdrop-panel panel-right';
+  // Round top-right outer corner on the right (yellow) panel
+  panelRight.style.borderTopRightRadius = '8px';
     // Non-blocking veil to visually darken the draggable hole area
     holeVeil = document.createElement('div');
     Object.assign(holeVeil.style, {
@@ -1215,6 +1226,7 @@ if (document.readyState === 'loading') {
       pointerEvents: 'none', // do not block drag interactions underneath
       top: '0', left: '0', width: '0', height: '0'
     });
+    holeVeil.className = 'backdrop-panel hole-veil';
     dialogBackdrop.appendChild(panelTop);
     dialogBackdrop.appendChild(panelBottom);
     dialogBackdrop.appendChild(panelLeft);
