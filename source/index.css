@@ -1105,6 +1105,14 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
 }
 
+#menuContent #menuOptionsSelectThemes select:has(:active),
+#menuContent #menuOptionsSelectThemes select:active,
+#menuContent #menuOptionsSelectMenuLang:has(:active),
+#menuContent #menuOptionsSelectMenuLang:active {
+  background: #3a3d40 !important; 
+  color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
+}
+
 #menuContent #menuOptionsSelectThemes,
 #menuContent #menuOptionsSelectLang {
   position: relative;
