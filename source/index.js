@@ -920,10 +920,11 @@ function hijackVersionNotification() {
         hijackedNotification = el;
         
         // Apply our styling
-        el.classList.add('NotifShow');
-        el.style.top = '84%';
-        el.style.right = '30%';
-        el.style.zIndex = '9999';
+  el.classList.add('NotifShow');
+  el.style.top = '84%';
+  el.style.right = '30%';
+  // Keep below backdrop (9996) and selector (9999), but above app content
+  el.style.zIndex = '9990';
         
         // Update the link to point to latest releases
         const versionLink = msgDiv.querySelector('a');
@@ -958,10 +959,11 @@ function restoreHijackedContent() {
       }
       
       // Ensure styling is maintained
-      hijackedNotification.classList.add('NotifShow');
-      hijackedNotification.style.top = '84%';
-      hijackedNotification.style.right = '30%';
-      hijackedNotification.style.zIndex = '9999';
+  hijackedNotification.classList.add('NotifShow');
+  hijackedNotification.style.top = '84%';
+  hijackedNotification.style.right = '30%';
+  // Keep below backdrop (9996) and selector (9999), but above app content
+  hijackedNotification.style.zIndex = '9990';
     }
   }
 }
