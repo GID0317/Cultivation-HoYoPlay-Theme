@@ -49,7 +49,7 @@ if (!document.getElementById('leftBar')) {
   const leftBar = document.createElement('div');
   leftBar.id = 'leftBar';
   leftBar.style.width = '67px';
-  leftBar.style.height = '100vh';
+  leftBar.style.height = '99.8vh';
   leftBar.style.background = 'linear-gradient(0deg, rgb(0 0 0 / 83%) 0%, rgb(50 50 50 / 24%) 60%)';
   leftBar.style.position = 'fixed'; // Use fixed for overlay-style sidebars
   leftBar.style.left = '0';
