@@ -1,3 +1,19 @@
+/* Force Extras and Server Launch icons to white only on hover/hold */
+#ExtrasMenuButton:hover img,
+#ExtrasMenuButton:hover svg,
+#ExtrasMenuButton:hover .icon,
+#ExtrasMenuButton:active img,
+#ExtrasMenuButton:active svg,
+#ExtrasMenuButton:active .icon,
+#serverLaunch:hover img,
+#serverLaunch:hover svg,
+#serverLaunch:hover .icon,
+#serverLaunch:active img,
+#serverLaunch:active svg,
+#serverLaunch:active .icon {
+  filter: invert(100%) brightness(100%) !important;
+}
+
 /* LoadingCircle: use theme asset image */
 .LoadingCircle {
   position: relative; /* keep original layout */
