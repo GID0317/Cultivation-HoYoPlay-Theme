@@ -253,6 +253,33 @@ function stopTestProgress() {
   testInterval = null;
 }
 
+// Adjust DownloadProgress position depending on Extras menu presence
+function adjustDownloadProgressPosition() {
+  try {
+    const dp = document.querySelector('#DownloadProgress');
+    if (!dp) return;
+    const container = document.getElementById('serverLaunchContainer') || document.getElementById('serverLaunch');
+    // Find Extras button by id or class within serverLaunchContainer
+    let extrasBtn = null;
+    if (container) {
+      extrasBtn = container.querySelector('#ExtrasMenuButton') || container.querySelector('.ExtrasMenuButton');
+    }
+    if (!extrasBtn) {
+      // Fallback: global lookup
+      extrasBtn = document.getElementById('ExtrasMenuButton') || document.querySelector('.ExtrasMenuButton');
+    }
+    // Consider visible only if present and rendered
+    let extrasVisible = false;
+    if (extrasBtn) {
+      const cs = window.getComputedStyle(extrasBtn);
+      extrasVisible = cs.display !== 'none' && cs.visibility !== 'hidden' && extrasBtn.getClientRects().length > 0;
+    }
+    // If Extras is visible, right: 20%; else 15.1%
+    const rightVal = extrasVisible ? '20%' : '15.1%';
+    dp.style.setProperty('right', rightVal, 'important');
+  } catch (_) {}
+}
+
 // Function to check if progress is active and update button state
 function updatePlayButtonState() {
   const downloadProgress = document.querySelector('#DownloadProgress');
@@ -286,6 +313,8 @@ function updatePlayButtonState() {
     // Remove progress state (normal appearance, show text)
     playButton.classList.remove('progress-active');
   }
+  // Keep DownloadProgress aligned appropriately
+  adjustDownloadProgressPosition();
 }
 
 // Monitor progress changes more frequently
@@ -326,6 +355,8 @@ function startProgressObserver() {
       childList: true, 
       subtree: true 
     });
+    // Also watch for style/layout changes to keep position correct
+    enhancedProgressObserver.observe(downloadProgress, { attributes: true });
   }
   
   // Observe progress wrapper for style changes
@@ -341,11 +372,21 @@ function startProgressObserver() {
       attributes: true 
     });
   }
+
+  // Watch for ExtrasMenuButton appearing/disappearing under serverLaunchContainer
+  const serverLaunchContainer = document.getElementById('serverLaunchContainer') || document.getElementById('serverLaunch');
+  if (serverLaunchContainer) {
+    const extrasObserver = new MutationObserver(adjustDownloadProgressPosition);
+    extrasObserver.observe(serverLaunchContainer, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+  }
 }
 
 // Start observing immediately and retry if elements don't exist yet
 startProgressObserver();
 setInterval(startProgressObserver, 1000); // Retry every second in case elements are created later
+
+// Also periodically ensure DownloadProgress is positioned correctly
+setInterval(adjustDownloadProgressPosition, 500);
 
 function injectVersionHighlightsButton() {
   const newsSection = document.querySelector('.NewsSection');
