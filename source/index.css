@@ -1190,27 +1190,27 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   
   /* colors & borders */
   background: #292C30;       /* default dark bg */
-  border: 2px solid #626468 !important; /* subtle gray border */
+  border: 2px solid #56585c !important; /* subtle gray border */
   border-radius: 8px !important;        /* gentle rounding */
   color: #FFFFFF !important;            /* white text */
   font-size: 0.9rem !important;
   font-weight: normal !important;         /* match your labels */
   
   /* cursor & transition */
-  transition: background 0.15s ease, border-color 0.15s ease !important;
+  transition: background 0.1s;
 }
 
 /* Hover state */
 .OptionSection .BigButton:hover,
 .DownloadMenuSection .BigButton:hover,
 .ModDownloadItem .BigButton:hover {     /* slightly lighter */
-  border-color: #8A8C90 !important;     /* brighter border */
+  border-color: #717376 !important;     /* brighter border */
 }
 
 .OptionSection .BigButton:active,
 .DownloadMenuSection .BigButton:active,
 .ModDownloadItem .BigButton:active {     /* slightly lighter */
-  border-color: #626468 !important;     /* brighter border */
+  border-color: #56585c !important;     /* brighter border */
 }
 
 /* If you have an icon inside the button: */
@@ -2191,18 +2191,19 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 
 /* Secondary = middle "Copy Information" */
 #secretMenuContainer .FooterButton.secondary {
-  border: 2px solid #626468 !important;
+  border: 2px solid #56585c !important;
   background: transparent;
   color: #E5E5E5;
   height: 22px;
+  transition: background 0.1s;
 }
 #secretMenuContainer .FooterButton.secondary:hover {
-  border-color: #8A8C90 !important;
+  border-color: #717376 !important;
   color: #fff;
 }
 
 #secretMenuContainer .FooterButton.secondary:active {
-  border-color: #626468 !important;
+  border-color: #56585c !important;
   color: #fff;
 }
 
