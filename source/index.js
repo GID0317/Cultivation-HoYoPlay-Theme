@@ -1426,6 +1426,16 @@ if (document.readyState === 'loading') {
 
   const isUiOverlayActive = () => isModsActive() || isMenuDialogActive();
 
+  // Early helper (hoisted) so early code can check video availability before arrays are initialized.
+  // Defaults to only circle 1 having video until the detector populates the global state.
+  function _selectedCircleHasVideo(idx) {
+    try {
+      const arr = window.__HOYO_VIDEO_AVAILABLE;
+      if (Array.isArray(arr)) return !!arr[idx];
+    } catch (_) {}
+    return idx === 0; // safe default: only first circle
+  }
+
   // Keep Mods above selector and disable selector when Mods is active
   function updateModsState() {
     const modsActive = isModsActive();
@@ -1457,9 +1467,9 @@ if (document.readyState === 'loading') {
           hoyoVideoControl.style.display = 'none';
         }
       } else {
-        // Menu/dialog open: keep video playing and control visible if left circle is active
+        // Menu/dialog open: keep video playing and control visible if current circle has video
         if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          if (selectedCircleIndex === 0) {
+          if (_selectedCircleHasVideo(selectedCircleIndex)) {
             hoyoVideoControl.style.display = 'block';
             // Render under the dark backdrop (backdrop=9996), but visible through it
             hoyoVideoControl.style.zIndex = '9995';
@@ -1510,7 +1520,7 @@ if (document.readyState === 'loading') {
         if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none';
       }, 200);
       if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-        if (selectedCircleIndex === 0) {
+        if (_selectedCircleHasVideo(selectedCircleIndex)) {
           hoyoVideoControl.style.display = 'block';
         } else {
           hoyoVideoControl.style.display = 'none';
@@ -1642,10 +1652,10 @@ if (document.readyState === 'loading') {
         if (visible[newIndex]) updateCircles(newIndex);
       }
 
-      // Ensure video control visibility follows left availability and selection
+      // Ensure video control visibility follows video availability for the selected circle
       try {
         if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          if (hasLeft && selectedCircleIndex === 0) {
+          if (_selectedCircleHasVideo(selectedCircleIndex)) {
             hoyoVideoControl.style.display = 'block';
           } else {
             hoyoVideoControl.style.display = 'none';
@@ -1703,15 +1713,65 @@ if (document.readyState === 'loading') {
   // Expose a hook so refresh routines can trigger visibility recalculation
   try { window._hoyoplayUpdateCircles = updateCircleVisibility; } catch (e) {}
 
-  // --- Video overlay + control (for left circle) -----------------
+  // --- Video overlay + control (for any circle that has video) ---
   let hoyoVideoOverlay = null;
-  let hoyoVideo = null;
+  let hoyoVideoA = null;
+  let hoyoVideoB = null;
+  let hoyoVideoActive = 'A'; // 'A' or 'B'
   let hoyoVideoControl = null;
   let hoyoVideoPlaying = false;
-  const HOYO_VIDEO_SRC = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/video1.webm';
+  // Track user intent per circle: only auto-play a circle if user pressed play on that circle.
+  let circleAutoPlay = [false, false, false];
+  let currentPlayingIndex = -1; // -1 when nothing is playing
+  // Base path and per-circle media candidates
+  const HOYO_BG_BASE = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
+  const HOYO_VIDEO_SRCS = [
+    HOYO_BG_BASE + 'video1.webm',
+    HOYO_BG_BASE + 'video2.webm',
+    HOYO_BG_BASE + 'video3.webm'
+  ];
+  const HOYO_OVERLAY_SRCS = [
+    HOYO_BG_BASE + 'overlay1.webp',
+    HOYO_BG_BASE + 'overlay2.webp',
+    HOYO_BG_BASE + 'overlay3.webp'
+  ];
+  // Detected availability (we'll probe on startup); default assume only #1 exists
+  let HOYO_VIDEO_AVAILABLE = [true, false, false];
+  let HOYO_OVERLAY_AVAILABLE = [true, false, false];
   // Foreground image shown on top of video (matches HoYoPlay behavior)
   let hoyoVideoOverlayImg = null;
-  const HOYO_OVERLAY_IMG_SRC = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/overlay1.webp';
+  const pickOverlayForIndex = (idx) => (HOYO_OVERLAY_AVAILABLE[idx] ? HOYO_OVERLAY_SRCS[idx] : HOYO_OVERLAY_SRCS[0]);
+
+  // Helpers to fetch/probe media availability once
+  function detectAvailableMedia() {
+    try {
+      // Overlays: probe images
+      HOYO_OVERLAY_SRCS.forEach((url, i) => {
+        try {
+          const img = new Image();
+          img.onload = () => { HOYO_OVERLAY_AVAILABLE[i] = true; };
+          img.onerror = () => { HOYO_OVERLAY_AVAILABLE[i] = false; };
+          img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+        } catch (_) {}
+      });
+      // Videos: probe via video metadata
+      HOYO_VIDEO_SRCS.forEach((url, i) => {
+        try {
+          const v = document.createElement('video');
+          let settled = false;
+          const done = (ok) => { if (!settled) { settled = true; HOYO_VIDEO_AVAILABLE[i] = !!ok; } };
+          v.preload = 'metadata';
+          v.onloadedmetadata = () => done(true);
+          v.onerror = () => done(false);
+          // Tiny seek trick to force some browsers to fetch metadata
+          v.src = url + (url.includes('#') ? '' : '#t=0.1');
+          setTimeout(() => done(false), 5000);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+  try { window.__HOYO_VIDEO_AVAILABLE = HOYO_VIDEO_AVAILABLE; } catch (_) {}
+  const hasVideoAtIndex = (idx) => !!HOYO_VIDEO_AVAILABLE[idx];
 
   function ensureVideoElements() {
     if (hoyoVideoOverlay) return;
@@ -1725,23 +1785,36 @@ if (document.readyState === 'loading') {
       opacity: '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
     });
 
-    hoyoVideo = document.createElement('video');
-    hoyoVideo.id = 'hoyoplay-video';
-    hoyoVideo.src = HOYO_VIDEO_SRC;
-    hoyoVideo.muted = true;
-    hoyoVideo.loop = true;
-    hoyoVideo.preload = 'auto';
-  // Enhance compatibility
-  try { hoyoVideo.setAttribute('playsinline', ''); hoyoVideo.setAttribute('webkit-playsinline', ''); } catch (e) {}
-  try { hoyoVideo.crossOrigin = 'anonymous'; } catch (e) {}
-    Object.assign(hoyoVideo.style, { width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' });
-    hoyoVideoOverlay.appendChild(hoyoVideo);
+    function makeVideo(id, initialSrc, visible) {
+      const v = document.createElement('video');
+      v.id = id;
+      if (initialSrc) v.src = initialSrc;
+      v.muted = true;
+      v.loop = true;
+      v.preload = 'auto';
+      try { v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); } catch (e) {}
+      try { v.crossOrigin = 'anonymous'; } catch (e) {}
+      Object.assign(v.style, {
+        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+        width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none',
+        opacity: visible ? '1' : '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
+      });
+      return v;
+    }
+    hoyoVideoA = makeVideo('hoyoplay-video-a', HOYO_VIDEO_SRCS[0], true);
+    hoyoVideoB = makeVideo('hoyoplay-video-b', '', false);
+    hoyoVideoOverlay.appendChild(hoyoVideoA);
+    hoyoVideoOverlay.appendChild(hoyoVideoB);
 
     // Add foreground image above the video
-    try { if (typeof prefetchImage === 'function') prefetchImage(HOYO_OVERLAY_IMG_SRC); } catch (e) {}
+    try {
+      if (typeof prefetchImage === 'function') {
+        HOYO_OVERLAY_SRCS.forEach(src => prefetchImage(src));
+      }
+    } catch (e) {}
     hoyoVideoOverlayImg = document.createElement('img');
     hoyoVideoOverlayImg.id = 'hoyoplay-video-overlay-img';
-    hoyoVideoOverlayImg.src = HOYO_OVERLAY_IMG_SRC;
+    hoyoVideoOverlayImg.src = pickOverlayForIndex(0);
     Object.assign(hoyoVideoOverlayImg.style, {
       position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
       width: '100%', height: '100%', objectFit: 'cover',
@@ -1833,20 +1906,29 @@ if (document.readyState === 'loading') {
     positionControl();
     window.addEventListener('resize', positionControl);
 
+    const getActiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
+    const getInactiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
     hoyoVideoControl.addEventListener('click', () => {
+      const hoyoVideo = getActiveVideo();
       if (!hoyoVideo) return;
-      if (hoyoVideoPlaying) {
+      const idx = selectedCircleIndex | 0;
+      if (hoyoVideoPlaying && currentPlayingIndex === idx) {
         // Pause video and fall back to image1 (left circle)
         hoyoVideo.pause();
         try { hoyoVideo.currentTime = 0; } catch (e) {}
         hoyoVideoPlaying = false;
+        circleAutoPlay[idx] = false;
+        currentPlayingIndex = -1;
         try {
-          // Use image1 specifically (left circle's fallback image)
-          const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(rightBgKey, 1);
+          // Use the selected circle's fallback image
+          const url = (
+            idx === 0 ? (getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0)) :
+            idx === 1 ? (getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0)) :
+                         (getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0))
+          );
           if (url) setCustomBackground(url);
         } catch (e) {}
-        // Reflect selection to the left circle and hide only overlay (keep control visible)
-        try { updateCircles(0); } catch (e) {}
+        // Keep current selection; hide only overlay (keep control visible)
         try { showVideoOverlay(false, { hideControl: false }); } catch (e) {}
         if (hoyoVideoControl) {
           const ic = hoyoVideoControl.querySelector('.hp-icon');
@@ -1854,6 +1936,8 @@ if (document.readyState === 'loading') {
         }
       } else {
         // Resume: fade overlay in then play
+        circleAutoPlay[idx] = true;
+        currentPlayingIndex = idx;
         try { showVideoOverlay(true); } catch (e) {}
         try { hoyoVideo.currentTime = 0; } catch (e) {}
         hoyoVideo.play().catch(() => {});
@@ -1864,6 +1948,88 @@ if (document.readyState === 'loading') {
         }
       }
     });
+  }
+
+  // Apply media (video/overlay) for the given circle index (dual-video crossfade)
+  function applyMediaForIndex(idx) {
+    try { ensureVideoElements(); } catch (_) {}
+    if (!hoyoVideoOverlay || !hoyoVideoA || !hoyoVideoB) return;
+    const hasVid = hasVideoAtIndex(idx);
+    const shouldPlay = hasVid && !!circleAutoPlay[idx];
+    // Always switch overlay image to match circle
+    try { if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.src = pickOverlayForIndex(idx); } catch (_) {}
+    if (hasVid) {
+      const nextSrc = HOYO_VIDEO_SRCS[idx];
+      const active = (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
+      const inactive = (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
+      const changeSrc = active.src !== nextSrc;
+      if (shouldPlay) {
+        // Keep overlay visible to mask source swap flicker
+        try { showVideoOverlay(true); } catch (_) {}
+        const startPlayOn = (vidToPlay) => {
+          try { vidToPlay.play().catch(() => {}); } catch (_) {}
+          hoyoVideoPlaying = true;
+          currentPlayingIndex = idx;
+          const ic = hoyoVideoControl?.querySelector('.hp-icon');
+          if (ic) ic.textContent = '\uF8AE';
+        };
+        if (changeSrc) {
+          // Preload on inactive video, then crossfade
+          try { active.pause(); } catch (_) {}
+          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
+          let started = false;
+          const once = () => {
+            if (started) return; started = true;
+            inactive.style.opacity = '1';
+            active.style.opacity = '0';
+            // Swap active handle
+            hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
+            try { startPlayOn(inactive); } catch (_) {}
+          };
+          try { inactive.onloadeddata = once; inactive.oncanplay = once; } catch (_) {}
+          setTimeout(once, 350);
+        } else {
+          // Same source, ensure the active video is visible and playing
+          active.style.opacity = '1';
+          inactive.style.opacity = '0';
+          startPlayOn(active);
+        }
+      } else {
+        // Not supposed to play: ensure paused and keep control visible
+        try { hoyoVideoA.pause(); } catch (_) {}
+        try { hoyoVideoA.currentTime = 0; } catch (_) {}
+        try { hoyoVideoB.pause(); } catch (_) {}
+        try { hoyoVideoB.currentTime = 0; } catch (_) {}
+        hoyoVideoPlaying = false;
+        if (currentPlayingIndex === idx) currentPlayingIndex = -1;
+        try { showVideoOverlay(false, { hideControl: false }); } catch (_) {}
+        const ic = hoyoVideoControl?.querySelector('.hp-icon');
+        if (ic) ic.textContent = '\uF5B0';
+        // Prepare the correct source without auto-start and prime the active pointer
+        if (changeSrc) {
+          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
+          // Make the preloaded video the new active one
+          inactive.style.opacity = '1';
+          active.style.opacity = '0';
+          hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
+        } else {
+          // Already on the correct source; ensure the active is foregrounded
+          active.style.opacity = '1';
+          inactive.style.opacity = '0';
+        }
+      }
+    } else {
+      // No video for this circle: hide overlay and control
+      try { showVideoOverlay(false, { hideControl: true }); } catch (_) {}
+      if (currentPlayingIndex !== -1) {
+        try { hoyoVideoA.pause(); } catch (_) {}
+        try { hoyoVideoA.currentTime = 0; } catch (_) {}
+        try { hoyoVideoB.pause(); } catch (_) {}
+        try { hoyoVideoB.currentTime = 0; } catch (_) {}
+        hoyoVideoPlaying = false;
+        currentPlayingIndex = -1;
+      }
+    }
   }
 
   function showVideoOverlay(show, opts = {}) {
@@ -1880,8 +2046,9 @@ if (document.readyState === 'loading') {
       if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '1';
       setPlayingClass(true);
     } else {
-      if (hoyoVideo) { try { hoyoVideo.pause(); } catch (e) {} }
-      if (hoyoVideo) { try { hoyoVideo.currentTime = 0; } catch (e) {} }
+      const vA = hoyoVideoA, vB = hoyoVideoB;
+      if (vA) { try { vA.pause(); } catch (e) {} try { vA.currentTime = 0; } catch (e) {} }
+      if (vB) { try { vB.pause(); } catch (e) {} try { vB.currentTime = 0; } catch (e) {} }
       hoyoVideoPlaying = false;
       if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
       if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '0';
@@ -1906,6 +2073,7 @@ if (document.readyState === 'loading') {
   // Prepare video UI for default-left selection: show control (paused), hide overlay with fade
   try {
     ensureVideoElements();
+    detectAvailableMedia();
     if (hoyoVideoControl) {
       hoyoVideoControl.classList.remove('hidden');
       const ic = hoyoVideoControl.querySelector('.hp-icon');
@@ -1922,12 +2090,8 @@ leftCircle.addEventListener('mouseenter', () => {
   updateCircles(0);
   const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
   if (url) setCustomBackground(url);
-  // On left: keep control visible; overlay shown only if currently playing
-  if (typeof hoyoVideoPlaying !== 'undefined' && hoyoVideoPlaying) {
-    showVideoOverlay(true);
-  } else {
-    showVideoOverlay(false, { hideControl: false });
-  }
+  // Apply media for left circle
+  applyMediaForIndex(0);
 });
 midCircle.addEventListener('mouseenter', () => {
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
@@ -1935,7 +2099,8 @@ midCircle.addEventListener('mouseenter', () => {
   // Middle circle should use image2 (right key index 0)
   const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
   if (url) setCustomBackground(url);
-  showVideoOverlay(false, { hideControl: true });
+  // Apply media for mid circle
+  applyMediaForIndex(1);
 });
 rightCircle.addEventListener('mouseenter', () => {
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
@@ -1943,7 +2108,8 @@ rightCircle.addEventListener('mouseenter', () => {
   // Right circle should use image3 (right key index 1)
   const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
   if (url) setCustomBackground(url);
-  showVideoOverlay(false, { hideControl: true });
+  // Apply media for right circle
+  applyMediaForIndex(2);
 });
 
   // Show/hide overlay and shadow on mouse movement near top center
@@ -2160,99 +2326,53 @@ rightCircle.addEventListener('mouseenter', () => {
 let __BG_FADE_STATE = { overlay: null, timer: null, current: null, duration: 180 };
 
 function setCustomBackground(url) {
-  const appElement = document.querySelector('.App');
-  if (!appElement) return;
-
-  // Skip if same URL as already applied
-  if (__BG_FADE_STATE.current && __BG_FADE_STATE.current === url) return;
-
-  // Create or get the fade overlay
-  let fadeOverlay = __BG_FADE_STATE.overlay || document.getElementById('bg-fade-overlay');
-  if (!fadeOverlay) {
-    fadeOverlay = document.createElement('div');
-    fadeOverlay.id = 'bg-fade-overlay';
-    fadeOverlay.style.position = 'absolute';
-    fadeOverlay.style.top = '0';
-    fadeOverlay.style.left = '0';
-    fadeOverlay.style.right = '0';
-    fadeOverlay.style.bottom = '0';
-    fadeOverlay.style.width = '100%';
-    fadeOverlay.style.height = '100%';
-    // Place overlay before other children so they paint above it
-    fadeOverlay.style.zIndex = '0';
-    fadeOverlay.style.pointerEvents = 'none';
-    fadeOverlay.style.transition = 'opacity 0.22s cubic-bezier(.4,0,.2,1)';
-    fadeOverlay.style.willChange = 'opacity';
-    fadeOverlay.style.opacity = '0';
-    fadeOverlay.style.backgroundSize = 'cover';
-    fadeOverlay.style.backgroundPosition = 'center';
-    fadeOverlay.style.backgroundRepeat = 'no-repeat';
-    // Ensure .App is a positioning context and insert overlay first so other content stays above
-    appElement.style.position = 'relative';
-    if (appElement.firstChild) {
-      appElement.insertBefore(fadeOverlay, appElement.firstChild);
-    } else {
-      appElement.appendChild(fadeOverlay);
-    }
-    __BG_FADE_STATE.overlay = fadeOverlay;
-  }
-
-  // Ensure key UI elements render above the overlay (targeted, non-invasive)
   try {
-    const elevateSelectors = [
-      '#title',
-      '#settingsBtn',
-      '#minBtn',
-      '#closeBtn',
-      '#serverLaunch',
-      '#officialPlay',
-      '.TopButton',
-      '.Menu',
-      '.Mods',
-      '.NewsSection',
-      '#newsContainer',
-      '#newsTabsContainer',
-      '#newsContent',
-      '#customNewsButton',
-      '#leftBar'
-    ];
-    elevateSelectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        if (window.getComputedStyle(el).position === 'static') {
-          el.style.position = 'relative';
-        }
-        // A small positive z-index keeps these above the overlay (z=0)
-        if (!el.style.zIndex || parseInt(el.style.zIndex, 10) <= 0 || isNaN(parseInt(el.style.zIndex, 10))) {
-          el.style.zIndex = '2';
-        }
-      });
-    });
-  } catch (e) { /* ignore */ }
+    const appElement = document.querySelector('.App') || document.body;
+    if (!appElement || !url) return;
+    if (__BG_FADE_STATE.current && __BG_FADE_STATE.current === url) return;
 
-  // Preload image, then cross-fade quickly
-  const img = new Image();
-  const apply = () => {
-    // Cancel any running timer
-    if (__BG_FADE_STATE.timer) {
-      clearTimeout(__BG_FADE_STATE.timer);
-      __BG_FADE_STATE.timer = null;
+    // Create overlay lazily
+    if (!__BG_FADE_STATE.overlay) {
+      const ov = document.createElement('div');
+      ov.id = 'bg-fade-overlay';
+      Object.assign(ov.style, {
+        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+        width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none',
+        backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover',
+        opacity: '0', transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)', zIndex: '0'
+      });
+      // Ensure app is positioning context
+      const cs = window.getComputedStyle(appElement);
+      if (cs.position === 'static') appElement.style.position = 'relative';
+      // Insert as first child to sit under UI with positive z-index
+      if (appElement.firstChild) appElement.insertBefore(ov, appElement.firstChild); else appElement.appendChild(ov);
+      __BG_FADE_STATE.overlay = ov;
     }
-    fadeOverlay.style.backgroundImage = `url("${url}")`;
-    // Fade in overlay quickly
-    requestAnimationFrame(() => {
-      // Crossfade: keep old background visible; fade in the new image on the overlay
-      fadeOverlay.style.opacity = '1';
-    });
-    __BG_FADE_STATE.timer = setTimeout(() => {
-      appElement.style.background = `url("${url}") center/cover no-repeat fixed`;
-      fadeOverlay.style.opacity = '0';
-      __BG_FADE_STATE.current = url;
-      __BG_FADE_STATE.timer = null;
-    }, __BG_FADE_STATE.duration);
-  };
-  img.onload = apply;
-  img.onerror = apply; // even if it errors, attempt to set; browser may still cache/render
-  img.src = url;
+
+    const fadeOverlay = __BG_FADE_STATE.overlay;
+
+    // Preload next image
+    const img = new Image();
+    const apply = () => {
+      // Cancel any running timer
+      if (__BG_FADE_STATE.timer) {
+        clearTimeout(__BG_FADE_STATE.timer);
+        __BG_FADE_STATE.timer = null;
+      }
+      fadeOverlay.style.backgroundImage = `url("${url}")`;
+      // Fade overlay in quickly
+      requestAnimationFrame(() => { fadeOverlay.style.opacity = '1'; });
+      __BG_FADE_STATE.timer = setTimeout(() => {
+        appElement.style.background = `url("${url}") center/cover no-repeat fixed`;
+        fadeOverlay.style.opacity = '0';
+        __BG_FADE_STATE.current = url;
+        __BG_FADE_STATE.timer = null;
+      }, __BG_FADE_STATE.duration);
+    };
+    img.onload = apply;
+    img.onerror = apply;
+    img.src = url;
+  } catch (_) { /* ignore */ }
 }
 
 // Make it available globally for console testing
