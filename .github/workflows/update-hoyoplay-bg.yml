@@ -198,6 +198,19 @@ jobs:
               const colorsJsonPath = path.join(outDir, 'circle-colors.json');
               fs.writeFileSync(colorsJsonPath, JSON.stringify(colors, null, 2));
 
+              // Also emit 1x1 PNG swatches (color1/2/3.png) for CSP-safe client reads
+              try {
+                const { execSync } = require('child_process');
+                for (let i = 0; i < 3; i++) {
+                  const hex = colors.circles[i]?.link || '#FFFFFF';
+                  const outP = path.join(outDir, `color${i+1}.png`);
+                  // Create a 1x1 image filled with the hex color
+                  execSync(`convert -size 1x1 xc:${hex} "${outP}"`);
+                }
+              } catch (e) {
+                console.warn('Failed to create color swatch images', e.message);
+              }
+
               // commit & push changes
               const execSync = require('child_process').execSync;
               execSync('git config user.name "github-actions[bot]"');
