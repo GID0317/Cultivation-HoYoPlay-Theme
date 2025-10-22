@@ -2026,8 +2026,12 @@ if (document.readyState === 'loading') {
     if (!hoyoVideoOverlay || !hoyoVideoA || !hoyoVideoB) return;
     const hasVid = hasVideoAtIndex(idx);
     const shouldPlay = hasVid && !!circleAutoPlay[idx];
-    // Always switch overlay image to match circle
-    try { if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.src = pickOverlayForIndex(idx); } catch (_) {}
+    // Only switch overlay image when the target circle actually has a video AND an overlay asset
+    try {
+      if (hasVid && hoyoVideoOverlayImg && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx]) {
+        hoyoVideoOverlayImg.src = pickOverlayForIndex(idx);
+      }
+    } catch (_) {}
     if (hasVid) {
       const nextSrc = HOYO_VIDEO_SRCS[idx];
       const active = (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
