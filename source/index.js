@@ -1624,33 +1624,49 @@ if (document.readyState === 'loading') {
   // Set width according to circle count (3 => 100px, else 80px)
   updateOverlayWidth();
 
-  // Load per-circle colors from the repo (computed by updater)
+  // Load per-circle colors via 1x1 PNG swatches (CSP-safe: image fetch only)
   (function loadCircleColors(){
     try {
       const base = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
-      const url = base + 'circle-colors.json';
-      fetch(url, { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
-        .then(j => {
-          if (!j || !Array.isArray(j.circles)) return;
-          const map = {};
-          for (let i = 0; i < 3; i++) {
-            const c = j.circles[i];
-            const hex = (c && (c.link || c.hover)) || '#ffffff';
-            map[i] = hex;
+      const urls = [base+'color1.png', base+'color2.png', base+'color3.png'];
+      const loadImg = (src) => new Promise((resolve) => {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve({ ok: true, img });
+          img.onerror = () => resolve({ ok: false });
+          img.src = src + '?t=' + Date.now();
+        } catch (_) { resolve({ ok: false }); }
+      });
+      Promise.all(urls.map(loadImg)).then(results => {
+        const map = {};
+        for (let i = 0; i < 3; i++) {
+          let hex = '#ffffff';
+          const r = results[i];
+          if (r && r.ok && r.img) {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = 1; canvas.height = 1;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(r.img, 0, 0, 1, 1);
+              const data = ctx.getImageData(0,0,1,1).data;
+              const toHex = (v) => v.toString(16).padStart(2,'0').toUpperCase();
+              hex = '#' + toHex(data[0]) + toHex(data[1]) + toHex(data[2]);
+            } catch (_) {
+              // canvas taint or other error; keep white
+              hex = '#ffffff';
+            }
           }
-          window.__HOYO_CIRCLE_COLORS = map;
-          // Re-apply current selection styling with colors
-          try { updateCircles(selectedCircleIndex); } catch (_) {}
-        })
-        .catch(()=>{
-          // On fetch failure, default to white for all circles
-          try {
-            window.__HOYO_CIRCLE_COLORS = { 0:'#ffffff', 1:'#ffffff', 2:'#ffffff' };
-            updateCircles(selectedCircleIndex);
-          } catch(_) {}
-        });
-    } catch(_) {}
+          map[i] = hex;
+        }
+        window.__HOYO_CIRCLE_COLORS = map;
+        try { updateCircles(selectedCircleIndex); } catch (_) {}
+      }).catch(() => {
+        try { window.__HOYO_CIRCLE_COLORS = {0:'#ffffff',1:'#ffffff',2:'#ffffff'}; updateCircles(selectedCircleIndex); } catch(_) {}
+      });
+    } catch(_) {
+      try { window.__HOYO_CIRCLE_COLORS = {0:'#ffffff',1:'#ffffff',2:'#ffffff'}; updateCircles(selectedCircleIndex); } catch(_) {}
+    }
   })();
 
   // Hide circles when their corresponding cached background is missing.
