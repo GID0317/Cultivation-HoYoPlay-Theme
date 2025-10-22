@@ -309,12 +309,11 @@
 
 /* While HoYoPlay video is playing, fade the left bar and its right-edge line */
 body.hoyoplay-video-playing #leftBar {
-  background: transparent !important;
-  /* Preserve borders on three sides while playing */
+  /* background: transparent !important;
   border-left: 1.5px solid rgba(166, 166, 166, 0.5) !important;
   border-top: 1.5px solid rgba(166, 166, 166, 0.5) !important;
   border-bottom: 1.5px solid rgba(166, 166, 166, 0.5) !important;
-  border-right: none !important;
+  border-right: none !important; */
 }
 /* No ::after needed during playback either */
 
