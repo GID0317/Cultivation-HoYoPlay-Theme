@@ -1587,6 +1587,7 @@ if (document.readyState === 'loading') {
     selectedCircleIndex = selectedIndex;
     // selectedIndex: 0=left,1=mid,2=right
     const circles = [leftCircle, midCircle, rightCircle];
+  const col = (window.__HOYO_CIRCLE_COLORS && window.__HOYO_CIRCLE_COLORS[selectedIndex]) || '#ffffff';
     circles.forEach((c, i) => {
       if (i === selectedIndex) {
         c.classList.add('selected');
@@ -1600,10 +1601,10 @@ if (document.readyState === 'loading') {
     try {
       const btn = document.getElementById('customNewsButton');
       if (btn) {
-        if (selectedIndex === 1 || selectedIndex === 2) {
-          // Only change text color and border color per request
-          btn.style.color = '#2f469e';
-          btn.style.borderColor = '#2f469e';
+        if (selectedIndex === 1 || selectedIndex === 2 || selectedIndex === 0) {
+          // Only change text color and border color per request, using per-circle color
+          btn.style.color = col;
+          btn.style.borderColor = col;
         } else {
           // revert to default - clear inline overrides so CSS can control it
           btn.style.color = '';
@@ -1622,6 +1623,35 @@ if (document.readyState === 'loading') {
   document.body.appendChild(overlay);
   // Set width according to circle count (3 => 100px, else 80px)
   updateOverlayWidth();
+
+  // Load per-circle colors from the repo (computed by updater)
+  (function loadCircleColors(){
+    try {
+      const base = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
+      const url = base + 'circle-colors.json';
+      fetch(url, { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+          if (!j || !Array.isArray(j.circles)) return;
+          const map = {};
+          for (let i = 0; i < 3; i++) {
+            const c = j.circles[i];
+            const hex = (c && (c.link || c.hover)) || '#ffffff';
+            map[i] = hex;
+          }
+          window.__HOYO_CIRCLE_COLORS = map;
+          // Re-apply current selection styling with colors
+          try { updateCircles(selectedCircleIndex); } catch (_) {}
+        })
+        .catch(()=>{
+          // On fetch failure, default to white for all circles
+          try {
+            window.__HOYO_CIRCLE_COLORS = { 0:'#ffffff', 1:'#ffffff', 2:'#ffffff' };
+            updateCircles(selectedCircleIndex);
+          } catch(_) {}
+        });
+    } catch(_) {}
+  })();
 
   // Hide circles when their corresponding cached background is missing.
   // This allows the selector to gracefully adapt if GitHub Action didn't produce image files.
