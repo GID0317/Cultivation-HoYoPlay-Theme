@@ -40,6 +40,8 @@ jobs:
               if (!list.length) throw new Error('no game_info_list');
               const backgrounds = list[0].backgrounds || [];
               const urls = backgrounds.map(b => (b && b.background && b.background.url) || b?.url || '').filter(Boolean);
+              const videoUrls = backgrounds.map(b => (b && b.video && b.video.url) || '').slice(0,3);
+              const themeOverlayUrls = backgrounds.map(b => (b && b.theme && b.theme.url) || '').slice(0,3);
 
               // Keep strict positions: only write image2 if a second url exists, and same for image3
               const first = urls[0] || '';
@@ -48,10 +50,8 @@ jobs:
 
               if (!first) throw new Error('no background urls found');
 
-              // Also extract video/theme/icon from the primary background entry (if present)
+              // Also extract icon from the primary background entry (if present)
               const primary = backgrounds[0] || {};
-              const videoUrl = (primary.video && primary.video.url) || '';
-              const themeOverlayUrl = (primary.theme && primary.theme.url) || '';
               const iconUrl = (primary.icon && primary.icon.url) || '';
               const iconHoverUrl = (primary.icon && primary.icon.hover_url) || '';
 
@@ -97,21 +97,35 @@ jobs:
                 removeIfExists(img3Path);
               }
 
-              // Download video and overlay/icon assets if available
-              const videoPath = path.join(outDir, 'video1.webm');
-              const overlayPath = path.join(outDir, 'overlay1.webp');
+              // Download per-circle video/overlay assets if available
+              const videoPaths = [
+                path.join(outDir, 'video1.webm'),
+                path.join(outDir, 'video2.webm'),
+                path.join(outDir, 'video3.webm')
+              ];
+              const overlayPaths = [
+                path.join(outDir, 'overlay1.webp'),
+                path.join(outDir, 'overlay2.webp'),
+                path.join(outDir, 'overlay3.webp')
+              ];
               const iconPath = path.join(outDir, 'icon.png');
               const iconHoverPath = path.join(outDir, 'icon-hover.png');
-
-              if (videoUrl) {
-                try { await downloadTo(videoUrl, videoPath); } catch(e) { console.warn('video download failed', e.message); removeIfExists(videoPath); }
-              } else {
-                removeIfExists(videoPath);
-              }
-              if (themeOverlayUrl) {
-                try { await downloadTo(themeOverlayUrl, overlayPath); } catch(e) { console.warn('overlay download failed', e.message); removeIfExists(overlayPath); }
-              } else {
-                removeIfExists(overlayPath);
+              // Loop each circle (1..3)
+              for (let i = 0; i < 3; i++) {
+                const vUrl = videoUrls[i];
+                const oUrl = themeOverlayUrls[i];
+                const vPath = videoPaths[i];
+                const oPath = overlayPaths[i];
+                if (vUrl) {
+                  try { await downloadTo(vUrl, vPath); } catch(e) { console.warn(`video${i+1} download failed`, e.message); removeIfExists(vPath); }
+                } else {
+                  removeIfExists(vPath);
+                }
+                if (oUrl) {
+                  try { await downloadTo(oUrl, oPath); } catch(e) { console.warn(`overlay${i+1} download failed`, e.message); removeIfExists(oPath); }
+                } else {
+                  removeIfExists(oPath);
+                }
               }
               if (iconUrl) {
                 try { await downloadTo(iconUrl, iconPath); } catch(e) { console.warn('icon download failed', e.message); removeIfExists(iconPath); }
@@ -130,7 +144,7 @@ jobs:
               execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
               // Stage all changes in Background (including deletions)
               execSync('git add -A Background');
-              try { execSync('git commit -m "Auto-update HoYoPlay backgrounds + media (1/2/3 + video1/overlay1/icon)"'); } catch(e) { console.log('No changes to commit'); }
+              try { execSync('git commit -m "Auto-update HoYoPlay backgrounds + media (images 1/2/3 + videos/overlays 1..3 + icon)"'); } catch(e) { console.log('No changes to commit'); }
               execSync('git push');
               console.log('Done');
             } catch (e) {
