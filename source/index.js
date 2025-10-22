@@ -1909,13 +1909,16 @@ if (document.readyState === 'loading') {
     const getActiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
     const getInactiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
     hoyoVideoControl.addEventListener('click', () => {
-      const hoyoVideo = getActiveVideo();
-      if (!hoyoVideo) return;
       const idx = selectedCircleIndex | 0;
+      const nextSrc = HOYO_VIDEO_SRCS[idx];
+      const active = getActiveVideo();
+      const inactive = getInactiveVideo();
+      if (!active || !inactive) return;
+
       if (hoyoVideoPlaying && currentPlayingIndex === idx) {
-        // Pause video and fall back to image1 (left circle)
-        hoyoVideo.pause();
-        try { hoyoVideo.currentTime = 0; } catch (e) {}
+        // Pause current circle
+        try { active.pause(); } catch (e) {}
+        try { active.currentTime = 0; } catch (e) {}
         hoyoVideoPlaying = false;
         circleAutoPlay[idx] = false;
         currentPlayingIndex = -1;
@@ -1928,23 +1931,44 @@ if (document.readyState === 'loading') {
           );
           if (url) setCustomBackground(url);
         } catch (e) {}
-        // Keep current selection; hide only overlay (keep control visible)
+        // Hide overlay but keep control visible
         try { showVideoOverlay(false, { hideControl: false }); } catch (e) {}
-        if (hoyoVideoControl) {
-          const ic = hoyoVideoControl.querySelector('.hp-icon');
-          if (ic) { ic.textContent = '\uF5B0'; }
-        }
+        const ic = hoyoVideoControl?.querySelector('.hp-icon');
+        if (ic) ic.textContent = '\uF5B0';
+        // Keep both videos invisible while idle
+        try { active.style.opacity = '0'; } catch (_) {}
+        try { inactive.style.opacity = '0'; } catch (_) {}
       } else {
-        // Resume: fade overlay in then play
+        // Play for selected circle with correct source and smooth swap if needed
         circleAutoPlay[idx] = true;
         currentPlayingIndex = idx;
         try { showVideoOverlay(true); } catch (e) {}
-        try { hoyoVideo.currentTime = 0; } catch (e) {}
-        hoyoVideo.play().catch(() => {});
-        hoyoVideoPlaying = true;
-        if (hoyoVideoControl) {
-          const ic = hoyoVideoControl.querySelector('.hp-icon');
-          if (ic) { ic.textContent = '\uF8AE'; }
+        const startPlayOn = (vidToPlay) => {
+          try { vidToPlay.currentTime = 0; } catch (_) {}
+          try { vidToPlay.play().catch(() => {}); } catch (_) {}
+          hoyoVideoPlaying = true;
+          const ic = hoyoVideoControl?.querySelector('.hp-icon');
+          if (ic) ic.textContent = '\uF8AE';
+        };
+        if (active.src !== nextSrc) {
+          // Prepare on inactive, then crossfade and flip active pointer
+          try { active.pause(); } catch (_) {}
+          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
+          let started = false;
+          const once = () => {
+            if (started) return; started = true;
+            inactive.style.opacity = '1';
+            active.style.opacity = '0';
+            hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
+            startPlayOn(inactive);
+          };
+          try { inactive.onloadeddata = once; inactive.oncanplay = once; } catch (_) {}
+          setTimeout(once, 350);
+        } else {
+          // Same source: just ensure visibility and play
+          active.style.opacity = '1';
+          inactive.style.opacity = '0';
+          startPlayOn(active);
         }
       }
     });
@@ -2005,18 +2029,13 @@ if (document.readyState === 'loading') {
         try { showVideoOverlay(false, { hideControl: false }); } catch (_) {}
         const ic = hoyoVideoControl?.querySelector('.hp-icon');
         if (ic) ic.textContent = '\uF5B0';
-        // Prepare the correct source without auto-start and prime the active pointer
+        // Prepare the correct source without auto-start; do NOT swap active pointer or show paused frame
         if (changeSrc) {
           try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
-          // Make the preloaded video the new active one
-          inactive.style.opacity = '1';
-          active.style.opacity = '0';
-          hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
-        } else {
-          // Already on the correct source; ensure the active is foregrounded
-          active.style.opacity = '1';
-          inactive.style.opacity = '0';
         }
+        // Keep both videos hidden while idle so overlay never shows a paused frame
+        try { active.style.opacity = '0'; } catch (_) {}
+        try { inactive.style.opacity = '0'; } catch (_) {}
       }
     } else {
       // No video for this circle: hide overlay and control
@@ -2029,6 +2048,9 @@ if (document.readyState === 'loading') {
         hoyoVideoPlaying = false;
         currentPlayingIndex = -1;
       }
+      // Ensure no paused frame is visible
+      try { (hoyoVideoA || {}).style.opacity = '0'; } catch (_) {}
+      try { (hoyoVideoB || {}).style.opacity = '0'; } catch (_) {}
     }
   }
 
