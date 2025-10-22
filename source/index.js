@@ -28,6 +28,9 @@ if (playBtn) {
   observer.observe(playBtn, { childList: true, subtree: true });
 }
 
+// HoYoPlay cache constants (must be initialized before any cache reads)
+const HOYO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
+
 
 
 const serverLaunchBtn = document.getElementById('serverLaunch');
@@ -1766,6 +1769,9 @@ if (document.readyState === 'loading') {
   let hoyoVideoActive = 'A'; // 'A' or 'B'
   let hoyoVideoControl = null;
   let hoyoVideoPlaying = false;
+  // Control fade handling
+  let hoyoControlFadeTimer = null;
+  const HOYO_CONTROL_FADE_MS = 220;
   // Track user intent per circle: only auto-play a circle if user pressed play on that circle.
   let circleAutoPlay = [false, false, false];
   let currentPlayingIndex = -1; // -1 when nothing is playing
@@ -1784,8 +1790,10 @@ if (document.readyState === 'loading') {
   // Detected availability (we'll probe on startup); default assume only #1 exists
   let HOYO_VIDEO_AVAILABLE = [true, false, false];
   let HOYO_OVERLAY_AVAILABLE = [true, false, false];
-  // Foreground image shown on top of video (matches HoYoPlay behavior)
-  let hoyoVideoOverlayImg = null;
+  // Foreground images (dual A/B) shown on top of video for smooth crossfade
+  let hoyoOverlayA = null;
+  let hoyoOverlayB = null;
+  let hoyoOverlayActive = 'A'; // 'A' or 'B'
   const pickOverlayForIndex = (idx) => (HOYO_OVERLAY_AVAILABLE[idx] ? HOYO_OVERLAY_SRCS[idx] : HOYO_OVERLAY_SRCS[0]);
 
   // Helpers to fetch/probe media availability once
@@ -1852,23 +1860,29 @@ if (document.readyState === 'loading') {
     hoyoVideoOverlay.appendChild(hoyoVideoA);
     hoyoVideoOverlay.appendChild(hoyoVideoB);
 
-    // Add foreground image above the video
+    // Add foreground images above the video (dual A/B for crossfade)
     try {
       if (typeof prefetchImage === 'function') {
         HOYO_OVERLAY_SRCS.forEach(src => prefetchImage(src));
       }
     } catch (e) {}
-    hoyoVideoOverlayImg = document.createElement('img');
-    hoyoVideoOverlayImg.id = 'hoyoplay-video-overlay-img';
-    hoyoVideoOverlayImg.src = pickOverlayForIndex(0);
-    Object.assign(hoyoVideoOverlayImg.style, {
-      position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-      width: '100%', height: '100%', objectFit: 'cover',
-      pointerEvents: 'none', userSelect: 'none',
-      opacity: '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
-    });
-    // Append after video to ensure it paints above
-    hoyoVideoOverlay.appendChild(hoyoVideoOverlayImg);
+    function makeOverlayImg(id, initialSrc, visible) {
+      const img = document.createElement('img');
+      img.id = id;
+      if (initialSrc) img.src = initialSrc;
+      Object.assign(img.style, {
+        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+        width: '100%', height: '100%', objectFit: 'cover',
+        pointerEvents: 'none', userSelect: 'none',
+        opacity: visible ? '1' : '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
+      });
+      return img;
+    }
+    hoyoOverlayA = makeOverlayImg('hoyoplay-overlay-a', pickOverlayForIndex(0), true);
+    hoyoOverlayB = makeOverlayImg('hoyoplay-overlay-b', '', false);
+    // Append after videos to ensure they paint above
+    hoyoVideoOverlay.appendChild(hoyoOverlayA);
+    hoyoVideoOverlay.appendChild(hoyoOverlayB);
 
   if (app.firstChild) app.insertBefore(hoyoVideoOverlay, app.firstChild); else app.appendChild(hoyoVideoOverlay);
   // Ensure the app is a positioning context for absolute children
@@ -1921,6 +1935,11 @@ if (document.readyState === 'loading') {
     hoyoVideoControl.id = 'hoyoplay-video-control';
     // Use class-based styling defined in CSS
     hoyoVideoControl.className = 'hoyoplay-video-control hidden';
+    // Ensure smooth fade for show/hide
+    Object.assign(hoyoVideoControl.style, {
+      transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)',
+      opacity: '0'
+    });
   // inner icon element using Segoe Fluent glyphs (play/pause)
   const icon = document.createElement('span');
   icon.className = 'hp-icon';
@@ -1989,6 +2008,38 @@ if (document.readyState === 'loading') {
         circleAutoPlay[idx] = true;
         currentPlayingIndex = idx;
         try { showVideoOverlay(true); } catch (e) {}
+        // Ensure overlay image matches target circle on manual play
+        try {
+          const hasVid = hasVideoAtIndex(idx);
+          const targetHasOverlay = hasVid && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx];
+          if (hoyoOverlayA && hoyoOverlayB) {
+            if (targetHasOverlay) {
+              const targetSrc = pickOverlayForIndex(idx);
+              const activeImg = (hoyoOverlayActive === 'A' ? hoyoOverlayA : hoyoOverlayB);
+              const inactiveImg = (hoyoOverlayActive === 'A' ? hoyoOverlayB : hoyoOverlayA);
+              const currentSrc = activeImg?.getAttribute('src') || '';
+              if (currentSrc !== targetSrc) {
+                let swapped = false;
+                const doSwap = () => {
+                  if (swapped) return; swapped = true;
+                  inactiveImg.style.opacity = '1';
+                  activeImg.style.opacity = '0';
+                  hoyoOverlayActive = (hoyoOverlayActive === 'A' ? 'B' : 'A');
+                };
+                inactiveImg.onload = doSwap;
+                inactiveImg.onerror = doSwap;
+                inactiveImg.src = targetSrc;
+              } else {
+                activeImg.style.opacity = '1';
+                inactiveImg.style.opacity = '0';
+              }
+            } else {
+              // No overlay for this circle
+              hoyoOverlayA.style.opacity = '0';
+              hoyoOverlayB.style.opacity = '0';
+            }
+          }
+        } catch (_) {}
         const startPlayOn = (vidToPlay) => {
           try { vidToPlay.currentTime = 0; } catch (_) {}
           try { vidToPlay.play().catch(() => {}); } catch (_) {}
@@ -2026,10 +2077,37 @@ if (document.readyState === 'loading') {
     if (!hoyoVideoOverlay || !hoyoVideoA || !hoyoVideoB) return;
     const hasVid = hasVideoAtIndex(idx);
     const shouldPlay = hasVid && !!circleAutoPlay[idx];
-    // Only switch overlay image when the target circle actually has a video AND an overlay asset
+    // Overlay: crossfade between images only when target circle has video AND an overlay asset
     try {
-      if (hasVid && hoyoVideoOverlayImg && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx]) {
-        hoyoVideoOverlayImg.src = pickOverlayForIndex(idx);
+      const targetHasOverlay = hasVid && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx];
+      if (hoyoOverlayA && hoyoOverlayB) {
+        if (targetHasOverlay) {
+          const targetSrc = pickOverlayForIndex(idx);
+          const activeImg = (hoyoOverlayActive === 'A' ? hoyoOverlayA : hoyoOverlayB);
+          const inactiveImg = (hoyoOverlayActive === 'A' ? hoyoOverlayB : hoyoOverlayA);
+          const currentSrc = activeImg?.getAttribute('src') || '';
+          if (currentSrc !== targetSrc) {
+            // Preload on inactive, then crossfade
+            let swapped = false;
+            const doSwap = () => {
+              if (swapped) return; swapped = true;
+              inactiveImg.style.opacity = '1';
+              activeImg.style.opacity = '0';
+              hoyoOverlayActive = (hoyoOverlayActive === 'A' ? 'B' : 'A');
+            };
+            inactiveImg.onload = doSwap;
+            inactiveImg.onerror = doSwap; // fall back to instant swap
+            inactiveImg.src = targetSrc;
+          } else {
+            // Ensure active visible when already correct
+            activeImg.style.opacity = '1';
+            inactiveImg.style.opacity = '0';
+          }
+        } else {
+          // Target has no overlay: ensure both are hidden to avoid showing stale overlay
+          hoyoOverlayA.style.opacity = '0';
+          hoyoOverlayB.style.opacity = '0';
+        }
       }
     } catch (_) {}
     if (hasVid) {
@@ -2039,7 +2117,7 @@ if (document.readyState === 'loading') {
       const changeSrc = active.src !== nextSrc;
       if (shouldPlay) {
         // Keep overlay visible to mask source swap flicker
-        try { showVideoOverlay(true); } catch (_) {}
+  try { showVideoOverlay(true); } catch (_) {}
         const startPlayOn = (vidToPlay) => {
           try { vidToPlay.play().catch(() => {}); } catch (_) {}
           hoyoVideoPlaying = true;
@@ -2127,8 +2205,14 @@ if (document.readyState === 'loading') {
     };
     if (show) {
       hoyoVideoOverlay.style.opacity = '1';
-      if (hoyoVideoControl) hoyoVideoControl.style.display = 'block';
-      if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '1';
+      if (hoyoVideoControl) {
+        // Cancel any pending hide -> none timer
+        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
+        hoyoVideoControl.style.display = 'block';
+        // Next frame to allow transition
+        requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
+      }
+      // Do not force overlay image visibility here; applyMediaForIndex controls it per target
       setPlayingClass(true);
     } else {
       const vA = hoyoVideoA, vB = hoyoVideoB;
@@ -2136,13 +2220,25 @@ if (document.readyState === 'loading') {
       if (vB) { try { vB.pause(); } catch (e) {} try { vB.currentTime = 0; } catch (e) {} }
       hoyoVideoPlaying = false;
       if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
-      if (hoyoVideoOverlayImg) hoyoVideoOverlayImg.style.opacity = '0';
+      // Hide both overlay images when not showing
+      try { if (hoyoOverlayA) hoyoOverlayA.style.opacity = '0'; } catch (_) {}
+      try { if (hoyoOverlayB) hoyoOverlayB.style.opacity = '0'; } catch (_) {}
       setPlayingClass(false);
       if (hoyoVideoControl) {
         if (hideControl) {
-          hoyoVideoControl.style.display = 'none';
+          // Fade out, then set display none after transition
+          if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
+          hoyoVideoControl.style.opacity = '0';
+          hoyoVideoControl.style.pointerEvents = 'none';
+          hoyoControlFadeTimer = setTimeout(() => {
+            hoyoVideoControl.style.display = 'none';
+            hoyoControlFadeTimer = null;
+          }, HOYO_CONTROL_FADE_MS);
         } else {
+          // Keep control visible (paused state)
+          if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
           hoyoVideoControl.style.display = 'block';
+          requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
         }
         // Ensure the icon shows the Play glyph instead of plain text
         const ic = hoyoVideoControl.querySelector('.hp-icon');
@@ -2163,6 +2259,15 @@ if (document.readyState === 'loading') {
       hoyoVideoControl.classList.remove('hidden');
       const ic = hoyoVideoControl.querySelector('.hp-icon');
       if (ic) { ic.classList.remove('pause'); ic.classList.add('play'); }
+      // Make sure control is visible on startup (paused state) without a fade
+      hoyoVideoControl.style.display = 'block';
+      const prevTransition = hoyoVideoControl.style.transition;
+      hoyoVideoControl.style.transition = 'none';
+      hoyoVideoControl.style.opacity = '1';
+      hoyoVideoControl.style.pointerEvents = 'auto';
+      // Force reflow, then restore transition for future fades
+      try { void hoyoVideoControl.offsetHeight; } catch (_) {}
+      hoyoVideoControl.style.transition = prevTransition || 'opacity 0.22s cubic-bezier(.4,0,.2,1)';
     }
     if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
     hoyoVideoPlaying = false;
@@ -2464,7 +2569,6 @@ function setCustomBackground(url) {
 window.setCustomBackground = setCustomBackground;
 
 // --- HoYoPlay background cache & prefetch helpers ----------------------
-const HOYO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 
 function setCachedBackgrounds(key, urls) {
   const payload = { ts: Date.now(), urls };
