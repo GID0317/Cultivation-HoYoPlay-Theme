@@ -20,6 +20,9 @@ jobs:
       - name: Create scripts folder
         run: mkdir -p .github/scripts
 
+      - name: Install ImageMagick (for color extraction)
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
       - name: Write updater script
         run: |
           cat > .github/scripts/update-hoyoplay-bg.js <<'EOF'
@@ -42,6 +45,8 @@ jobs:
               const urls = backgrounds.map(b => (b && b.background && b.background.url) || b?.url || '').filter(Boolean);
               const videoUrls = backgrounds.map(b => (b && b.video && b.video.url) || '').slice(0,3);
               const themeOverlayUrls = backgrounds.map(b => (b && b.theme && b.theme.url) || '').slice(0,3);
+              const linkUrls = backgrounds.map(b => (b && b.link && b.link.url) || '').slice(0,3);
+              const linkHoverUrls = backgrounds.map(b => (b && b.link_hover && b.link_hover.url) || '').slice(0,3);
 
               // Keep strict positions: only write image2 if a second url exists, and same for image3
               const first = urls[0] || '';
@@ -110,12 +115,24 @@ jobs:
               ];
               const iconPath = path.join(outDir, 'icon.png');
               const iconHoverPath = path.join(outDir, 'icon-hover.png');
+              const linkPaths = [
+                path.join(outDir, 'link1.png'),
+                path.join(outDir, 'link2.png'),
+                path.join(outDir, 'link3.png')
+              ];
+              const linkHoverPaths = [
+                path.join(outDir, 'link-hover1.png'),
+                path.join(outDir, 'link-hover2.png'),
+                path.join(outDir, 'link-hover3.png')
+              ];
               // Loop each circle (1..3)
               for (let i = 0; i < 3; i++) {
                 const vUrl = videoUrls[i];
                 const oUrl = themeOverlayUrls[i];
                 const vPath = videoPaths[i];
                 const oPath = overlayPaths[i];
+                const lUrl = linkUrls[i];
+                const lhUrl = linkHoverUrls[i];
                 if (vUrl) {
                   try { await downloadTo(vUrl, vPath); } catch(e) { console.warn(`video${i+1} download failed`, e.message); removeIfExists(vPath); }
                 } else {
@@ -125,6 +142,16 @@ jobs:
                   try { await downloadTo(oUrl, oPath); } catch(e) { console.warn(`overlay${i+1} download failed`, e.message); removeIfExists(oPath); }
                 } else {
                   removeIfExists(oPath);
+                }
+                if (lUrl) {
+                  try { await downloadTo(lUrl, linkPaths[i]); } catch(e) { console.warn(`link${i+1} download failed`, e.message); removeIfExists(linkPaths[i]); }
+                } else {
+                  removeIfExists(linkPaths[i]);
+                }
+                if (lhUrl) {
+                  try { await downloadTo(lhUrl, linkHoverPaths[i]); } catch(e) { console.warn(`link-hover${i+1} download failed`, e.message); removeIfExists(linkHoverPaths[i]); }
+                } else {
+                  removeIfExists(linkHoverPaths[i]);
                 }
               }
               if (iconUrl) {
@@ -138,13 +165,46 @@ jobs:
                 removeIfExists(iconHoverPath);
               }
 
+              // Compute dominant colors from link/link-hover images using ImageMagick
+              function getHexFromImage(imgPath) {
+                try {
+                  const { execSync } = require('child_process');
+                  // Average the image to 1x1 then read that pixel in hex (RRGGBB)
+                  const cmd = `convert "${imgPath}" -resize 1x1! -format "%[hex:u.p{0,0}]" info:`;
+                  const out = String(execSync(cmd)).trim();
+                  if (/^[0-9A-Fa-f]{6}$/.test(out)) return '#' + out.toUpperCase();
+                } catch (e) {
+                  console.warn('convert failed for', imgPath, e.message);
+                }
+                return '';
+              }
+
+              const colors = { circles: [] };
+              for (let i = 0; i < 3; i++) {
+                const linkP = linkPaths[i];
+                const linkHoverP = linkHoverPaths[i];
+                const c = {
+                  link: fs.existsSync(linkP) ? getHexFromImage(linkP) : '',
+                  hover: fs.existsSync(linkHoverP) ? getHexFromImage(linkHoverP) : ''
+                };
+                // Fallbacks: if hover missing, use link; if link missing, use hover
+                if (!c.link && c.hover) c.link = c.hover;
+                if (!c.hover && c.link) c.hover = c.link;
+                // If still empty, default to white to match requested fallback
+                if (!c.link) c.link = '#FFFFFF';
+                if (!c.hover) c.hover = c.link;
+                colors.circles.push(c);
+              }
+              const colorsJsonPath = path.join(outDir, 'circle-colors.json');
+              fs.writeFileSync(colorsJsonPath, JSON.stringify(colors, null, 2));
+
               // commit & push changes
               const execSync = require('child_process').execSync;
               execSync('git config user.name "github-actions[bot]"');
               execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
               // Stage all changes in Background (including deletions)
               execSync('git add -A Background');
-              try { execSync('git commit -m "Auto-update HoYoPlay backgrounds + media (images 1/2/3 + videos/overlays 1..3 + icon)"'); } catch(e) { console.log('No changes to commit'); }
+              try { execSync('git commit -m "Auto-update HoYoPlay assets (images 1..3, videos/overlays 1..3, link/link-hover 1..3, colors json)"'); } catch(e) { console.log('No changes to commit'); }
               execSync('git push');
               console.log('Done');
             } catch (e) {
