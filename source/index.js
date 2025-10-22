@@ -2020,13 +2020,20 @@ if (document.readyState === 'loading') {
         }
       } else {
         // Not supposed to play: ensure paused and keep control visible
+        const wasPlaying = hoyoVideoPlaying;
         try { hoyoVideoA.pause(); } catch (_) {}
         try { hoyoVideoA.currentTime = 0; } catch (_) {}
         try { hoyoVideoB.pause(); } catch (_) {}
         try { hoyoVideoB.currentTime = 0; } catch (_) {}
         hoyoVideoPlaying = false;
         if (currentPlayingIndex === idx) currentPlayingIndex = -1;
-        try { showVideoOverlay(false, { hideControl: false }); } catch (_) {}
+        // Defer hiding the video overlay by a tick if we were playing, so the BG crossfade can appear first
+        const hideFn = () => { try { showVideoOverlay(false, { hideControl: false }); } catch (_) {} };
+        if (wasPlaying) {
+          requestAnimationFrame(() => requestAnimationFrame(hideFn));
+        } else {
+          hideFn();
+        }
         const ic = hoyoVideoControl?.querySelector('.hp-icon');
         if (ic) ic.textContent = '\uF5B0';
         // Prepare the correct source without auto-start; do NOT swap active pointer or show paused frame
@@ -2039,7 +2046,13 @@ if (document.readyState === 'loading') {
       }
     } else {
       // No video for this circle: hide overlay and control
-      try { showVideoOverlay(false, { hideControl: true }); } catch (_) {}
+      const wasPlaying = hoyoVideoPlaying;
+      const hideFn = () => { try { showVideoOverlay(false, { hideControl: true }); } catch (_) {} };
+      if (wasPlaying) {
+        requestAnimationFrame(() => requestAnimationFrame(hideFn));
+      } else {
+        hideFn();
+      }
       if (currentPlayingIndex !== -1) {
         try { hoyoVideoA.pause(); } catch (_) {}
         try { hoyoVideoA.currentTime = 0; } catch (_) {}
