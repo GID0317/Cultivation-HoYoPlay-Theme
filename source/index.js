@@ -1205,6 +1205,8 @@ if (document.readyState === 'loading') {
 })();
 
 (function createHoYoPlaySelector() {
+  // Track per-side validation; before a side completes, keep its circles visible optimistically
+  try { window.__hoyoplayValidatedLeft = false; window.__hoyoplayValidatedRight = false; } catch (_) {}
   // Create full-width shadow background
   const shadowBg = document.createElement('div');
   shadowBg.id = 'hoyoplay-shadow-bg';
@@ -1433,8 +1435,10 @@ if (document.readyState === 'loading') {
   // Defaults to only circle 1 having video until the detector populates the global state.
   function _selectedCircleHasVideo(idx) {
     try {
-      const arr = window.__HOYO_VIDEO_AVAILABLE;
-      if (Array.isArray(arr)) return !!arr[idx];
+      const vid = window.__HOYO_VIDEO_AVAILABLE;
+      const ovl = window.__HOYO_OVERLAY_AVAILABLE;
+      if (Array.isArray(vid) && Array.isArray(ovl)) return !!(vid[idx] && ovl[idx]);
+      if (Array.isArray(vid)) return !!vid[idx];
     } catch (_) {}
     return idx === 0; // safe default: only first circle
   }
@@ -1578,11 +1582,37 @@ if (document.readyState === 'loading') {
   const leftBgKey = 'left-default';
   const rightBgKey = 'right-default';
 
+  // Static image fallbacks so circles remain functional even if cache is empty or probes are flaky
+  const HOYO_IMG_BASE = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
+  // Local fallbacks that ship with the theme (work offline)
+  const HOYO_LOCAL_IMAGE_SRCS = [
+    'background/bg.png',         // left
+    'background/HSR_Phainon.png',// mid
+    'background/gi_arct.png'     // right
+  ];
+  // Remote fallbacks used when online
+  const HOYO_REMOTE_IMAGE_SRCS = [
+    HOYO_IMG_BASE + 'image1.webp', // left
+    HOYO_IMG_BASE + 'image2.webp', // mid
+    HOYO_IMG_BASE + 'image3.webp'  // right
+  ];
+
   // Helper to get nth cached URL for a key (graceful fallback to first available)
   function getCachedUrlByIndex(key, idx) {
     const list = getCachedBackgrounds(key);
-    if (!list || !list.length) return null;
-    return list[idx] || list[0] || null;
+    if (list && list.length) return list[idx] || list[0] || null;
+    // Cache empty: provide deterministic static fallbacks by position mapping
+    const offline = (typeof navigator !== 'undefined' && navigator && navigator.onLine === false);
+    const local = HOYO_LOCAL_IMAGE_SRCS;
+    const remote = HOYO_REMOTE_IMAGE_SRCS;
+    const pickByKey = (arr) => {
+      if (key === leftBgKey && idx === 0) return arr[0];
+      if (key === rightBgKey && idx === 0) return arr[1];
+      if (key === rightBgKey && idx === 1) return arr[2];
+      return arr[idx] || arr[0] || null;
+    };
+    // Prefer local images offline; otherwise prefer remote
+    return offline ? pickByKey(local) : pickByKey(remote);
   }
 
   // By default, select the center/right-most (index 1 if present)
@@ -1615,6 +1645,9 @@ if (document.readyState === 'loading') {
         }
       }
     } catch (e) { /* ignore */ }
+
+    // Ensure play/pause control reflects selected circle immediately
+    try { refreshControlForSelection(); } catch (_) {}
   }
   // Default to the left (video+image1) as selected
   updateCircles(0);
@@ -1678,10 +1711,23 @@ if (document.readyState === 'loading') {
     try {
       const leftList = getCachedBackgrounds(leftBgKey) || [];
       const rightList = getCachedBackgrounds(rightBgKey) || [];
-      // Check actual index presence; do NOT fallback to index 0 here
-      const hasLeft = leftList.length >= 1;      // left uses index 0
-      const hasMid = rightList.length >= 1;      // mid uses right index 0
-      const hasRight = rightList.length >= 2;    // right uses right index 1
+  const leftDone = !!(window.__hoyoplayValidatedLeft);
+  const rightDone = !!(window.__hoyoplayValidatedRight);
+      // Video availability: show a circle if it has either an image OR a video
+      const hasVideoAsset = (idx) => {
+        try {
+          const arr = window.__HOYO_VIDEO_AVAILABLE;
+          if (Array.isArray(arr)) return !!arr[idx];
+        } catch (_) {}
+        return false; // do not assume video exists here to avoid false positives
+      };
+      const hasStaticImage = (idx) => {
+        try { return !!HOYO_IMAGE_SRCS[idx]; } catch (_) { return false; }
+      };
+  // On slow networks or when cache isn't populated yet, avoid hiding circles prematurely per-side.
+      const hasLeft = leftDone ? ((leftList.length >= 1) || hasVideoAsset(0) || hasStaticImage(0)) : true;      // left uses index 0
+      const hasMid = rightDone ? ((rightList.length >= 1) || hasVideoAsset(1) || hasStaticImage(1)) : true;     // mid uses right index 0
+      const hasRight = rightDone ? ((rightList.length >= 2) || hasVideoAsset(2) || hasStaticImage(2)) : true;   // right uses right index 1
 
       leftCircle.style.display = hasLeft ? 'block' : 'none';
       midCircle.style.display = hasMid ? 'block' : 'none';
@@ -1702,21 +1748,14 @@ if (document.readyState === 'loading') {
       }
 
       // Ensure video control visibility follows video availability for the selected circle
-      try {
-        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          if (_selectedCircleHasVideo(selectedCircleIndex)) {
-            hoyoVideoControl.style.display = 'block';
-          } else {
-            hoyoVideoControl.style.display = 'none';
-          }
-        }
-      } catch (e) { /* ignore */ }
+      try { refreshControlForSelection(); } catch (e) { /* ignore */ }
     } catch (e) { /* ignore */ }
   }
 
   // Optional: actively probe URLs to handle 404/redirects
   async function validateCircleUrls() {
     const rightList = getCachedBackgrounds(rightBgKey) || [];
+    const leftList = getCachedBackgrounds(leftBgKey) || [];
     // Helper that resolves to boolean load success
     function probe(url) {
       return new Promise(res => {
@@ -1732,24 +1771,20 @@ if (document.readyState === 'loading') {
 
     const midUrl = rightList[0];
     const rightUrl = rightList[1];
-    const [midOk, rightOk] = await Promise.all([probe(midUrl), probe(rightUrl)]);
+    // Warm up/cache probe results but do not mutate cache on transient failures
+    await Promise.all([probe(midUrl), probe(rightUrl)]);
 
-    // If a URL fails, remove it from cache so updateCircleVisibility hides the circle
-    const rightKey = rightBgKey;
-    const current = getCachedBackgrounds(rightKey) || [];
-    let changed = false;
-    if (current[0] && !midOk) { current.splice(0, 1); changed = true; }
-    if (current[1] && !rightOk) {
-      // If index 0 was removed above, right is now at index 0; ensure we remove the correct one
-      const newList = current.filter((_, idx) => (midOk ? idx !== 1 : idx !== 0));
-      if (newList.length !== current.length) { changed = true; current.length = 0; current.push(...newList); }
-    }
-    if (changed) setCachedBackgrounds(rightKey, current);
-
+    // Mark left side validated only if it had cache entries; we don't probe left URL here.
+    const hadLeft = Array.isArray(leftList) && leftList.length > 0;
+    if (hadLeft) { try { window.__hoyoplayValidatedLeft = true; } catch (_) {} }
+    // Mark right side validated only if it had cache entries to validate (we probed them above)
+    const hadRight = Array.isArray(rightList) && rightList.length > 0;
+    if (hadRight) { try { window.__hoyoplayValidatedRight = true; } catch (_) {} }
     updateCircleVisibility();
   }
 
   // Kick initial visibility and then validate URLs one time at startup
+  // On first load, do not auto-hide circles purely based on empty cache; validation will correct later
   updateCircleVisibility();
   try {
     if (!window.__hoyoplayValidated) {
@@ -1787,9 +1822,10 @@ if (document.readyState === 'loading') {
     HOYO_BG_BASE + 'overlay2.webp',
     HOYO_BG_BASE + 'overlay3.webp'
   ];
-  // Detected availability (we'll probe on startup); default assume only #1 exists
-  let HOYO_VIDEO_AVAILABLE = [true, false, false];
-  let HOYO_OVERLAY_AVAILABLE = [true, false, false];
+  // Detected availability (we'll probe on startup); default to false/offline-safe
+  let HOYO_VIDEO_AVAILABLE = [false, false, false];
+  let HOYO_OVERLAY_AVAILABLE = [false, false, false];
+  try { window.__HOYO_OVERLAY_AVAILABLE = HOYO_OVERLAY_AVAILABLE; } catch (_) {}
   // Foreground images (dual A/B) shown on top of video for smooth crossfade
   let hoyoOverlayA = null;
   let hoyoOverlayB = null;
@@ -1799,13 +1835,14 @@ if (document.readyState === 'loading') {
   // Helpers to fetch/probe media availability once
   function detectAvailableMedia() {
     try {
-      // Overlays: probe images
+      // Overlays: probe images (respect offline cache; don't bust cache when offline)
       HOYO_OVERLAY_SRCS.forEach((url, i) => {
         try {
           const img = new Image();
-          img.onload = () => { HOYO_OVERLAY_AVAILABLE[i] = true; };
-          img.onerror = () => { HOYO_OVERLAY_AVAILABLE[i] = false; };
-          img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+          img.onload = () => { HOYO_OVERLAY_AVAILABLE[i] = true; try { refreshControlForSelection(); } catch (_) {} };
+          img.onerror = () => { HOYO_OVERLAY_AVAILABLE[i] = false; try { refreshControlForSelection(); } catch (_) {} };
+          const online = !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false);
+          img.src = online ? (url + (url.includes('?') ? '&' : '?') + 't=' + Date.now()) : url;
         } catch (_) {}
       });
       // Videos: probe via video metadata
@@ -1815,8 +1852,8 @@ if (document.readyState === 'loading') {
           let settled = false;
           const done = (ok) => { if (!settled) { settled = true; HOYO_VIDEO_AVAILABLE[i] = !!ok; } };
           v.preload = 'metadata';
-          v.onloadedmetadata = () => done(true);
-          v.onerror = () => done(false);
+          v.onloadedmetadata = () => { done(true); try { refreshControlForSelection(); } catch (_) {} };
+          v.onerror = () => { done(false); try { refreshControlForSelection(); } catch (_) {} };
           // Tiny seek trick to force some browsers to fetch metadata
           v.src = url + (url.includes('#') ? '' : '#t=0.1');
           setTimeout(() => done(false), 5000);
@@ -1825,7 +1862,35 @@ if (document.readyState === 'loading') {
     } catch (_) {}
   }
   try { window.__HOYO_VIDEO_AVAILABLE = HOYO_VIDEO_AVAILABLE; } catch (_) {}
-  const hasVideoAtIndex = (idx) => !!HOYO_VIDEO_AVAILABLE[idx];
+  const hasPlayableAtIndex = (idx) => !!(HOYO_VIDEO_AVAILABLE[idx] && HOYO_OVERLAY_AVAILABLE[idx]);
+  const hasVideoAssetAtIndex = (idx) => !!HOYO_VIDEO_AVAILABLE[idx];
+  const hasOverlayAssetAtIndex = (idx) => !!HOYO_OVERLAY_AVAILABLE[idx];
+
+  function refreshControlForSelection() {
+    try {
+      if (!hoyoVideoControl) return;
+      const idx = selectedCircleIndex | 0;
+      if (hasVideoAssetAtIndex(idx)) {
+        // Show control; enable only when overlay is also ready
+        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
+        hoyoVideoControl.style.display = 'block';
+        requestAnimationFrame(() => {
+          const playable = hasPlayableAtIndex(idx);
+          hoyoVideoControl.style.opacity = playable ? '1' : '0.5';
+          hoyoVideoControl.style.pointerEvents = playable ? 'auto' : 'none';
+        });
+      } else {
+        // Hide with fade
+        hoyoVideoControl.style.opacity = '0';
+        hoyoVideoControl.style.pointerEvents = 'none';
+        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
+        hoyoControlFadeTimer = setTimeout(() => {
+          hoyoVideoControl.style.display = 'none';
+          hoyoControlFadeTimer = null;
+        }, HOYO_CONTROL_FADE_MS);
+      }
+    } catch (_) {}
+  }
 
   function ensureVideoElements() {
     if (hoyoVideoOverlay) return;
@@ -1975,6 +2040,10 @@ if (document.readyState === 'loading') {
     const getInactiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
     hoyoVideoControl.addEventListener('click', () => {
       const idx = selectedCircleIndex | 0;
+      if (!hasPlayableAtIndex(idx)) {
+        // Ignore clicks for circles that don't have the bundled media
+        return;
+      }
       const nextSrc = HOYO_VIDEO_SRCS[idx];
       const active = getActiveVideo();
       const inactive = getInactiveVideo();
@@ -2010,7 +2079,7 @@ if (document.readyState === 'loading') {
         try { showVideoOverlay(true); } catch (e) {}
         // Ensure overlay image matches target circle on manual play
         try {
-          const hasVid = hasVideoAtIndex(idx);
+          const hasVid = hasPlayableAtIndex(idx);
           const targetHasOverlay = hasVid && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx];
           if (hoyoOverlayA && hoyoOverlayB) {
             if (targetHasOverlay) {
@@ -2075,7 +2144,7 @@ if (document.readyState === 'loading') {
   function applyMediaForIndex(idx) {
     try { ensureVideoElements(); } catch (_) {}
     if (!hoyoVideoOverlay || !hoyoVideoA || !hoyoVideoB) return;
-    const hasVid = hasVideoAtIndex(idx);
+  const hasVid = hasPlayableAtIndex(idx);
     const shouldPlay = hasVid && !!circleAutoPlay[idx];
     // Overlay: crossfade between images only when target circle has video AND an overlay asset
     try {
@@ -2110,7 +2179,7 @@ if (document.readyState === 'loading') {
         }
       }
     } catch (_) {}
-    if (hasVid) {
+  if (hasVid) {
       const nextSrc = HOYO_VIDEO_SRCS[idx];
       const active = (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
       const inactive = (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
@@ -2206,11 +2275,8 @@ if (document.readyState === 'loading') {
     if (show) {
       hoyoVideoOverlay.style.opacity = '1';
       if (hoyoVideoControl) {
-        // Cancel any pending hide -> none timer
-        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-        hoyoVideoControl.style.display = 'block';
-        // Next frame to allow transition
-        requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
+        // Use refined control refresher: show when video exists; enable when overlay is also ready
+        refreshControlForSelection();
       }
       // Do not force overlay image visibility here; applyMediaForIndex controls it per target
       setPlayingClass(true);
