@@ -1705,6 +1705,34 @@ if (document.readyState === 'loading') {
     }
   })();
 
+  // Offline switching guards: avoid switching to circles with no cached assets when offline
+  const isOffline = () => {
+    try { return (typeof navigator !== 'undefined' && navigator && navigator.onLine === false); } catch (_) { return false; }
+  };
+  function canSwitchToIndexOffline(idx) {
+    if (!isOffline()) return true;
+    try {
+      const leftList = getCachedBackgrounds(leftBgKey) || [];
+      const rightList = getCachedBackgrounds(rightBgKey) || [];
+      if (idx === 0) return leftList.length >= 1;      // left uses index 0
+      if (idx === 1) return rightList.length >= 1;     // mid uses right index 0
+      if (idx === 2) return rightList.length >= 2;     // right uses right index 1
+    } catch (_) {}
+    return false;
+  }
+  // Ensure we have a non-transparent background on pure-offline cold start
+  function ensureOfflineDefaultBackground() {
+    if (!isOffline()) return;
+    try {
+      const leftList = getCachedBackgrounds(leftBgKey) || [];
+      const rightList = getCachedBackgrounds(rightBgKey) || [];
+      if (leftList.length === 0 && rightList.length === 0) {
+        const url = (HOYO_LOCAL_IMAGE_SRCS && HOYO_LOCAL_IMAGE_SRCS[0]) || null;
+        if (url) setCustomBackground(url);
+      }
+    } catch (_) {}
+  }
+
   // Hide circles when their corresponding cached background is missing.
   // This allows the selector to gracefully adapt if GitHub Action didn't produce image files.
   function updateCircleVisibility() {
@@ -2343,6 +2371,7 @@ if (document.readyState === 'loading') {
 // Map circle hover to index 0/1/2 (left/mid/right). Try left key first, then right as fallback.
 leftCircle.addEventListener('mouseenter', () => {
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
+  if (!canSwitchToIndexOffline(0)) return; // offline with no cache for left -> do not switch
   updateCircles(0);
   const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
   if (url) setCustomBackground(url);
@@ -2351,6 +2380,7 @@ leftCircle.addEventListener('mouseenter', () => {
 });
 midCircle.addEventListener('mouseenter', () => {
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
+  if (!canSwitchToIndexOffline(1)) return; // offline with no cache for mid -> do not switch
   updateCircles(1);
   // Middle circle should use image2 (right key index 0)
   const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
@@ -2360,6 +2390,7 @@ midCircle.addEventListener('mouseenter', () => {
 });
 rightCircle.addEventListener('mouseenter', () => {
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
+  if (!canSwitchToIndexOffline(2)) return; // offline with no cache for right -> do not switch
   updateCircles(2);
   // Right circle should use image3 (right key index 1)
   const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
@@ -2413,6 +2444,8 @@ rightCircle.addEventListener('mouseenter', () => {
   modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
   // Initial state
   updateModsState();
+  // Ensure non-transparent background on offline cold start
+  ensureOfflineDefaultBackground();
 
   // Re-layout backdrop panels on resize; only when visible
   window.addEventListener('resize', () => {
