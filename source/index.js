@@ -109,17 +109,33 @@ function addCommitTooltips() {
       const fullMessage = commitMessageCell.textContent || commitMessageCell.innerText;
       // Set the full commit message as a data attribute for the tooltip
       row.setAttribute('data-commit-message', fullMessage);
-
-      // Add mouse enter event to position tooltip dynamically
-      row.addEventListener('mouseenter', function () {
-        const rect = row.getBoundingClientRect();
-        const tooltipTop = rect.bottom + 12; // Position below the row
-        const tooltipLeft = rect.left + (rect.width / 2); // Center horizontally
-
-        // Set CSS custom properties for positioning
-        row.style.setProperty('--tooltip-top', `${tooltipTop}px`);
-        row.style.setProperty('--tooltip-left', `${tooltipLeft}px`);
-      });
+      // Decide placement: if more than 15 words, show tooltip ABOVE the row; else BELOW.
+      const wordCount = fullMessage.trim().split(/\s+/).filter(Boolean).length;
+      // Clean up any previous dynamic positioning handler to avoid stacking listeners.
+      row.onmouseenter = null;
+      if (wordCount > 15) {
+        // Add class so CSS can flip transform + arrow orientation
+        row.classList.add('CommitTooltipTop');
+        row.classList.remove('CommitTooltipBottom');
+        row.onmouseenter = function () {
+          const rect = row.getBoundingClientRect();
+          // Anchor at row's top; CSS handles 12px gap via transform
+          const anchorY = rect.top;
+          const anchorX = rect.left + (rect.width / 2);
+          row.style.setProperty('--tooltip-top', `${anchorY}px`);
+          row.style.setProperty('--tooltip-left', `${anchorX}px`);
+        };
+      } else {
+        row.classList.add('CommitTooltipBottom');
+        row.classList.remove('CommitTooltipTop');
+        row.onmouseenter = function () {
+          const rect = row.getBoundingClientRect();
+          const tooltipTop = rect.bottom; // Anchor at bottom; CSS adds 12px gap
+          const tooltipLeft = rect.left + (rect.width / 2); // Center horizontally
+          row.style.setProperty('--tooltip-top', `${tooltipTop}px`);
+          row.style.setProperty('--tooltip-left', `${tooltipLeft}px`);
+        };
+      }
     }
   });
 }
