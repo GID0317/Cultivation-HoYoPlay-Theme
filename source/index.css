@@ -282,6 +282,10 @@
   left: 55%;
 }
 
+.BottomSection .CheckboxDisplay{
+  margin-top: 2.3px;
+}
+
 /* Make the titlebar transparent */
 #titleBar, #titlebar {
   background: transparent !important;
