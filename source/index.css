@@ -914,10 +914,33 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   border: 2px solid transparent; /* Ensure border remains transparent on hover */
 }
 
+/* Right bar icons: base assets are black; keep white conversion filter and fade opacity */
 #rightBarButtonDiscord img,
 #rightBarButtonGithub img {
-  filter: brightness(0) invert(1); /* Make sure icon is white */
+  filter: brightness(0) invert(1) !important; /* convert black source to white */
+  opacity: 0.80; /* subdued (appears like #dbd9ea over dark bg) */
+  transition: opacity 0.18s ease;
   pointer-events: none;
+}
+
+#rightBarButtonDiscord:hover img,
+#rightBarButtonGithub:hover img {
+  opacity: 1; /* full white on hover */
+}
+
+/* Top bar window control icons (settings, minimize, close) same treatment */
+#settingsBtn img,
+#minBtn img,
+#closeBtn img {
+  filter: brightness(0) invert(1) !important; /* ensure white from black base */
+  opacity: 0.80;
+  transition: opacity 0.18s ease;
+}
+
+#settingsBtn:hover img,
+#minBtn:hover img,
+#closeBtn:hover img {
+  opacity: 1;
 }
 
 #title span:first-child {
