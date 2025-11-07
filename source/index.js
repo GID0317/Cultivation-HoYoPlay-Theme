@@ -2803,3 +2803,268 @@ async function _applyCachedBackgroundOnStartup() {
 }
 
 _applyCachedBackgroundOnStartup();
+
+// --- Custom Dropdown Hijacker ---
+(function hijackNativeDropdowns() {
+  const hijackedSelects = new WeakSet();
+  
+  // Close all open custom dropdowns except the one provided
+  function closeAllDropdowns(exceptWrapper) {
+    try {
+      const openWrappers = document.querySelectorAll('.custom-dropdown-wrapper.open');
+      openWrappers.forEach(w => {
+        if (w !== exceptWrapper) {
+          const m = w.querySelector('.custom-dropdown-menu');
+          if (m) {
+            m.classList.remove('opening', 'closing');
+            m.style.display = 'none';
+          }
+          w.classList.remove('open');
+        }
+      });
+    } catch (_) {}
+  }
+  
+  function createCustomDropdown(nativeSelect) {
+    if (hijackedSelects.has(nativeSelect)) return;
+    hijackedSelects.add(nativeSelect);
+    
+    // Create wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-dropdown-wrapper';
+    
+    // Create trigger button
+    const trigger = document.createElement('button');
+    trigger.className = 'custom-dropdown-trigger';
+    trigger.type = 'button';
+    
+    const triggerText = document.createElement('span');
+    triggerText.className = 'custom-dropdown-text';
+    
+    const triggerArrow = document.createElement('span');
+    triggerArrow.className = 'custom-dropdown-arrow';
+    triggerArrow.textContent = '▼';
+    
+    trigger.appendChild(triggerText);
+    trigger.appendChild(triggerArrow);
+    
+    // Create dropdown menu
+    const menu = document.createElement('div');
+    menu.className = 'custom-dropdown-menu';
+    menu.style.display = 'none';
+    
+    // Populate options
+    function updateOptions() {
+      menu.innerHTML = '';
+      const options = Array.from(nativeSelect.options);
+      
+      options.forEach((opt, index) => {
+        const item = document.createElement('div');
+        item.className = 'custom-dropdown-item';
+        item.textContent = opt.text;
+        item.dataset.value = opt.value;
+        item.dataset.index = index;
+        // Make focusable for keyboard navigation
+        item.setAttribute('tabindex', '-1');
+        
+        if (opt.selected) {
+          item.classList.add('selected');
+          triggerText.textContent = opt.text;
+        }
+        
+        if (opt.disabled) {
+          item.classList.add('disabled');
+        } else {
+          item.addEventListener('click', () => {
+            // Update native select
+            nativeSelect.selectedIndex = index;
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Update UI
+            menu.querySelectorAll('.custom-dropdown-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            triggerText.textContent = opt.text;
+            
+            // Close menu
+            closeMenu();
+          });
+        }
+        
+        menu.appendChild(item);
+      });
+    }
+    
+    function openMenu() {
+      // Ensure only one dropdown can be open at a time
+      closeAllDropdowns(wrapper);
+      menu.style.display = 'block';
+      menu.classList.remove('closing');
+      menu.classList.add('opening');
+      wrapper.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      
+      // Position menu below trigger (right-aligned)
+      const rect = trigger.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      menu.style.top = (rect.bottom - wrapperRect.top) + 'px';
+      menu.style.minWidth = rect.width + 'px';
+
+      // Ensure selected item is visible within the 5-item viewport
+      try {
+        const selectedEl = menu.querySelector('.custom-dropdown-item.selected');
+        if (selectedEl) {
+          // scrollIntoView with nearest to avoid jumping if already visible
+          selectedEl.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (_) {}
+      
+      // Remove opening class after animation
+      setTimeout(() => {
+        menu.classList.remove('opening');
+      }, 180);
+    }
+    
+    function closeMenu() {
+      menu.classList.remove('opening');
+      menu.classList.add('closing');
+      wrapper.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      // Hide after animation completes
+      setTimeout(() => {
+        menu.style.display = 'none';
+        menu.classList.remove('closing');
+      }, 150);
+    }
+    
+    function toggleMenu() {
+      if (menu.style.display === 'none') {
+        openMenu();
+      } else {
+        closeMenu();
+      }
+    }
+    
+    // Event listeners
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // If another dropdown is open, close it first
+      closeAllDropdowns(wrapper);
+      toggleMenu();
+    });
+    
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        closeMenu();
+      }
+    });
+    
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && wrapper.classList.contains('open')) {
+        closeMenu();
+        trigger.focus();
+      }
+    });
+    
+    // Keyboard navigation
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openMenu();
+        menu.querySelector('.custom-dropdown-item:not(.disabled)')?.focus();
+      }
+    });
+    
+    menu.addEventListener('keydown', (e) => {
+      const items = Array.from(menu.querySelectorAll('.custom-dropdown-item:not(.disabled)'));
+      const current = document.activeElement;
+      const currentIndex = items.indexOf(current);
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = items[currentIndex + 1] || items[0];
+        next?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = items[currentIndex - 1] || items[items.length - 1];
+        prev?.focus();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        current?.click();
+      }
+    });
+    
+    // Make menu items focusable
+    menu.addEventListener('mouseover', (e) => {
+      if (e.target.classList.contains('custom-dropdown-item') && !e.target.classList.contains('disabled')) {
+        e.target.setAttribute('tabindex', '0');
+        // If user moves the mouse over a focused item, remove focus so hover style wins
+        if (document.activeElement === e.target) {
+          e.target.blur();
+        }
+      }
+    });
+    
+    // Watch for native select changes
+    const observer = new MutationObserver(() => {
+      updateOptions();
+    });
+    observer.observe(nativeSelect, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
+    
+    nativeSelect.addEventListener('change', () => {
+      const selected = nativeSelect.options[nativeSelect.selectedIndex];
+      if (selected) {
+        triggerText.textContent = selected.text;
+        menu.querySelectorAll('.custom-dropdown-item').forEach((item, index) => {
+          item.classList.toggle('selected', index === nativeSelect.selectedIndex);
+        });
+      }
+    });
+    
+    // Build structure
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+    
+    // Replace native select
+    nativeSelect.style.display = 'none';
+    nativeSelect.parentNode.insertBefore(wrapper, nativeSelect);
+    
+    // Initialize
+    updateOptions();
+    
+    // Accessibility
+    trigger.setAttribute('role', 'combobox');
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('role', 'listbox');
+  }
+  
+  function hijackSelects() {
+    // Find all select elements that should be hijacked
+    const selects = document.querySelectorAll('select:not([data-no-hijack])');
+    selects.forEach(select => {
+      // Only hijack if not already done and visible
+      if (!hijackedSelects.has(select) && window.getComputedStyle(select).display !== 'none') {
+        createCustomDropdown(select);
+      }
+    });
+  }
+  
+  // Initial hijack
+  hijackSelects();
+  
+  // Watch for new selects being added
+  const observer = new MutationObserver(() => {
+    hijackSelects();
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  // Also check periodically for dynamically added selects
+  setInterval(hijackSelects, 1000);
+})();
