@@ -1272,7 +1272,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   transition: background 0.2s, border-color 0.2s !important;
 }
 .Checkbox input:checked + label .CheckboxDisplay {
-  border-color: #ffd950 !important;
+  border-color: #f6d429 !important;
   background: #2E3136 !important;
 }
 .CheckboxDisplay::after {
