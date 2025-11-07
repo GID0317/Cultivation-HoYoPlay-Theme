@@ -1017,14 +1017,14 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #ffdb29; /* Yellow text on hover */
 }
 
-/* Tooltip for commit messages */
+/* Tooltip for commit messages (default: below) */
 .Commit::after {
   content: attr(data-commit-message);
   position: fixed; /* Use fixed to escape container overflow */
-  top: var(--tooltip-top, -9999px); /* Dynamic positioning */
+  top: var(--tooltip-top, -9999px); /* Anchor line: row edge */
   left: var(--tooltip-left, 50%);
-  transform: translateX(-50%) scale(0); /* Start hidden */
-  transform-origin: center top; /* Scale from top center */
+  transform: translate(-50%, 12px) scale(0); /* Default below with 12px gap */
+  transform-origin: center top; /* Scale from top when below */
   background-color: #e6e6e6; /* Light gray background */
   color: #1a1a1a; /* Dark text color */
   padding: 6px 10px; /* Match minBtn tooltip padding */
@@ -1038,41 +1038,60 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   opacity: 0; /* Hidden by default */
   pointer-events: none; /* Prevent interaction */
   transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
-  transition-delay: 0.2s; /* 1 second delay before appearing */
-  z-index: 10000; /* Ensure it appears above other elements */
+  transition-delay: 0.2s; /* small delay before appearing */
+  z-index: 50000; /* High enough to appear above video controls and all UI */
 }
 
-/* Add triangle arrow using ::before */
+/* Arrow for default (below) placement */
 .Commit::before {
   content: '';
   position: fixed;
-  top: calc(var(--tooltip-top, -9999px) - 6px); /* Position above the tooltip */
+  top: calc(var(--tooltip-top, -9999px) + 6px); /* halfway in the 12px gap */
   left: var(--tooltip-left, 50%);
-  transform: translateX(-50%) scale(0); /* Start hidden */
-  transform-origin: center top; /* Scale from top center */
+  transform: translate(-50%, 0) scale(0); /* Start hidden */
+  transform-origin: center top; /* Scale from top */
   width: 0;
   height: 0;
   border-left: 8px solid transparent; /* Match arrow width */
   border-right: 8px solid transparent; /* Match arrow width */
-  border-bottom: 8px solid #e6e6e6; /* Match tooltip background color */
+  border-bottom: 8px solid #e6e6e6; /* Up-pointing arrow (tooltip below) */
   opacity: 0; /* Hidden by default */
   pointer-events: none; /* Prevent interaction */
   transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
-  transition-delay: 0.2s; /* 1 second delay before appearing */
-  z-index: 9999; /* Ensure it appears below the tooltip */
+  transition-delay: 0.2s; /* small delay */
+  z-index: 49999; /* Just below tooltip but above all other UI */
 }
 
-/* Show tooltip and arrow on hover */
-.Commit:hover::after,
-.Commit:hover::before {
-  opacity: 1;
-  transform: translateX(-50%) scale(1); /* Show tooltip and arrow */
+/* Top placement overrides */
+.Commit.CommitTooltipTop::after {
+  /* Move tooltip above the anchor by its own height + 12px gap */
+  /* Nudge down a bit to reduce the visible gap between arrow and body */
+  transform: translate(-50%, calc(-100% - 6px)) scale(0);
+  transform-origin: center bottom; /* Scale from bottom when above */
+  z-index: 999999 !important; /* Force highest z-index with !important */
 }
 
-/* Show tooltip on hover */
+.Commit.CommitTooltipTop:hover::after {
+  transform: translate(-50%, calc(-100% - 6px)) scale(1);
+}
+
+.Commit.CommitTooltipTop::before {
+  top: calc(var(--tooltip-top, -9999px) - 6px); /* halfway in the 12px gap above anchor */
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: none;
+  border-top: 8px solid #e6e6e6; /* Down-pointing arrow (tooltip above) */
+}
+
+/* Hover: show tooltip and arrow while preserving Y translate */
 .Commit:hover::after {
   opacity: 1;
-  transform: translateX(-50%) scale(1); /* Show tooltip */
+  transform: translate(-50%, 12px) scale(1);
+}
+
+.Commit:hover::before {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
 }
 
 /* 1. Bungkus utama: rounded corners, semi‑translucent, drop‑shadow */
@@ -2597,7 +2616,7 @@ body:has(#ExtrasMenuButton) .NotifShow {
 /* HoYoPlay video control button styles */
 .hoyoplay-video-control {
   position: absolute;
-  z-index: 3; /* low, so it doesn't cover core UI */
+  z-index: 0 !important; /* low, so it doesn't cover core UI */
   pointer-events: auto;
   width: 40px;
   height: 40px;
