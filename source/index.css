@@ -42,6 +42,238 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* Wrapper container for custom dropdown */
+.custom-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Dropdown trigger button (replaces native select appearance) */
+.custom-dropdown-trigger {
+  width: 100%;
+  padding: 8px 32px 8px 10px;
+  background: #292C30 !important; /* Match TextInput background */
+  border: none;
+  border-radius: 7px;
+  color: #CAD2CE !important; /* Match TextInput text color */
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Hover state for trigger button */
+.custom-dropdown-trigger:hover {
+  background: #34373b !important;
+}
+
+/* Focus state for trigger button */
+.custom-dropdown-trigger:focus {
+  background: #3a3d40 !important;
+}
+
+/* Trigger button when dropdown is open */
+.custom-dropdown-wrapper.open .custom-dropdown-trigger {
+  background: #3a3d40 !important;
+}
+
+/* Text content inside trigger button */
+.custom-dropdown-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Arrow indicator (hidden to use native arrow) */
+.custom-dropdown-arrow {
+  display: none;
+}
+
+/* Dropdown menu container (the list of options) */
+.custom-dropdown-menu {
+  position: absolute;
+  z-index: 10001; /* Above most UI elements */
+  background: #32353b; /* Solid dark background */
+  border-radius: 8px;
+  box-shadow: 0 0px 15px rgba(0, 0, 0, 0.211); /* Deep shadow for depth */
+  margin-top: 4px; /* Space below trigger */
+  /* Limit visible items to ~5; extra items scroll */
+  max-height: 210px; /* ~5 items, keeps menu from growing too tall */
+  overflow-y: auto; /* Enable scrolling for long lists */
+  /* Prefer overlay scrollbars that do NOT consume layout width when supported */
+  scrollbar-gutter: stable overlay; /* Modern spec-compliant browsers */
+  min-width: 200px; /* Minimum menu width */
+  width: max-content; /* Expand to fit content */
+  max-width: 300px; /* Maximum menu width */
+  padding: 6px;
+  right: 0; /* Right-aligned to trigger */
+  left: auto;
+  /* Animation properties */
+  transform-origin: top center; /* Scale from top */
+}
+
+/* Fallback for older Chromium/WebKit that still honors overflow: overlay */
+@supports (overflow: overlay) {
+  .custom-dropdown-menu {
+    overflow-y: overlay; /* Overlays scrollbar on content instead of reserving width */
+  }
+}
+
+/* Dropdown menu opening animation */
+.custom-dropdown-menu.opening {
+  animation: dropdownScaleIn 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dropdown menu closing animation */
+.custom-dropdown-menu.closing {
+  animation: dropdownScaleOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scale in animation (top to bottom) */
+@keyframes dropdownScaleIn {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* Scale out animation (bottom to top) */
+@keyframes dropdownScaleOut {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+    /* Collapse should visually start disappearing from the bottom,
+       but to achieve a bottom-to-top effect we keep content anchored
+       to the top (so the bottom edge moves upward as we scale). */
+    transform-origin: top center;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: top center;
+  }
+}
+
+/* Custom scrollbar for dropdown menu */
+.custom-dropdown-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+/* Scrollbar track (background) */
+.custom-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Scrollbar thumb (draggable handle) */
+.custom-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #393c42;
+  border-radius: 3px;
+  transition: background-color 0.18s ease, background 0.18s ease;
+}
+
+/* Scrollbar thumb on hover */
+.custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #4a4d52;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-thumb:active {
+  background: #57595d;
+}
+
+/* Individual dropdown option item */
+.custom-dropdown-item {
+  padding: 10px 40px 10px 10px; /* Extra right padding for checkmark */
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  border-radius: 7px;
+  position: relative;
+  margin: 5px 0;
+}
+
+/* Dropdown item on hover */
+.custom-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Dropdown item on focus (keyboard navigation) */
+.custom-dropdown-item:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* Keyboard highlight for non-selected items (arrow navigation only; suppressed when hovered) */
+.custom-dropdown-item:not(.selected):not(.disabled):focus:not(:hover),
+.custom-dropdown-item:not(.selected):not(.disabled):focus-visible:not(:hover) {
+  background: #ecf5ff !important; /* Light highlight when navigated via keyboard */
+  color: #151515 !important;      /* Dark text for contrast */
+}
+
+/* Preserve selected item styling even when focused */
+.custom-dropdown-item.selected:focus,
+.custom-dropdown-item.selected:hover {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Selected dropdown item (current value) */
+.custom-dropdown-item.selected {
+  background: rgba(50, 53, 60, 0.8);
+  color: #f2d02a; /* Updated yellow highlight */
+  font-weight: 400;
+}
+
+/* Selected dropdown item on hover */
+.custom-dropdown-item.selected:hover {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Checkmark icon for selected item (Segoe Fluent Icons) */
+.custom-dropdown-item.selected::after {
+  content: '\E8FB'; /* Segoe Fluent Icons checkmark */
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #f2d02a; /* Updated yellow to match text */
+  font-size: 11.5px;
+  font-weight: bold;
+}
+
+/* Disabled dropdown item */
+.custom-dropdown-item.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* First item spacing */
+.custom-dropdown-item:first-child {
+  margin-top: 0;
+}
+
+/* Last item spacing */
+.custom-dropdown-item:last-child {
+  margin-bottom: 0;
+}
+
 /* Here we disable the bottom blur */
 .BottomSection {
   backdrop-filter: none;
@@ -54,7 +286,6 @@
 #titleBar, #titlebar {
   background: transparent !important;
   box-shadow: none !important;
-  /* Optional, if you want to remove borders or outlines as well: */
   border: none !important;
 }
 
@@ -81,7 +312,6 @@
   z-index: 1;
 }
 
-/* Optional: Remove background on the Discord and GitHub buttons themselves if needed */
 #rightBar button, #rightBar a,
 .RightBar button, .RightBar a {
   background: transparent !important;
@@ -229,7 +459,6 @@
   transition: -webkit-filter 0.2s ease-in-out, filter 0.2s ease-in-out; /* Smooth transition */
 }
 
-/* Optional: Change color on hover of the button */
 #serverLaunch:hover 
 #serverLaunchIcon
 #ExtrasMenuButton:hover
@@ -272,7 +501,7 @@
 
 #title {
   line-height: normal !important;
-  margin: 0 8px !important;      /* optional: give it some breathing room */
+  margin: 0 8px !important;      
 }
 
 #leftBar {
@@ -380,14 +609,14 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 #modsBtn svg,
 #modsBtn .icon,
 #backbtn svg,
-#backbtn .icon  {   /* or whatever your inner selector is */
+#backbtn .icon  {
   width: 20px !important;
   height: 20px !important;
   /* if it’s a font-icon: */
   font-size: 20px !important;
 }
 
-/* 3) Keep your hover effect */
+/* 3) Keep hover effect */
 #settingsBtn:hover,
 #settingsBtn:focus,
 #downloadsBtn:hover,
@@ -466,12 +695,10 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   }
 }
 
-/* Optional: add spacing if it appears inline or clutters with other elements */
 .GameInstallNotify span {
   margin-right: 16px;
 }
 
-/* Optional: style for close icon inside, if there’s one */
 .GameInstallNotify .close-icon {
   cursor: pointer;
   font-size: 1.2rem;
@@ -695,8 +922,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 #version {
   margin-left: 80px !important; /* or adjust to your liking */
-  font-size: 14px;              /* optional: tweak size */
-  color: #ffffff;                  /* optional: make it subtle */
+  font-size: 14px;              
+  color: #ffffff;                  
 }
 
 #unassumingButton {
@@ -1032,16 +1259,16 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 /* 6. Checkbox/switch custom look */
 .CheckboxDisplay {
-  width: 40px !important;
-  height: 20px !important;
+  width: 31.5px !important;
+  height: 18px !important;
   background: #2E3136 !important;
-  border-color: #5C5E62;
+  border: 2px solid #5C5E62 !important;
   border-radius: 10px !important;
   position: relative !important;
-  transition: background 0.2s !important;
+  transition: background 0.2s, border-color 0.2s !important;
 }
 .Checkbox input:checked + label .CheckboxDisplay {
-  border-color: #ffd950;
+  border-color: #ffd950 !important;
   background: #2E3136 !important;
 }
 .CheckboxDisplay::after {
@@ -1049,14 +1276,14 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   position: absolute !important;
   top: 2px !important;
   left: 2px !important;
-  width: 16px !important;
-  height: 16px !important;
+  width: 14px !important;
+  height: 14px !important;
   background: #fff !important;
   border-radius: 50% !important;
-  transition: transform 0.2s !important;
+  transition: transform 0.2s, background 0.2s !important;
 }
 .Checkbox input:checked + label .CheckboxDisplay::after {
-  transform: translateX(20px) !important;
+  transform: translateX(14px) !important;
 }
 
 .CheckboxDisplay img {
@@ -1104,8 +1331,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   -moz-appearance: none;
 
   width: auto;
-  min-width: 120px; /* Optional: set a sensible minimum */
-  max-width: 100%;  /* Optional: prevent overflow */
+  min-width: 120px; 
+  max-width: 100%;  
   padding: 8px 0px 8px 12px !important;  /* space for text + caret */
   background: transparent !important;
   border: 1px solid transparent !important; /* transparent border */
@@ -1199,7 +1426,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   border-radius: 8px !important;        /* gentle rounding */
   color: #FFFFFF !important;            /* white text */
   font-size: 0.9rem !important;
-  font-weight: normal !important;         /* match your labels */
+  font-weight: normal !important;         
   
   /* cursor & transition */
   transition: background 0.15s ease, border-color 0.15s ease !important;
@@ -1223,7 +1450,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   border-radius: 8px !important;        /* gentle rounding */
   color: #FFFFFF !important;            /* white text */
   font-size: 0.9rem !important;
-  font-weight: normal !important;         /* match your labels */
+  font-weight: normal !important;         
   
   /* cursor & transition */
   transition: background 0.1s;
@@ -1468,8 +1695,13 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
     margin-left: 10px !important;
 }
 
+.ServerConfig input{
+  border-bottom: 1px solid #ffffff;
+}
+
 .TextInput {
     background: #292C30 !important;
+    border-bottom: 1px solid #5b5d61;
     color: #CAD2CE !important;
 }
 
@@ -1488,31 +1720,33 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 /* 1) Global scrollbar width */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 7.5px;
   height: 8px;            /* also style horizontal if you need */
 }
 
 /* 2) Track (background) */
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);  /* very dark semi‑transparent */
-  border-radius: 4px;
+  background: transparent; /* invisible track */
   display: none;
 }
 
-/* 3) Thumb (the draggable handle) */
+/* 3) Thumb (the draggable handle) NOTE: The transition doesn't work still finding a way to fix it*/
 ::-webkit-scrollbar-thumb {
-  background: #2d3034;  /* subtle light on dark */
-  border-radius: 4px;
-  border: 2px solid transparent;         /* gives a little padding */
-  background-clip: content-box;           /* so the border creates an inset effect */
+  background: #292d30;  /* subtle light on dark */
+  border-radius: 4px;        /* gives a little padding */
+  transition: background-color 0.18s ease, background 0.18s ease;
 }
 
 /* 4) Thumb on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #2d3034;
+  background: #3b3e42;
 }
 
-/* 5) Optional: corner where hor+vert meet */
+::-webkit-scrollbar-thumb:active {
+  background: #494c50;
+}
+
+/* 5) Corner when both scrollbars are visible */
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
@@ -1555,7 +1789,6 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   transition: background 0s;
 }
 
-/* Optional: Style the button text */
 #menuContainer.ExtrasMenu #ExtraLaunch .BigButtonText {
   color: #16171A;
   font-weight: 650;
@@ -1756,7 +1989,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 .ModListItem .ModInner {
   display: flex;
   flex-direction: row-reverse;
-  gap: 12px; /* optional: spacing between views and likes */
+  gap: 12px; 
 }
 
 
