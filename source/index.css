@@ -1071,7 +1071,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 }
 
 .Commit.CommitTooltipTop:hover::after {
-  transform: translate(-50%, calc(-100% - 6px)) scale(1);
+  transform: translate(-50%, calc(-100% - 5.5px)) scale(1);
 }
 
 .Commit.CommitTooltipTop::before {
@@ -1491,15 +1491,15 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 5px !important;
-  max-height: 3px !important;
-  min-height: 30px;
-  padding: 0px 10px !important;
+  height: 2.5px !important;
+  max-height: 0px !important;
+  min-height: 0px;
+  padding: 13.5px 9.5px !important;
   
   /* colors & borders */
   background: #292C30;       /* default dark bg */
   border: 2px solid #56585c !important; /* subtle gray border */
-  border-radius: 8px !important;        /* gentle rounding */
+  border-radius: 6px !important;        /* gentle rounding */
   color: #FFFFFF !important;            /* white text */
   font-size: 0.9rem !important;
   font-weight: normal !important;         
