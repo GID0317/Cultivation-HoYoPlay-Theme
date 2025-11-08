@@ -1034,7 +1034,6 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   max-width: 300px; /* Limit width */
   max-height: 150px; /* Limit height */
   overflow: hidden; /* Scroll if content overflows */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow */
   opacity: 0; /* Hidden by default */
   pointer-events: none; /* Prevent interaction */
   transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
