@@ -668,7 +668,7 @@ function showSecretMenu() {
   fetch('index.json')
     .then(response => response.json())
     .then(themeData => {
-      const themeVersion = themeData.version || '5.0.0';
+      const themeVersion = themeData.version || '6.0.0';
       
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
@@ -779,7 +779,7 @@ function showSecretMenu() {
     })
     .catch(() => {
       // Fallback if fetch fails
-      const themeVersion = '5.0.0';
+      const themeVersion = '6.0.0';
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
       const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
