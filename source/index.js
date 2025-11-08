@@ -107,17 +107,17 @@ function addCommitTooltips() {
     const commitMessageCell = row.querySelector('.CommitMessage span');
     if (commitMessageCell) {
       const fullMessage = commitMessageCell.textContent || commitMessageCell.innerText;
+      const messageLength = fullMessage.trim().length;
       
-      // Only show tooltip if message is longer than 30 characters
-      if (fullMessage.trim().length > 30) {
-        // Set the full commit message as a data attribute for the tooltip
+      // Clean up any previous dynamic positioning handler to avoid stacking listeners.
+      row.onmouseenter = null;
+      
+      if (messageLength >= 86) {
+        // Very long messages (86+ chars): show tooltip on top
         row.setAttribute('data-commit-message', fullMessage);
-        
-        // Always show on top for long messages
         row.classList.add('CommitTooltipTop');
         row.classList.remove('CommitTooltipBottom');
         
-        // Clean up any previous dynamic positioning handler to avoid stacking listeners.
         row.onmouseenter = function () {
           const rect = row.getBoundingClientRect();
           // Anchor at row's top; CSS handles gap via transform
@@ -126,11 +126,23 @@ function addCommitTooltips() {
           row.style.setProperty('--tooltip-top', `${anchorY}px`);
           row.style.setProperty('--tooltip-left', `${anchorX}px`);
         };
+      } else if (messageLength >= 31) {
+        // Medium messages (31-85 chars): show tooltip on bottom
+        row.setAttribute('data-commit-message', fullMessage);
+        row.classList.add('CommitTooltipBottom');
+        row.classList.remove('CommitTooltipTop');
+        
+        row.onmouseenter = function () {
+          const rect = row.getBoundingClientRect();
+          const tooltipTop = rect.bottom; // Anchor at bottom; CSS adds gap
+          const tooltipLeft = rect.left + (rect.width / 2); // Center horizontally
+          row.style.setProperty('--tooltip-top', `${tooltipTop}px`);
+          row.style.setProperty('--tooltip-left', `${tooltipLeft}px`);
+        };
       } else {
-        // Remove tooltip functionality for short messages
+        // Short messages (30 chars or less): no tooltip
         row.removeAttribute('data-commit-message');
         row.classList.remove('CommitTooltipTop', 'CommitTooltipBottom');
-        row.onmouseenter = null;
       }
     }
   });
