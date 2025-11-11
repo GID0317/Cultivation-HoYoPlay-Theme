@@ -4,10 +4,10 @@
     Cultivation HoYoPlay Theme
     <br/>
   </h1>
-    <a href="https://github.com/GID0317/SilverMation/releases">
+    <a href="https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases">
       <img alt="Total" src="https://img.shields.io/github/downloads/GID0317/Cultivation-HoYoPlay-Theme/total?logo=github&style=flat-square&color=1E9BFA">
     </a>
-    <a href="https://github.com/GID0317/SilverMation/releases">
+    <a href="https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases">
       <img alt="Release" src="https://img.shields.io/github/v/release/GID0317/Cultivation-HoYoPlay-Theme?logo=visualstudio&style=flat-square&color=1E9BFA">
     </a>
 <div align="center">
