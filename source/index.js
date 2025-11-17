@@ -2898,6 +2898,18 @@ _applyCachedBackgroundOnStartup();
     menu.className = 'custom-dropdown-menu';
     menu.style.display = 'none';
     
+    // Helper: format Profiles trigger text to max 15 chars (last 3 as ...)
+    function formatProfilesText(text) {
+      try {
+        const t = String(text ?? '');
+        if (!isProfilesDropdown) return t;
+        if (t.length <= 15) return t;
+        return t.slice(0, 12) + '...';
+      } catch (_) {
+        return text;
+      }
+    }
+
     // Populate options
     function updateOptions() {
       menu.innerHTML = '';
@@ -2906,7 +2918,17 @@ _applyCachedBackgroundOnStartup();
       options.forEach((opt, index) => {
         const item = document.createElement('div');
         item.className = 'custom-dropdown-item';
-        item.textContent = opt.text;
+        // Build label + optional subtext (for Profiles default item)
+        const label = document.createElement('div');
+        label.className = 'custom-dropdown-label';
+        label.textContent = opt.text;
+        item.appendChild(label);
+        if (isProfilesDropdown && index === 0) {
+          const sub = document.createElement('div');
+          sub.className = 'custom-dropdown-subtext';
+          sub.textContent = 'Built-in cultivation profile';
+          item.appendChild(sub);
+        }
         item.dataset.value = opt.value;
         item.dataset.index = index;
         // Make focusable for keyboard navigation
@@ -2914,7 +2936,9 @@ _applyCachedBackgroundOnStartup();
         
         if (opt.selected) {
           item.classList.add('selected');
-          triggerText.textContent = opt.text;
+          const display = formatProfilesText(opt.text);
+          triggerText.textContent = display;
+          try { trigger.title = opt.text; } catch(_) {}
         }
         
         if (opt.disabled) {
@@ -2928,7 +2952,9 @@ _applyCachedBackgroundOnStartup();
             // Update UI
             menu.querySelectorAll('.custom-dropdown-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
-            triggerText.textContent = opt.text;
+            const display = formatProfilesText(opt.text);
+            triggerText.textContent = display;
+            try { trigger.title = opt.text; } catch(_) {}
             
             // Close menu
             closeMenu();
@@ -2940,6 +2966,8 @@ _applyCachedBackgroundOnStartup();
     }
     
     function openMenu() {
+      // Avoid re-running open logic if already open (prevents scroll resets on hover spam)
+      if (wrapper.classList.contains('open') && menu.style.display !== 'none') return;
       // Ensure only one dropdown can be open at a time
       closeAllDropdowns(wrapper);
       
@@ -2952,6 +2980,8 @@ _applyCachedBackgroundOnStartup();
       // Compute and lock final width BEFORE showing the menu to prevent horizontal "jumps"
       // Measure with the menu fully rendered (including scrollbar) but invisible
       (function lockMenuWidthBySelected() {
+        // Preserve current scroll position during measurement to avoid jumps
+        const prevScrollTop = menu.scrollTop;
         // Temporarily show menu invisibly with full layout to measure accurately
         const origVis = menu.style.visibility;
         const origDisplay = menu.style.display;
@@ -2971,6 +3001,8 @@ _applyCachedBackgroundOnStartup();
         menu.style.display = origDisplay;
         menu.style.visibility = origVis;
         menu.style.opacity = origOpacity;
+        // Restore previous scroll position
+        try { menu.scrollTop = prevScrollTop; } catch(_) {}
         
         // Clamp to reasonable bounds
         const minW = Math.ceil(rect.width);
@@ -3012,14 +3044,32 @@ _applyCachedBackgroundOnStartup();
         }
       } catch(_) {}
 
-      // Ensure selected item is visible within the 5-item viewport
+      // Do not auto-scroll or recenter on open (requested behavior)
+      
+      // After open animation, attempt a single recenter to the selected item if needed
       try {
-        const selectedEl = menu.querySelector('.custom-dropdown-item.selected');
-        if (selectedEl) {
-          // scrollIntoView with nearest to avoid jumping if already visible
-          selectedEl.scrollIntoView({ block: 'nearest' });
+        const items = menu.querySelectorAll('.custom-dropdown-item');
+        if (items && items.length > 4 && wrapper.getAttribute('data-recenter-done') !== '1') {
+          const ANIM_MS = 180; // sync with CSS
+          setTimeout(() => {
+            if (!wrapper.classList.contains('open') || menu.style.display === 'none') return;
+            const sel = menu.querySelector('.custom-dropdown-item.selected');
+            if (!sel) return;
+            const top = sel.offsetTop;
+            const bottom = top + sel.offsetHeight;
+            const viewTop = menu.scrollTop;
+            const viewBottom = viewTop + menu.clientHeight;
+            const outOfView = top < viewTop || bottom > viewBottom;
+            if (outOfView) {
+              const centerTarget = top - Math.max(0, (menu.clientHeight - sel.offsetHeight) / 2);
+              const maxScroll = Math.max(0, menu.scrollHeight - menu.clientHeight);
+              const target = Math.max(0, Math.min(centerTarget, maxScroll));
+              menu.scrollTo({ top: target, behavior: 'smooth' });
+            }
+            try { wrapper.setAttribute('data-recenter-done', '1'); } catch(_) {}
+          }, ANIM_MS);
         }
-      } catch (_) {}
+      } catch(_) {}
       
       // Remove opening class after animation
       setTimeout(() => {
@@ -3032,6 +3082,8 @@ _applyCachedBackgroundOnStartup();
       menu.classList.add('closing');
       wrapper.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
+      // Reset per-open recenter guard
+      try { wrapper.removeAttribute('data-recenter-done'); } catch(_) {}
       
       // Hide after animation completes
       setTimeout(() => {
@@ -3169,7 +3221,9 @@ _applyCachedBackgroundOnStartup();
     nativeSelect.addEventListener('change', () => {
       const selected = nativeSelect.options[nativeSelect.selectedIndex];
       if (selected) {
-        triggerText.textContent = selected.text;
+        const display = formatProfilesText(selected.text);
+        triggerText.textContent = display;
+        try { trigger.title = selected.text; } catch(_) {}
         menu.querySelectorAll('.custom-dropdown-item').forEach((item, index) => {
           item.classList.toggle('selected', index === nativeSelect.selectedIndex);
         });
