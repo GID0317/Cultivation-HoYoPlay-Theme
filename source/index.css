@@ -75,10 +75,10 @@
   justify-content: space-between;
 }
 
-/* Make the Profiles dropdown trigger slightly translucent to match hoyoplay style */
+/* Make the Profiles dropdown trigger slightly translucent to match reference style */
 .custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger {
-  background: rgb(0 0 0 / 38%) !important; 
-  border: 1px solid rgb(156 156 156 / 35%); 
+  background: rgb(0 0 0 / 38%) !important; /* translucent version of #292C30 */
+  border: 1px solid rgb(156 156 156 / 35%); /* soft light border like reference pill */
   padding: 6px 10px 6px 7px;
   width: auto;         /* shrink-to-fit content */
   max-width: none;     /* allow growth when text is long */
@@ -148,7 +148,7 @@
   box-shadow: 0 0px 15px rgba(0, 0, 0, 0.211); /* Deep shadow for depth */
   margin-top: 4px; /* Space below trigger */
   /* Limit visible items to ~5; extra items scroll */
-  max-height: 210px; /* ~5 items, keeps menu from growing too tall */
+  max-height: 224px; /* ~5 items, keeps menu from growing too tall */
   overflow-y: auto; /* Enable scrolling for long lists */
   /* Manage scrollbar gutter dynamically via a class to avoid extra right gap */
   scrollbar-gutter: auto; /* No reserved space by default */
@@ -190,6 +190,17 @@
 /* For upward-opening menus, override closing animation so they collapse toward the trigger (topwards) */
 .custom-dropdown-wrapper.open-up .custom-dropdown-menu.closing {
   animation: dropdownScaleOutUp 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Profiles dropdown: slightly slower open/close for a softer feel */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu.opening {
+  animation: dropdownScaleIn 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu.closing {
+  animation: dropdownScaleOut 0.20s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.custom-dropdown-wrapper.custom-dropdown-profiles.open-up .custom-dropdown-menu.closing {
+  animation: dropdownScaleOutUp 0.20s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Scale in animation (top to bottom) */
@@ -273,6 +284,14 @@
   margin: 5px 0;
 }
 
+/* Subtext styling under a menu label (e.g., Built-in profile) */
+.custom-dropdown-item .custom-dropdown-subtext {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
+
 /* Dropdown item on hover */
 .custom-dropdown-item:hover {
   background: rgba(255, 255, 255, 0.06);
@@ -309,6 +328,12 @@
 
 /* Selected dropdown item on hover */
 .custom-dropdown-item.selected:hover {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Profiles dropdown: make selected item always look hovered (even without hover) */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu .custom-dropdown-item.selected {
   background: rgba(60, 63, 70, 0.9);
   color: #f2d02a;
 }
@@ -615,14 +640,7 @@
 /* Pseudo-element no longer used for right divider; using border-right instead */
 
 /* While HoYoPlay video is playing, fade the left bar and its right-edge line */
-body.hoyoplay-video-playing #leftBar {
-  /* background: transparent !important;
-  border-left: 1.5px solid rgba(166, 166, 166, 0.5) !important;
-  border-top: 1.5px solid rgba(166, 166, 166, 0.5) !important;
-  border-bottom: 1.5px solid rgba(166, 166, 166, 0.5) !important;
-  border-right: none !important; */
-}
-/* No ::after needed during playback either */
+/* Removed empty ruleset to satisfy linter; styling intentionally handled elsewhere */
 
 /* 1) Make both controls flex–centered squares */
 
@@ -1265,6 +1283,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #dde5e1 !important;
   margin-bottom: 0px !important;
   position: relative !important; /* Allow positioning of pseudo-elements */
+  min-width: fit-content;
 }
 
 #menuOptionsContainerMigoto .SmallButtonSection{
@@ -1829,6 +1848,11 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
     background: #292C30 !important;
     border-bottom: 1px solid #5b5d61;
     color: #CAD2CE !important;
+}
+
+input#profile_name {
+    border-radius: 0px !important;
+    margin-left: 383px;
 }
 
 .TextClear {
@@ -2577,6 +2601,51 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
   color: #E1E1E1;
 }
 
+/* Temporary styling while waiting the main aplication to actualy fix the style*/
+/* Profile Save button: show icon only (Segoe MDL2 Assets E74E) */
+/* Override button styling - remove background and border */
+#profileConfigContainer #saveProfile.BigButton,
+#profileConfigContainer .BigButton#saveProfile,
+.OptionSection #saveProfile.BigButton {
+  background: transparent !important;
+  border: none !important;
+  padding: 8px !important;
+  min-width: auto !important;
+  width: auto !important;
+  transition: opacity 0.1s !important;
+  margin-left: 2px;
+}
+#profileConfigContainer #saveProfile.BigButton:hover,
+#profileConfigContainer .BigButton#saveProfile:hover,
+.OptionSection #saveProfile.BigButton:hover {
+  opacity: 0.7 !important;
+}
+/* Hide text and show icon */
+#profileConfigContainer #saveProfile .BigButtonText,
+#profileConfigContainer .BigButton#saveProfile .BigButtonText,
+#saveProfile.BigButton .BigButtonText {
+  position: relative !important;
+  color: transparent !important;   /* hide original text */
+  font-size: 0 !important;         /* collapse text glyph */
+  line-height: 0 !important;
+}
+#profileConfigContainer #saveProfile .BigButtonText::before,
+#profileConfigContainer .BigButton#saveProfile .BigButtonText::before,
+#saveProfile.BigButton .BigButtonText::before {
+  content: '\E74E' !important;
+  font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
+  font-size: 19px !important;      /* icon size */
+  line-height: 1 !important;
+  color: #FFFFFF !important;       /* inherit white; theme overrides still apply */
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+#saveprofile .BigButton {
+  background: none !important;
+  border: none !important;
+}
+
 /* Secondary = middle "Copy Information" */
 #secretMenuContainer .FooterButton.secondary {
   border: 2px solid #56585c !important;
@@ -2734,4 +2803,5 @@ body:has(#ExtrasMenuButton) .NotifShow {
 .custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu {
   min-width: 0;     /* allow narrow menus when items are short */
   max-width: 420px; /* permit longer names to expand a bit more */
+  max-height: 241px; 
 }
