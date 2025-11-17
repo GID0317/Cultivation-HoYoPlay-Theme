@@ -50,6 +50,12 @@
   width: 100%;
 }
 
+/* Profiles dropdown: let wrapper and trigger size to content */
+.custom-dropdown-wrapper.custom-dropdown-profiles {
+  width: auto;
+  display: inline-flex;
+}
+
 /* Dropdown trigger button (replaces native select appearance) */
 .custom-dropdown-trigger {
   width: 100%;
@@ -67,6 +73,37 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* Make the Profiles dropdown trigger slightly translucent to match hoyoplay style */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger {
+  background: rgb(0 0 0 / 38%) !important; 
+  border: 1px solid rgb(156 156 156 / 35%); 
+  padding: 6px 10px 6px 7px;
+  width: auto;         /* shrink-to-fit content */
+  max-width: none;     /* allow growth when text is long */
+}
+
+/* Preserve translucent styling for Profiles dropdown even when open/hover/focused */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger:hover,
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger:focus,
+.custom-dropdown-wrapper.custom-dropdown-profiles.open .custom-dropdown-trigger {
+  background: rgb(0 0 0 / 48%) !important; /* keep translucent pill */
+}
+
+/* Leading icon inside specific dropdowns (e.g., Profiles) */
+.custom-dropdown-leading-icon {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', sans-serif;
+  font-size: 14px;
+  margin-right: 8px; /* a bit more space before text */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure text doesn't overlap icon in Profiles dropdown */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-text {
+  margin-left: 2px;
 }
 
 /* Hover state for trigger button */
@@ -92,6 +129,11 @@
   white-space: nowrap;
 }
 
+/* Profiles trigger text should size to content, not stretch */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-text {
+  flex: 0 0 auto;
+}
+
 /* Arrow indicator (hidden to use native arrow) */
 .custom-dropdown-arrow {
   display: none;
@@ -108,8 +150,8 @@
   /* Limit visible items to ~5; extra items scroll */
   max-height: 210px; /* ~5 items, keeps menu from growing too tall */
   overflow-y: auto; /* Enable scrolling for long lists */
-  /* Prefer overlay scrollbars that do NOT consume layout width when supported */
-  scrollbar-gutter: stable overlay; /* Modern spec-compliant browsers */
+  /* Manage scrollbar gutter dynamically via a class to avoid extra right gap */
+  scrollbar-gutter: auto; /* No reserved space by default */
   min-width: 200px; /* Minimum menu width */
   width: max-content; /* Expand to fit content */
   max-width: 300px; /* Maximum menu width */
@@ -118,6 +160,14 @@
   left: auto;
   /* Animation properties */
   transform-origin: top center; /* Scale from top */
+  box-sizing: border-box; /* Keep outer width stable when scrollbar appears */
+}
+
+/* When wrapper is marked to open upwards, flip menu origin and spacing */
+.custom-dropdown-wrapper.open-up .custom-dropdown-menu {
+  margin-top: 0; /* no space below trigger when opening up */
+  margin-bottom: 6px; /* small gap below the menu when above the trigger */
+  transform-origin: bottom center; /* Scale from bottom when opening upward */
 }
 
 /* Fallback for older Chromium/WebKit that still honors overflow: overlay */
@@ -132,9 +182,14 @@
   animation: dropdownScaleIn 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Dropdown menu closing animation */
+/* Dropdown menu closing animation (default: bottom-to-top collapse for menus that open downward) */
 .custom-dropdown-menu.closing {
   animation: dropdownScaleOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* For upward-opening menus, override closing animation so they collapse toward the trigger (topwards) */
+.custom-dropdown-wrapper.open-up .custom-dropdown-menu.closing {
+  animation: dropdownScaleOutUp 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Scale in animation (top to bottom) */
@@ -149,7 +204,7 @@
   }
 }
 
-/* Scale out animation (bottom to top) */
+/* Scale out animation (bottom to top) for menus that open downward */
 @keyframes dropdownScaleOut {
   0% {
     opacity: 1;
@@ -163,6 +218,20 @@
     opacity: 0;
     transform: scaleY(0);
     transform-origin: top center;
+  }
+}
+
+/* Scale out animation (top to bottom) for menus that open upward (so they visually close down toward the trigger) */
+@keyframes dropdownScaleOutUp {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: bottom center;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: bottom center;
   }
 }
 
@@ -194,7 +263,7 @@
 
 /* Individual dropdown option item */
 .custom-dropdown-item {
-  padding: 10px 40px 10px 10px; /* Extra right padding for checkmark */
+  padding: 10px 48px 10px 10px; /* Extra right padding for checkmark (slightly increased) */
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -358,6 +427,11 @@
 
 #serverControls .Checkbox {
   margin-left: 28px;
+  margin-top: 5px;
+}
+
+#serverControls{
+  height: 40px;
 }
 
 
@@ -2644,4 +2718,20 @@ body:has(#ExtrasMenuButton) .NotifShow {
   line-height: 20px;
   text-align: center;
   color: #ffffff;
+}
+
+#menuOptionsContainerProfiles {
+    width: auto;
+    margin-right: 10px;
+}
+
+/* When the menu actually scrolls, reserve gutter to prevent layout shift */
+.custom-dropdown-menu.has-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* Profiles dropdown menu: allow smaller minimum and a slightly larger maximum */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu {
+  min-width: 0;     /* allow narrow menus when items are short */
+  max-width: 420px; /* permit longer names to expand a bit more */
 }
