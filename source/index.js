@@ -2856,6 +2856,17 @@ _applyCachedBackgroundOnStartup();
     // Create wrapper
     const wrapper = document.createElement('div');
     wrapper.className = 'custom-dropdown-wrapper';
+    // If this select belongs to the Profiles option, force the menu to open upwards
+    // and mark it so we can show a leading icon in the trigger.
+    let isProfilesDropdown = false;
+    try {
+      const parentId = nativeSelect.parentNode && nativeSelect.parentNode.id;
+      if (nativeSelect.id === 'menuOptionsSelectMenuProfiles' || parentId === 'menuOptionsSelectProfiles') {
+        wrapper.classList.add('open-up');
+        wrapper.classList.add('custom-dropdown-profiles');
+        isProfilesDropdown = true;
+      }
+    } catch (_) {}
     
     // Create trigger button
     const trigger = document.createElement('button');
@@ -2864,12 +2875,22 @@ _applyCachedBackgroundOnStartup();
     
     const triggerText = document.createElement('span');
     triggerText.className = 'custom-dropdown-text';
+
+    // Optional leading icon (used for Profiles dropdown only)
+    let triggerIcon = null;
+    if (isProfilesDropdown) {
+      triggerIcon = document.createElement('span');
+      triggerIcon.className = 'custom-dropdown-leading-icon';
+      // Use Segoe Fluent glyph \uE8AB ("Switch" icon)
+      triggerIcon.textContent = '\uE8AB';
+      trigger.appendChild(triggerIcon);
+    }
     
     const triggerArrow = document.createElement('span');
     triggerArrow.className = 'custom-dropdown-arrow';
     triggerArrow.textContent = '▼';
     
-    trigger.appendChild(triggerText);
+  trigger.appendChild(triggerText);
     trigger.appendChild(triggerArrow);
     
     // Create dropdown menu
@@ -2921,17 +2942,75 @@ _applyCachedBackgroundOnStartup();
     function openMenu() {
       // Ensure only one dropdown can be open at a time
       closeAllDropdowns(wrapper);
+      
+      // Position menu relative to trigger (right-aligned) and lock width early to avoid late reflow/shift
+      const rect = trigger.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      // Default gap between trigger and menu
+      const gap = 8;
+      
+      // Compute and lock final width BEFORE showing the menu to prevent horizontal "jumps"
+      // Measure with the menu fully rendered (including scrollbar) but invisible
+      (function lockMenuWidthBySelected() {
+        // Temporarily show menu invisibly with full layout to measure accurately
+        const origVis = menu.style.visibility;
+        const origDisplay = menu.style.display;
+        const origOpacity = menu.style.opacity;
+        
+        menu.style.visibility = 'hidden';
+        menu.style.display = 'block';
+        menu.style.opacity = '0';
+        
+        // Force a reflow to ensure scrollbar is rendered if needed
+        void menu.offsetHeight;
+        
+        // Now measure the actual rendered width including scrollbar gutter
+        const contentWidth = Math.ceil(menu.offsetWidth);
+        
+        // Restore original state
+        menu.style.display = origDisplay;
+        menu.style.visibility = origVis;
+        menu.style.opacity = origOpacity;
+        
+        // Clamp to reasonable bounds
+        const minW = Math.ceil(rect.width);
+        const maxW = isProfilesDropdown ? 420 : 300;
+        const finalW = Math.max(minW, Math.min(contentWidth, maxW));
+        
+        menu.style.width = finalW + 'px';
+        menu.style.minWidth = finalW + 'px';
+      })();
+      
+      // Now show and animate the menu with width already locked
       menu.style.display = 'block';
       menu.classList.remove('closing');
       menu.classList.add('opening');
       wrapper.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
-      
-      // Position menu below trigger (right-aligned)
-      const rect = trigger.getBoundingClientRect();
-      const wrapperRect = wrapper.getBoundingClientRect();
-      menu.style.top = (rect.bottom - wrapperRect.top) + 'px';
-      menu.style.minWidth = rect.width + 'px';
+
+      // If wrapper has open-up class, position menu above the trigger
+      if (wrapper.classList.contains('open-up')) {
+        // ensure menu has layout so offsetHeight is measurable
+        const menuHeight = menu.offsetHeight || (menu.getBoundingClientRect().height || 0);
+        // place menu so its bottom is gap px above trigger.top
+        menu.style.top = (rect.top - wrapperRect.top - menuHeight - gap) + 'px';
+        // scale from bottom for open animation
+        menu.style.transformOrigin = 'bottom center';
+      } else {
+        // position below
+        menu.style.top = (rect.bottom - wrapperRect.top) + 'px';
+        menu.style.transformOrigin = 'top center';
+      }
+  // minWidth already set to finalW above
+
+      // Toggle a class to reserve scrollbar gutter only if we actually scroll
+      try {
+        if (menu.scrollHeight > menu.clientHeight) {
+          menu.classList.add('has-scroll');
+        } else {
+          menu.classList.remove('has-scroll');
+        }
+      } catch(_) {}
 
       // Ensure selected item is visible within the 5-item viewport
       try {
@@ -2970,12 +3049,62 @@ _applyCachedBackgroundOnStartup();
     }
     
     // Event listeners
+    // Click still toggles the menu for all dropdowns
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      // If another dropdown is open, close it first
       closeAllDropdowns(wrapper);
       toggleMenu();
     });
+
+    // For the Profiles dropdown, also open on hover (mouseenter) and keep it
+    // open while the pointer is over the trigger or menu. When the pointer
+    // leaves the wrapper entirely, close it.
+    if (wrapper.classList.contains('custom-dropdown-profiles')) {
+      let hoverCloseTimeout = null;
+      let hoverOpenTimeout = null;
+
+      const scheduleCloseOnLeave = () => {
+        // small delay to allow moving between trigger and menu without flicker
+        hoverCloseTimeout = setTimeout(() => {
+          closeMenu();
+        }, 120);
+      };
+
+      const cancelScheduledClose = () => {
+        if (hoverCloseTimeout) {
+          clearTimeout(hoverCloseTimeout);
+          hoverCloseTimeout = null;
+        }
+      };
+
+      const scheduleOpenOnHover = () => {
+        if (hoverOpenTimeout) return; // already scheduled
+        hoverOpenTimeout = setTimeout(() => {
+          // Only open on hover if it's currently closed
+          if (menu.style.display === 'none') {
+            openMenu();
+          }
+          hoverOpenTimeout = null;
+        }, 130); // 0.13s delay before opening on hover
+      };
+
+      const cancelScheduledOpen = () => {
+        if (hoverOpenTimeout) {
+          clearTimeout(hoverOpenTimeout);
+          hoverOpenTimeout = null;
+        }
+      };
+
+      wrapper.addEventListener('mouseenter', () => {
+        cancelScheduledClose();
+        scheduleOpenOnHover();
+      });
+
+      wrapper.addEventListener('mouseleave', () => {
+        cancelScheduledOpen();
+        scheduleCloseOnLeave();
+      });
+    }
     
     // Close on outside click
     document.addEventListener('click', (e) => {
