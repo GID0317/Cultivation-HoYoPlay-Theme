@@ -2898,13 +2898,45 @@ _applyCachedBackgroundOnStartup();
     menu.className = 'custom-dropdown-menu';
     menu.style.display = 'none';
     
-    // Helper: format Profiles trigger text to max 15 chars (last 3 as ...)
+    // Text measurement helpers for pixel-accurate truncation
+    const __measureCanvas = document.createElement('canvas');
+    const __measureCtx = __measureCanvas.getContext('2d');
+    function getFontShorthand(el) {
+      const cs = window.getComputedStyle(el);
+      // Prefer full shorthand if available; else build a safe string
+      return cs.font || [cs.fontStyle, cs.fontVariant, cs.fontWeight, cs.fontSize, cs.fontFamily].join(' ');
+    }
+    function measureTextPx(text, font) {
+      if (!__measureCtx) return text.length * 8; // fallback
+      __measureCtx.font = font;
+      return __measureCtx.measureText(text).width;
+    }
+    function truncateToWidth(text, maxPx, font) {
+      const raw = String(text ?? '');
+      const ellipsis = '...';
+      const ellipsisW = measureTextPx(ellipsis, font);
+      if (measureTextPx(raw, font) <= maxPx) return raw;
+      const codepoints = Array.from(raw);
+      let low = 0, high = codepoints.length; // binary search for best fit
+      while (low < high) {
+        const mid = Math.floor((low + high + 1) / 2);
+        const sliceW = measureTextPx(codepoints.slice(0, mid).join(''), font) + ellipsisW;
+        if (sliceW <= maxPx) low = mid; else high = mid - 1;
+      }
+      return codepoints.slice(0, Math.max(0, low)).join('') + ellipsis;
+    }
+
+    // Helper: format Profiles trigger text by pixel width (about 10ch of current font)
+    // This avoids uneven visual width from variable character sizes across locales.
     function formatProfilesText(text) {
       try {
-        const t = String(text ?? '');
-        if (!isProfilesDropdown) return t;
-        if (t.length <= 15) return t;
-        return t.slice(0, 12) + '...';
+        const raw = String(text ?? '');
+        if (!isProfilesDropdown) return raw;
+        // Base the target width on current font's "0" width times 10 (10ch)
+        const font = getFontShorthand(triggerText);
+        const chWidth = Math.max(1, measureTextPx('0', font));
+        const maxPx = chWidth * 10; // visual width equivalent to ~10 monospace characters
+        return truncateToWidth(raw, maxPx, font);
       } catch (_) {
         return text;
       }
