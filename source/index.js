@@ -2938,7 +2938,6 @@ _applyCachedBackgroundOnStartup();
           item.classList.add('selected');
           const display = formatProfilesText(opt.text);
           triggerText.textContent = display;
-          try { trigger.title = opt.text; } catch(_) {}
         }
         
         if (opt.disabled) {
@@ -2954,7 +2953,6 @@ _applyCachedBackgroundOnStartup();
             item.classList.add('selected');
             const display = formatProfilesText(opt.text);
             triggerText.textContent = display;
-            try { trigger.title = opt.text; } catch(_) {}
             
             // Close menu
             closeMenu();
@@ -3223,7 +3221,6 @@ _applyCachedBackgroundOnStartup();
       if (selected) {
         const display = formatProfilesText(selected.text);
         triggerText.textContent = display;
-        try { trigger.title = selected.text; } catch(_) {}
         menu.querySelectorAll('.custom-dropdown-item').forEach((item, index) => {
           item.classList.toggle('selected', index === nativeSelect.selectedIndex);
         });
