@@ -483,6 +483,7 @@
 
 #serverControls{
   height: 40px;
+  text-shadow: none !important;
 }
 
 
