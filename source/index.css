@@ -457,6 +457,10 @@
     radial-gradient(ellipse 600px 450px at 0% 100%, rgba(0,0,0,0.6) 0%, transparent 70%);
 }
 
+.TopButton img{
+  filter: brightness(0) invert(0.9) !important;
+  }
+
 #serverLaunchContainer {
   display: flex;
   width: 100%;               /* make the container span its parent */
