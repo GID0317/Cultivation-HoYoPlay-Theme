@@ -438,23 +438,18 @@
   position: relative;
 }
 
-/* Corner vignettes - positioned to avoid wallpaper circle transition areas */
-.App::before {
-  content: '';
+/* Corner vignettes layer (separate element to avoid interfering with UI stacking) */
+#vignetteCorners {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   pointer-events: none;
-  z-index: 1;
-  background: 
-    /* Top right corner vignette */
-    radial-gradient(ellipse 600px 450px at 100% 0%, rgba(0,0,0,0.6) 0%, transparent 70%),
-    /* Bottom right corner vignette */
-    radial-gradient(ellipse 600px 450px at 100% 100%, rgba(0,0,0,0.6) 0%, transparent 70%),
-    /* Bottom left corner vignette */
-    radial-gradient(ellipse 600px 450px at 0% 100%, rgba(0,0,0,0.6) 0%, transparent 70%);
+  z-index: 0; /* sits above fade overlay (-1) and below UI (>=1/10) */
+  background:
+    radial-gradient(ellipse 560px 420px at 100% 0%, rgba(0,0,0,0.55) 0%, transparent 72%),
+    radial-gradient(ellipse 560px 420px at 100% 100%, rgba(0,0,0,0.55) 0%, transparent 72%),
+    radial-gradient(ellipse 560px 420px at 0% 100%, rgba(0,0,0,0.55) 0%, transparent 72%);
+  /* Prevent paint bleed during transforms */
+  will-change: opacity;
 }
 
 #modsBtn img,
