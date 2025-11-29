@@ -769,8 +769,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 .GameInstallNotify {
   position: fixed;
   top: 32px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;                 /* allow centering via margin:auto */
   background-color: #1a1a1a;        /* dark background */
   color: #ffffff;                  /* white text */
   padding: 5px 20px;              /* spacing inside */
@@ -780,7 +780,9 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   justify-content: space-between; /* space between text and close icon */
   font-family: 'Segoe UI', sans-serif;
   font-size: 1rem;
-  max-width: fit-content;          /* shrink to fit content */
+  width: fit-content;              /* shrink to fit content */
+  width: -moz-fit-content;         /* Firefox prefix safeguard */
+  width: max-content;              /* fallback */
   margin: 16px auto;               /* center horizontally */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);  /* subtle shadow */
   border: 2px solid #474748;       /* Add border with color (e.g., yellow) */
@@ -790,18 +792,18 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   
   /* Start from hidden state */
   opacity: 0;
-  transform: translateX(-50%) translateY(-20px);
+  transform: translateY(-20px);    /* animate only Y to avoid X-shift */
 }
 
 /* Slide-down animation keyframes */
 @keyframes notifySlideDown {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
+    transform: translateY(-20px);
   }
   100% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -814,11 +816,11 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 @keyframes notifyFadeOut {
   0% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
