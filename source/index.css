@@ -441,13 +441,13 @@
 /* Corner vignettes - positioned to avoid wallpaper circle transition areas */
 .App::before {
   content: '';
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
   background: 
     /* Top right corner vignette */
     radial-gradient(ellipse 600px 450px at 100% 0%, rgba(0,0,0,0.6) 0%, transparent 70%),
@@ -627,10 +627,14 @@
   padding: 0 0px !important;
   margin-right: 6px;
   -webkit-app-region: no-drag;    /* so clicks register on the buttons */
+  position: relative;
+  z-index: 10;
 }
 
 .TopButton {
     margin: 0 8.5px;
+    position: relative;
+    z-index: 10;
 }
 
 #title {
@@ -1075,7 +1079,9 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 #version {
   margin-left: 80px !important; /* or adjust to your liking */
   font-size: 14px;              
-  color: #ffffff;                  
+  color: #ffffff;
+  position: relative;
+  z-index: 10;
 }
 
 #unassumingButton {
