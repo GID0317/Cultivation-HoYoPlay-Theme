@@ -435,6 +435,26 @@
 .App {
   background-size: cover; /* Ensure the image covers the entire area */
   background-position: left 50px top 0; /* Add a 50px margin-like effect on the left */
+  position: relative;
+}
+
+/* Corner vignettes - positioned to avoid wallpaper circle transition areas */
+.App::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: 
+    /* Top right corner vignette */
+    radial-gradient(ellipse 600px 450px at 100% 0%, rgba(0,0,0,0.6) 0%, transparent 70%),
+    /* Bottom right corner vignette */
+    radial-gradient(ellipse 600px 450px at 100% 100%, rgba(0,0,0,0.6) 0%, transparent 70%),
+    /* Bottom left corner vignette */
+    radial-gradient(ellipse 600px 450px at 0% 100%, rgba(0,0,0,0.6) 0%, transparent 70%);
 }
 
 #serverLaunchContainer {
@@ -2636,7 +2656,7 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
   font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
   font-size: 19px !important;      /* icon size */
   line-height: 1 !important;
-  color: #FFFFFF !important;       /* inherit white; theme overrides still apply */
+  color: #cecece !important;       /* inherit white; theme overrides still apply */
   display: inline-block !important;
   vertical-align: middle !important;
 }
