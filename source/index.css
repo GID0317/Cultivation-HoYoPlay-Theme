@@ -458,7 +458,12 @@
 }
 
 .TopButton img{
-  filter: brightness(0) invert(0.9) !important;
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.80;
+  }
+
+  .TopButton img:hover{
+  opacity: 1;
   }
 
 #serverLaunchContainer {
