@@ -457,12 +457,14 @@
     radial-gradient(ellipse 600px 450px at 0% 100%, rgba(0,0,0,0.6) 0%, transparent 70%);
 }
 
-.TopButton img{
+#modsBtn img,
+#downloadsBtn img {
   filter: brightness(0) invert(1) !important;
   opacity: 0.80;
   }
 
-  .TopButton img:hover{
+#modsBtn:hover img,
+#downloadsBtn:hover img {
   opacity: 1;
   }
 
