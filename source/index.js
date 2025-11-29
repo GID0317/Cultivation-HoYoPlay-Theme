@@ -2652,7 +2652,7 @@ function setCustomBackground(url) {
         position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
         width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none',
         backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover',
-        opacity: '0', transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)', zIndex: '0'
+        opacity: '0', transition: 'opacity 0.36s cubic-bezier(.4,0,.2,1)', zIndex: '0'
       });
       // Ensure app is positioning context
       const cs = window.getComputedStyle(appElement);
@@ -2660,6 +2660,12 @@ function setCustomBackground(url) {
       // Insert as first child to sit under UI with positive z-index
       if (appElement.firstChild) appElement.insertBefore(ov, appElement.firstChild); else appElement.appendChild(ov);
       __BG_FADE_STATE.overlay = ov;
+      // Ensure vignette layer exists above overlay but below UI
+      if (!document.getElementById('vignetteCorners')) {
+        const vc = document.createElement('div');
+        vc.id = 'vignetteCorners';
+        appElement.appendChild(vc); // appended after overlay so higher in DOM order
+      }
     }
 
     const fadeOverlay = __BG_FADE_STATE.overlay;
