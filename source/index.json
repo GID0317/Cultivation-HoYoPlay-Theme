@@ -1,18 +1,17 @@
 {
   "name": "HoYoPlay Theme",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Oficially unofficial HoYoPlay theme for Cultivation Launcher.",
   "includes": {
     
-    "_README": "You can include any amount of CSS and JS files here. Paths are relative to the theme directory.",
+    "_README": "Oficially unofficial HoYoPlay theme for Cultivation Launcher. Dont forget to report bugs or request features on the GitHub page!",
 
     "css": ["/index.css"],
     "js": ["/index.js"]
   },
 
-  "_README": "These are optional. Including neither will result in the launcher simply using the default background choice.",
+  "_README": "Using the default background choice.",
 
   "customBackgroundPath": "/background/bg.png",
   "customBackgroundURL": ""
 }
-
