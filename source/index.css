@@ -1295,19 +1295,132 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #b0b0b0;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.33s, color 0.33s;
   margin-bottom: 2px;
 }
 
 #settings-sidebar-nav .sidebar-nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #292b30;
   color: #ffffff;
+  transition: background 0.3s, color 0.3s;
 }
 
 #settings-sidebar-nav .sidebar-nav-item.active {
   background: #303136;
   color: #ffffff;
+  transition: background 0.3s, color 0.3s;
 }
+
+/* Settings About page */
+#settings-about-page {
+  margin-left: 250px;
+  padding: 16px 24px;
+  padding-top: 0px;
+  padding-left: 10px;
+  padding-right: 0px;
+  max-height: calc(480px - 50px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#settings-about-page .OptionSection {
+  background: #292c30 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 1px !important;
+  width: 90%;
+}
+
+/* About page Check button with search icon */
+#aboutCheckVersionBtn::before {
+  content: '\E721';
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.8em;
+  margin-right: 8px;
+  margin-bottom: -2.5px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+/* Theme check button icon (same search icon) */
+#aboutCheckThemeVersionBtn::before {
+  content: '\E721';
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.8em;
+  margin-right: 8px;
+  margin-bottom: -2.5px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+/* View Update Log - interactive section */
+#aboutViewUpdateLog,
+#aboutViewThemeUpdateLog {
+  cursor: pointer;
+  transition: background 0s;
+}
+
+#aboutViewUpdateLog:hover,
+#aboutViewThemeUpdateLog:hover {
+  background: #32363b !important;
+}
+
+#aboutViewUpdateLog:active,
+#aboutViewThemeUpdateLog:active {
+  background: #3a3f45 !important;
+}
+
+/* About page app info section */
+#settings-about-page #aboutAppInfo.OptionSection {
+  background: transparent !important;
+  padding-left: 0px !important;
+}
+
+#aboutAppInfo .OptionLabel {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px;
+}
+
+/* About page Cultivation icon */
+#aboutCultivationIcon {
+  width: 40px;
+  border-radius: 8px;
+}
+
+#aboutAppName {
+  line-height: 1;
+  font-weight: 400;
+  font-size: medium;
+  color: #ffffff;
+}
+
+.about-separator {
+  color: #5c5e62;
+  margin: 0 -4px;
+  font-weight: 300;
+}
+
+.about-version {
+  color: #7f7f88;
+  font-weight: 400;
+  font-size: medium;
+}
+
+/* About page arrow icon */
+.about-arrow {
+  color: #7f7f88 !important;
+  font-size: 26px;
+}
+
+
 
 /* Settings sidebar nav items */
 #menuContainer.Menu.Options #menuContent {
@@ -1355,6 +1468,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 #menuHeading {
   font-size: 1.1rem !important;
   color: #ffffff !important;
+  font-weight: 400 !important;
 }
 
 /* 3. Kontainer isi, dengan scroll jika overflow */
@@ -1386,6 +1500,20 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
     color: #888A8C;
     text-decoration-line: none;
     font-size: 0.9rem !important;
+}
+
+/* Reduce height for the About page 'Theme' header to avoid built-in header interference */
+#settings-about-page .HeaderText {
+  display: block !important;
+  width: 100% !important;
+  margin: 30px 0px 8px 0 !important;
+  padding: 0 !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  align-items: normal !important;
+  justify-content: normal !important;
 }
 
 .Divider {
