@@ -1221,7 +1221,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 }
 
 /* 1. Bungkus utama: rounded corners, semi‑translucent, drop‑shadow */
-#menuContainer {
+#menuContainer,
+#advancedDialogContainer {
   background: #212429 !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
@@ -1246,15 +1247,22 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   opacity: 1;
 }
 
+/* Advanced dialog appears above secret menu */
+#advancedDialogContainer {
+  z-index: 10000 !important;
+}
+
 /* Options menu: wider to fit sidebar + content */
-#menuContainer.Menu.Options {
-  width: 860px !important;
+#menuContainer.Menu.Options,
+#advancedDialogContainer.Menu.Options {
+  width: 800px !important;
   height: 480px !important;
   max-height: 480px !important;
 }
 
 /* Settings sidebar (left panel) */
-#menuContainer.Menu.Options::before {
+#menuContainer.Menu.Options::before,
+#advancedDialogContainer.Menu.Options::before {
   content: '';
   position: absolute;
   left: 0;
@@ -1277,8 +1285,21 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   z-index: 2;
 }
 
+/* Advanced dialog sidebar title "Advanced Settings" */
+#advancedDialogContainer.Menu.Options::after {
+  content: 'Advanced Settings';
+  position: absolute;
+  left: 30px;
+  top: 29px;
+  font-size: 1.13rem;
+  font-weight: 500;
+  color: #8b8b8e;
+  z-index: 2;
+}
+
 /* Settings sidebar "General" nav button - injected via JS */
-#settings-sidebar-nav {
+#settings-sidebar-nav,
+#advanced-sidebar-nav {
   position: absolute;
   left: 0;
   top: 60px;
@@ -1288,7 +1309,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   box-sizing: border-box;
 }
 
-#settings-sidebar-nav .sidebar-nav-item {
+#settings-sidebar-nav .sidebar-nav-item,
+#advanced-sidebar-nav .sidebar-nav-item {
   display: block;
   padding: 9px 16px;
   border-radius: 8px;
@@ -1299,13 +1321,15 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   margin-bottom: 2px;
 }
 
-#settings-sidebar-nav .sidebar-nav-item:hover {
+#settings-sidebar-nav .sidebar-nav-item:hover,
+#advanced-sidebar-nav .sidebar-nav-item:hover {
   background: #292b30;
   color: #ffffff;
   transition: background 0.3s, color 0.3s;
 }
 
-#settings-sidebar-nav .sidebar-nav-item.active {
+#settings-sidebar-nav .sidebar-nav-item.active,
+#advanced-sidebar-nav .sidebar-nav-item.active {
   background: #303136;
   color: #ffffff;
   transition: background 0.3s, color 0.3s;
@@ -1423,8 +1447,9 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 
 /* Settings sidebar nav items */
-#menuContainer.Menu.Options #menuContent {
-  margin-left: 240px;
+#menuContainer.Menu.Options #menuContent,
+#advancedDialogContainer.Menu.Options #menuContent {
+  margin-left: 255px;
   flex: 1;
   max-height: calc(480px - 50px) !important; /* dialog height minus header */
 }
@@ -1434,7 +1459,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   margin-left: auto;
 }
 
-#menuContainer.Menu.Options #menuContainerTop {
+#menuContainer.Menu.Options #menuContainerTop,
+#advancedDialogContainer.Menu.Options #menuContainerTop {
   margin-left: 250px;
 }
 
@@ -1491,6 +1517,9 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 .OptionSection,
 .DownloadMenuSection {
   margin-bottom: 1px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .HeaderText {
@@ -1529,7 +1558,25 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #dde5e1 !important;
   margin-bottom: 0px !important;
   position: relative !important; /* Allow positioning of pseudo-elements */
-  min-width: fit-content;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 80%;
+}
+
+/* Subtext styling for option descriptions */
+.OptionSubtext {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+  line-height: 1.2;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+/* Ensure OptionValue doesn't grow and stays right-aligned */
+.OptionValue {
+  flex: 0 0 auto;
+  margin-left: 16px;
 }
 
 #menuOptionsContainerMigoto .SmallButtonSection{
@@ -2998,6 +3045,123 @@ body:has(#ExtrasMenuButton) .NotifShow {
   pointer-events: none;
   background: transparent;
 }
+
+/* Restart dialog styles (match Secret Menu appearance) */
+#restartDialog {
+  background: #212429 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  width: 400px !important;
+  max-height: 229px !important;
+  overflow: hidden !important;
+  border: 1px solid #56585C !important;
+  padding: 0px !important;
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: menuSlideFromTop 0.22s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  opacity: 1;
+  z-index: 11000 !important;
+}
+
+#restartDialog .MenuHeading {
+  font-size: 1.1rem !important;
+  color: #ffffff !important;
+}
+
+#restartDialog .MenuInner{
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  padding-top: 0px !important;
+}
+
+#restartDialog .OptionLabel {
+  color: #dde5e1 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Make each OptionSection inside restart dialog transparent to match tweak */
+#restartDialog .OptionSection {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 8px 0 !important;
+}
+
+#restartDialog .FooterOptions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 27px !important;
+  width: 96%;
+  background: transparent !important;
+}
+
+#restartDialog .FooterOptions .OptionValue.ExtraLaunch {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+#restartDialog .FooterButton {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 650;
+  font-size: 14px;
+  border-radius: 7px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+#restartDialog .FooterButton.tertiary {
+  color: #aaa;
+  background: transparent;
+  border: none;
+  font-weight: 400 !important;
+}
+
+#restartDialog .FooterButton.primary {
+  background: #FFDB29;
+  color: #000;
+  padding-right: 20px;
+  padding-left: 20px;
+  transition: background 0.1s;
+  width: 83px;
+  height: 22px !important;
+}
+#restartDialog .FooterButton.primary:hover {
+  background: #ffc800;
+}
+#restartDialog .FooterButton.primary:has(:active),
+#restartDialog .FooterButton.primary:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
+}
+
+/* Secondary = middle button (match secret menu) */
+#restartDialog .FooterButton.secondary {
+  border: 2px solid #56585c !important;
+  background: transparent;
+  color: #E5E5E5;
+  height: 22px;
+  transition: background 0.1s;
+  width: 83px;
+  height: 20px !important;
+}
+#restartDialog .FooterButton.secondary:hover {
+  border-color: #717376 !important;
+  color: #fff;
+}
+#restartDialog .FooterButton.secondary:active {
+  border-color: #56585c !important;
+  color: #fff;
+}
+
 
 #hoyoplay-shadow-bg {
   border-top-left-radius: 8px !important;
