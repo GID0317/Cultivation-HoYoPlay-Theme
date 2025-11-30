@@ -14,14 +14,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
       - name: Fetch and process releases
         run: |
-          node scripts/fetch-releases.js
+          mkdir -p VersionLog
+          curl -s https://api.github.com/repos/Grasscutters/Cultivation/releases | node -e "
+          const fs = require('fs');
+          let data = '';
+          process.stdin.on('data', chunk => data += chunk);
+          process.stdin.on('end', () => {
+            const releases = JSON.parse(data);
+            const formatted = releases.map(r => ({
+              version: r.tag_name,
+              name: r.name || r.tag_name,
+              date: new Date(r.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+              timestamp: r.published_at,
+              body: (r.body || 'No release notes.').replace(/^#+\\s*/gm, '').replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '\$1').replace(/\\*\\*([^*]+)\\*\\*/g, '\$1').replace(/\\*([^*]+)\\*/g, '\$1').replace(/<[^>]+>/g, '').trim(),
+              url: r.html_url,
+              prerelease: r.prerelease
+            }));
+            const output = { lastUpdated: new Date().toISOString(), releases: formatted };
+            fs.writeFileSync('VersionLog/releases.json', JSON.stringify(output, null, 2));
+            console.log('Saved ' + formatted.length + ' releases');
+          });
+          "
       
       - name: Commit and push if changed
         run: |
