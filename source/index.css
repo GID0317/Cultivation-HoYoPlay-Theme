@@ -1227,10 +1227,12 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
   /* atur lebar & tinggi sesuai desain */
   width: 760px !important;
-  max-height: 450px !important;
+  max-height: 480px !important;
   overflow: hidden !important;
   border: 1px solid #56585C !important; /* Add border color */
   padding: 0px !important; /* Remove any default padding */
+  display: flex !important;
+  flex-direction: column !important;
 
   /* Center and animate menuContainer */
   position: fixed !important;
@@ -1242,6 +1244,85 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   /* Add transition for fade-out */
   transition: opacity 0.3s ease, transform 0.3s ease !important;
   opacity: 1;
+}
+
+/* Options menu: wider to fit sidebar + content */
+#menuContainer.Menu.Options {
+  width: 860px !important;
+  height: 480px !important;
+  max-height: 480px !important;
+}
+
+/* Settings sidebar (left panel) */
+#menuContainer.Menu.Options::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 240px;
+  background: #1e2025;
+  z-index: 1;
+}
+
+/* Settings sidebar title "Settings" */
+#menuContainer.Menu.Options::after {
+  content: 'Settings';
+  position: absolute;
+  left: 30px;
+  top: 29px;
+  font-size: 1.13rem;
+  font-weight: 500;
+  color: #8b8b8e;
+  z-index: 2;
+}
+
+/* Settings sidebar "General" nav button - injected via JS */
+#settings-sidebar-nav {
+  position: absolute;
+  left: 0;
+  top: 60px;
+  width: 240px;
+  padding: 10px 14px;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+#settings-sidebar-nav .sidebar-nav-item {
+  display: block;
+  padding: 9px 16px;
+  border-radius: 8px;
+  color: #b0b0b0;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin-bottom: 2px;
+}
+
+#settings-sidebar-nav .sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+#settings-sidebar-nav .sidebar-nav-item.active {
+  background: #303136;
+  color: #ffffff;
+}
+
+/* Settings sidebar nav items */
+#menuContainer.Menu.Options #menuContent {
+  margin-left: 240px;
+  flex: 1;
+  max-height: calc(480px - 50px) !important; /* dialog height minus header */
+}
+
+/* Profile input wrapper aligned to the right in Options dialog */
+#menuContainer.Menu.Options #profileConfigContainer .TextInputWrapper {
+  margin-left: auto;
+}
+
+#menuContainer.Menu.Options #menuContainerTop {
+  margin-left: 250px;
 }
 
 /* Fade-out state when closing */
@@ -1284,6 +1365,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   max-height: calc(56.5vh - 64px) !important; /* header + bottom */
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  position: relative;
+  z-index: 2;
 }
 
 .MenuInner {
@@ -1886,8 +1969,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 }
 
 input#profile_name {
-    border-radius: 0px !important;
-    margin-left: 383px;
+  border-radius: 0px !important;
 }
 
 .TextClear {
@@ -1934,6 +2016,10 @@ input#profile_name {
 /* 5) Corner when both scrollbars are visible */
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+#menuContainer.Menu.Options{
+  width: 800px !important;
 }
 
 #menuContainer.ExtrasMenu {
