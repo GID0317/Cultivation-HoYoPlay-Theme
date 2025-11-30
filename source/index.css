@@ -2880,10 +2880,11 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 
 /* Icon inside left button */
 #secretMenuContainer .FooterButton.tertiary .icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  filter: invert(70%);
+  width: 29.8px;
+  height: 34.8px;
+  margin-right: -3px;
+  margin-top: 0.8px;
+  filter: invert(60%);
 }
 
 /* Tertiary = left "Advanced Settings" */
@@ -2895,6 +2896,9 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 }
 #secretMenuContainer .FooterButton.tertiary:hover {
   color: #E1E1E1;
+}
+#secretMenuContainer .FooterButton.tertiary:hover .icon {
+  filter: invert(80%);
 }
 
 /* Temporary styling while waiting the main aplication to actualy fix the style*/
