@@ -1143,9 +1143,272 @@ function injectSettingsSidebarNav() {
   
   const nav = document.createElement('div');
   nav.id = 'settings-sidebar-nav';
-  nav.innerHTML = '<div class="sidebar-nav-item active">General</div>';
+  nav.innerHTML = `
+    <div class="sidebar-nav-item active" data-page="general">General</div>
+    <div class="sidebar-nav-item" data-page="about">About</div>
+  `;
   menuContainer.appendChild(nav);
+  
+  // Create About page content (hidden by default)
+  const aboutPage = document.createElement('div');
+  aboutPage.id = 'settings-about-page';
+  // Get version from #version element
+  const versionEl = document.getElementById('version');
+  const versionText = versionEl ? versionEl.textContent.trim() : 'v1.0.0';
+  // Current theme version (from index.json)
+  const THEME_VERSION = '7.0.0';
+  
+  aboutPage.style.display = 'none';
+  aboutPage.innerHTML = `
+    <div class="OptionSection" id="aboutAppInfo">
+      <div class="OptionLabel">
+        <img id="aboutCultivationIcon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/CultivationAboutIcon.png" />
+        <span id="aboutAppName">Cultivation</span><span class="about-separator">|</span><span class="about-version">V${versionText}</span>
+      </div>
+    </div>
+    <div class="OptionSection" id="aboutViewUpdateLog">
+      <div class="OptionLabel">View Update Log</div>
+      <div class="about-arrow">›</div>
+    </div>
+    <div class="OptionSection">
+      <div class="OptionLabel">Check for the Latest Version</div>
+      <div class="BigButton" id="aboutCheckVersionBtn" style="padding: 6px 16px; min-width: auto;">
+        <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
+      </div>
+    </div>
+    <div class="HeaderText" style="margin-top: 16px;">Theme Log</div>
+    <div class="OptionSection" id="aboutViewThemeUpdateLog">
+      <div class="OptionLabel">View Theme Update Log</div>
+      <div class="about-arrow">›</div>
+    </div>
+    <div class="OptionSection">
+      <div class="OptionLabel">Check for the Latest Theme Version</div>
+      <div class="BigButton" id="aboutCheckThemeVersionBtn" style="padding: 6px 16px; min-width: auto;">
+        <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
+      </div>
+    </div>
+  `;
+  
+  const menuContent = document.getElementById('menuContent');
+  if (menuContent) {
+    menuContent.parentNode.insertBefore(aboutPage, menuContent.nextSibling);
+  }
+  
+  // Change the menu heading to match the selected nav item
+  const menuHeading = document.getElementById('menuHeading');
+  if (menuHeading) {
+    menuHeading.textContent = 'General';
+  }
+  
+  // Add click handlers for nav items
+  nav.querySelectorAll('.sidebar-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      // Update active state
+      nav.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      
+      // Update heading
+      const page = item.dataset.page;
+      if (menuHeading) {
+        menuHeading.textContent = item.textContent;
+      }
+      
+      // Toggle content visibility
+      const generalContent = document.getElementById('menuContent');
+      const aboutContent = document.getElementById('settings-about-page');
+      
+      if (page === 'general') {
+        if (generalContent) generalContent.style.display = '';
+        if (aboutContent) aboutContent.style.display = 'none';
+        hideUpdateLogPage();
+      } else if (page === 'about') {
+        if (generalContent) generalContent.style.display = 'none';
+        if (aboutContent) aboutContent.style.display = 'block';
+        hideUpdateLogPage();
+      }
+    });
+  });
+  
+  // Add click handler for View Update Log - open releases page directly
+  const updateLogBtn = document.getElementById('aboutViewUpdateLog');
+  if (updateLogBtn) {
+    updateLogBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const url = 'https://github.com/Grasscutters/Cultivation/releases';
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+  
+  // Add click handler for View Theme Update Log - opens theme GitHub releases page
+  const themeUpdateLogBtn = document.getElementById('aboutViewThemeUpdateLog');
+  if (themeUpdateLogBtn) {
+    themeUpdateLogBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const url = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases';
+      
+      // Create a temporary link and click it
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+  
+  // Add click handler for Check Version button
+  const checkVersionBtn = document.getElementById('aboutCheckVersionBtn');
+  if (checkVersionBtn) {
+    checkVersionBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const btnText = checkVersionBtn.querySelector('.BigButtonText');
+      const originalText = btnText ? btnText.textContent : 'Check';
+      
+      // Show loading state
+      if (btnText) btnText.textContent = 'Checking...';
+      
+      try {
+        // Fetch latest release from GitHub API
+        const response = await fetch('https://api.github.com/repos/Grasscutters/Cultivation/releases/latest');
+        
+        if (!response.ok) throw new Error('Failed to fetch');
+        
+        const release = await response.json();
+        const latestVersion = release.tag_name.replace(/^v/i, ''); // Remove 'v' prefix if present
+        
+        // Get current version
+        const versionEl = document.getElementById('version');
+        const currentVersion = versionEl ? versionEl.textContent.trim() : '0.0.0';
+        
+        // Compare versions
+        const isOutdated = compareVersions(currentVersion, latestVersion) < 0;
+        
+        if (isOutdated) {
+          if (btnText) btnText.textContent = 'Update Available!';
+          checkVersionBtn.style.background = '#f6d429';
+          checkVersionBtn.style.color = '#000';
+          
+          // Make it clickable to open releases page
+          checkVersionBtn.onclick = () => {
+            const link = document.createElement('a');
+            link.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+        } else {
+          if (btnText) btnText.textContent = 'Up to date!';
+          checkVersionBtn.style.background = '#4CAF50';
+          checkVersionBtn.style.color = '#fff';
+        }
+      } catch (error) {
+        console.error('Version check failed:', error);
+        // Fallback: just open the releases page
+        if (btnText) btnText.textContent = originalText;
+        
+        const link = document.createElement('a');
+        link.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+  }
+
+  // Add click handler for Check Theme Version button
+  const checkThemeVersionBtn = document.getElementById('aboutCheckThemeVersionBtn');
+  if (checkThemeVersionBtn) {
+    checkThemeVersionBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const btnText = checkThemeVersionBtn.querySelector('.BigButtonText');
+      const originalText = btnText ? btnText.textContent : 'Check';
+
+      if (btnText) btnText.textContent = 'Checking...';
+
+      try {
+        const resp = await fetch('https://api.github.com/repos/GID0317/Cultivation-HoYoPlay-Theme/releases/latest');
+        if (!resp.ok) throw new Error('Failed to fetch');
+        const release = await resp.json();
+        const latestTheme = (release.tag_name || release.name || '').replace(/^v/i, '');
+
+        const isOutdated = compareVersions(THEME_VERSION.replace(/^v/i,'').trim(), latestTheme) < 0;
+
+        if (isOutdated) {
+          if (btnText) btnText.textContent = 'Theme Update Available!';
+          checkThemeVersionBtn.style.background = '#f6d429';
+          checkThemeVersionBtn.style.color = '#000';
+          checkThemeVersionBtn.onclick = () => {
+            const link = document.createElement('a');
+            link.href = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+        } else {
+          if (btnText) btnText.textContent = 'Theme up to date!';
+          checkThemeVersionBtn.style.background = '#4CAF50';
+          checkThemeVersionBtn.style.color = '#fff';
+        }
+      } catch (e) {
+        console.error('Theme version check failed:', e);
+        if (btnText) btnText.textContent = originalText;
+        const link = document.createElement('a');
+        link.href = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+  }
 }
+
+// Compare two version strings (e.g., "1.2.3" vs "1.3.0")
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  
+  const maxLen = Math.max(parts1.length, parts2.length);
+  
+  for (let i = 0; i < maxLen; i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    
+    if (p1 < p2) return -1;
+    if (p1 > p2) return 1;
+  }
+  
+  return 0;
+}
+
 
 // Function to monitor for menu changes and inject the option
 function startMenuObserver() {
