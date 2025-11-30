@@ -1335,7 +1335,7 @@ function showAdvancedDialog() {
       } catch (_) {}
       // Show a banner notification (will auto-hide)
       try {
-        showRestartDialog('Changed settings will only take effect after HoYoPlay is restarted.', () => {
+        showRestartDialog('Changed settings will only take effect after Cultivation is restarted.', () => {
           try { location.reload(); } catch (_) {}
         });
       } catch (_) {}
