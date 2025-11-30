@@ -1135,27 +1135,38 @@ notificationObserver.observe(document.body, {
 //   }
 // }
 
+// Function to inject sidebar nav into Options menu
+function injectSettingsSidebarNav() {
+  const menuContainer = document.getElementById('menuContainer');
+  if (!menuContainer || !menuContainer.classList.contains('Options')) return;
+  if (document.getElementById('settings-sidebar-nav')) return;
+  
+  const nav = document.createElement('div');
+  nav.id = 'settings-sidebar-nav';
+  nav.innerHTML = '<div class="sidebar-nav-item active">General</div>';
+  menuContainer.appendChild(nav);
+}
+
 // Function to monitor for menu changes and inject the option
 function startMenuObserver() {
-  const menuContainer = document.getElementById('menuContainer');
-  if (menuContainer) {
-    // injectCustomOptionSection may be commented out in some theme copies.
-    // Guard the call to avoid runtime ReferenceError when it's not defined.
+  // Watch document.body for menuContainer being added/changed
+  const bodyObserver = new MutationObserver(() => {
+    injectSettingsSidebarNav();
+    
     if (typeof injectCustomOptionSection === 'function') {
       try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
     }
-
-    const observer = new MutationObserver(() => {
-      if (typeof injectCustomOptionSection === 'function') {
-        try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
-      }
-    });
-    
-    observer.observe(menuContainer, {
-      childList: true,
-      subtree: true
-    });
-  }
+  });
+  
+  bodyObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+  
+  // Also run immediately
+  injectSettingsSidebarNav();
 }
 
 // Start immediately and on DOM ready
