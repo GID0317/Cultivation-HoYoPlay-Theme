@@ -1,3 +1,21 @@
+  // Ensure backdrop is before dialog in DOM for correct stacking
+  var backdrop = document.getElementById('menu-dialog-backdrop');
+  if (backdrop) {
+    document.body.appendChild(backdrop);
+    document.body.insertBefore(backdrop, document.body.lastChild);
+    backdrop.style.display = 'block';
+    backdrop.style.opacity = '1';
+    if (typeof window.layoutBackdropPanels === 'function') window.layoutBackdropPanels();
+  }
+  // Ensure backdrop is before dialog in DOM for correct stacking
+  var backdrop = document.getElementById('menu-dialog-backdrop');
+  if (backdrop) {
+    document.body.appendChild(backdrop);
+    document.body.insertBefore(backdrop, document.body.lastChild);
+    backdrop.style.display = 'block';
+    backdrop.style.opacity = '1';
+    if (typeof window.layoutBackdropPanels === 'function') window.layoutBackdropPanels();
+  }
 // Change play button label
 
 function injectPlayIcon() {
@@ -18,6 +36,12 @@ function injectPlayIcon() {
 
 // Initial injection
 injectPlayIcon();
+
+// Global built-in background runtime flags (used to block other background changes)
+try {
+  window.__USE_BUILTIN_BG = (localStorage.getItem && localStorage.getItem('useBuiltinBackground') === '1');
+} catch (_) { window.__USE_BUILTIN_BG = false; }
+window.__BUILTIN_BG_SUFFIX = 'background/bg.png';
 
 // Observe for changes
 const playBtn = document.getElementById('officialPlay');
@@ -570,6 +594,217 @@ function showCopySuccessNotification() {
   }, 3000);
 }
 
+// Generic banner notification (reuses GameInstallNotify element)
+function showBanner(message, extraClass) {
+  let notification = document.querySelector('.GameInstallNotify');
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.className = 'GameInstallNotify';
+    document.body.appendChild(notification);
+  }
+  // Optionally add extra class for styling variants
+  if (extraClass) notification.classList.add(extraClass);
+
+  const span = notification.querySelector('span') || document.createElement('span');
+  span.textContent = message || '';
+  if (!notification.querySelector('span')) notification.appendChild(span);
+
+  notification.style.display = 'flex';
+  notification.classList.remove('hiding');
+
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    notification.classList.add('hiding');
+    setTimeout(() => {
+      notification.style.display = 'none';
+      notification.classList.remove('hiding');
+      if (extraClass) notification.classList.remove(extraClass);
+    }, 300);
+  }, 4000);
+}
+
+// Show a restart-needed dialog with actions
+function showRestartDialog(message, onRestart) {
+
+  // Create a unique backdrop for Restart dialog with same structure as shared
+  let backdrop = document.getElementById('restart-dialog-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'restart-dialog-backdrop';
+    Object.assign(backdrop.style, {
+      position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+      background: 'transparent',
+      zIndex: '10999',
+      pointerEvents: 'none',
+      opacity: '1',
+      transition: 'opacity 0.2s',
+      display: 'block'
+    });
+
+    // Create panels like the shared backdrop
+    let panelTop = document.createElement('div');
+    Object.assign(panelTop.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelTop.className = 'backdrop-panel panel-top';
+
+    let panelBottom = document.createElement('div');
+    Object.assign(panelBottom.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelBottom.className = 'backdrop-panel panel-bottom';
+    panelBottom.style.borderBottomLeftRadius = '8px';
+    panelBottom.style.borderBottomRightRadius = '8px';
+
+    let panelLeft = document.createElement('div');
+    Object.assign(panelLeft.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelLeft.className = 'backdrop-panel panel-left';
+    panelLeft.style.borderTopLeftRadius = '8px';
+
+    let panelRight = document.createElement('div');
+    Object.assign(panelRight.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelRight.className = 'backdrop-panel panel-right';
+    panelRight.style.borderTopRightRadius = '8px';
+
+    let holeVeil = document.createElement('div');
+    Object.assign(holeVeil.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'none',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    holeVeil.className = 'backdrop-panel hole-veil';
+
+    backdrop.appendChild(panelTop);
+    backdrop.appendChild(panelBottom);
+    backdrop.appendChild(panelLeft);
+    backdrop.appendChild(panelRight);
+    backdrop.appendChild(holeVeil);
+
+    document.body.appendChild(backdrop);
+
+    // Layout the panels
+    try {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const bar = document.getElementById('topBarContainer');
+      const btns = document.getElementById('topBarButtonContainer');
+      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
+      const btnRect = btns ? btns.getBoundingClientRect() : null;
+      const holeHeight = Math.max(36, Math.min(64, barRect.height));
+      const centerX = vw / 2;
+      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
+      const leftBias = 0.70;
+      let holeLeft = centerX - holeWidth * leftBias;
+      let holeRight = centerX + holeWidth * (1 - leftBias);
+      const safety = 4;
+      if (btnRect) {
+        const maxRight = Math.max(0, btnRect.left - safety);
+        if (holeRight < maxRight) {
+          holeRight = maxRight;
+        } else if (holeRight > maxRight) {
+          const overlap = holeRight - maxRight;
+          holeRight -= overlap;
+          holeLeft -= overlap;
+        }
+      }
+      holeLeft = Math.max(8, holeLeft);
+      holeRight = Math.min(vw - 8, holeRight);
+      const minHoleWidth = 200;
+      if (holeRight - holeLeft < minHoleWidth) {
+        holeLeft = Math.max(8, holeRight - minHoleWidth);
+      }
+      const holeTop = Math.max(0, barRect.top);
+      const holeBottom = Math.min(vh, holeTop + holeHeight);
+
+      Object.assign(panelTop.style, {
+        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
+      });
+      Object.assign(panelBottom.style, {
+        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
+      });
+      Object.assign(panelLeft.style, {
+        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      Object.assign(panelRight.style, {
+        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      Object.assign(holeVeil.style, {
+        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+    } catch (e) { /* ignore */ }
+  } else {
+    backdrop.style.display = 'block';
+    backdrop.style.opacity = '1';
+  }
+
+  // Remove existing if present
+  const existing = document.getElementById('restartDialog');
+  if (existing) existing.remove();
+
+  const dlg = document.createElement('div');
+  dlg.id = 'restartDialog';
+  dlg.className = 'Menu Dialog RestartDialog';
+  dlg.innerHTML = `
+    <div class="MenuTop" id="menuContainerTop">
+      <div class="MenuHeading" id="menuHeading">Note</div>
+      <div class="MenuExit" id="menuButtonCloseContainer">
+        <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
+      </div>
+    </div>
+    <div class="MenuInner" id="menuContent">
+      <div class="OptionSection">
+        <div class="OptionLabel">${message}</div>
+      </div>
+      <div class="OptionSection FooterOptions">
+        <div class="OptionLabel"></div>
+        <div class="OptionValue ExtraLaunch">
+          <div class="FooterButton secondary" id="restartLaterBtn"><span>Maybe Later</span></div>
+          <div class="FooterButton primary" id="restartNowBtn"><span>Restart Now</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Insert dialog above backdrop
+  document.body.appendChild(dlg);
+  dlg.style.zIndex = '11000';
+
+  // Wire buttons
+  const later = dlg.querySelector('#restartLaterBtn');
+  const now = dlg.querySelector('#restartNowBtn');
+  const closeBtn = dlg.querySelector('#menuButtonCloseContainer');
+
+  const removeDlg = () => { try { dlg.remove(); if (backdrop) { backdrop.remove(); } } catch (_) {} };
+
+  if (later) later.addEventListener('click', removeDlg);
+  if (closeBtn) closeBtn.addEventListener('click', removeDlg);
+  if (now) now.addEventListener('click', () => {
+    try { if (typeof onRestart === 'function') onRestart(); } catch (_) {}
+    // fallback: reload
+    try { location.reload(); } catch (_) {}
+    if (backdrop) { backdrop.remove(); }
+  });
+
+  // Close when clicking outside
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) removeDlg(); });
+}
+
 // Enhanced progress monitoring to detect completion
 function monitorDownloadCompletion() {
   let wasDownloading = false;
@@ -668,7 +903,7 @@ function showSecretMenu() {
   fetch('index.json')
     .then(response => response.json())
     .then(themeData => {
-      const themeVersion = themeData.version || '7.0.0';
+      const themeVersion = themeData.version || '8.0.0';
       
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
@@ -729,8 +964,15 @@ function showSecretMenu() {
       const closeBtn = secretMenu.querySelector('#menuButtonCloseContainer');
       const testNotificationBtn = secretMenu.querySelector('#testNotificationBtn');
       const testProgressBtn = secretMenu.querySelector('#testProgressBtn');
-        const okBtn = secretMenu.querySelector('#okBtn');
+      const okBtn = secretMenu.querySelector('#okBtn');
       const copyBtn = secretMenu.querySelector('#copyInfoBtn');
+      const advancedBtn = secretMenu.querySelector('#advancedOptionsBtn');
+      
+      if (advancedBtn) {
+        advancedBtn.addEventListener('click', () => {
+          showAdvancedDialog();
+        });
+      }
       
       if (okBtn) {
         okBtn.addEventListener('click', () => {
@@ -810,11 +1052,11 @@ function showSecretMenu() {
             </div>
           </div>
           <div class="OptionSection FooterOptions">
-      <div class="OptionLabel">
-        <div class="FooterButton tertiary" id="advancedOptionsBtn">
-          <span>Theme repository</span>
-        </div>
-      </div>
+          <div class="OptionLabel">
+            <div class="FooterButton tertiary" id="advancedOptionsBtn">
+              <span>Advanced Settings</span>
+            </div>
+          </div>
       <div class="OptionValue ExtraLaunch">
         <div class="FooterButton secondary" id="copyInfoBtn">
           <span>Copy information</span>
@@ -840,20 +1082,11 @@ function showSecretMenu() {
       const testProgressBtn = secretMenu.querySelector('#testProgressBtn');
       const okBtn = secretMenu.querySelector('#okBtn');
       const copyBtn = secretMenu.querySelector('#copyInfoBtn');
-      const advancedBtn = secretMenu.querySelector('#advancedOptionsBtn'); // ADD this line
+      const advancedBtn = secretMenu.querySelector('#advancedOptionsBtn');
       
-      // ADD this event listener block:
       if (advancedBtn) {
         advancedBtn.addEventListener('click', () => {
-          const url = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme';
-          const link = document.createElement('a');
-          link.href = url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          showAdvancedDialog();
         });
       }
       
@@ -899,6 +1132,222 @@ function showSecretMenu() {
         }
       });
     });
+}
+
+// Advanced Dialog with side navigation (like Options dialog)
+function showAdvancedDialog() {
+  const existingDialog = document.getElementById('advancedDialogContainer');
+  if (existingDialog) {
+    existingDialog.remove();
+  }
+
+
+  // Create a unique backdrop for Advanced dialog with same structure as shared
+  let backdrop = document.getElementById('advanced-dialog-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'advanced-dialog-backdrop';
+    Object.assign(backdrop.style, {
+      position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+      background: 'transparent',
+      zIndex: '9999',
+      pointerEvents: 'none',
+      opacity: '1',
+      transition: 'opacity 0.2s',
+      display: 'block'
+    });
+
+    // Create panels like the shared backdrop
+    let panelTop = document.createElement('div');
+    Object.assign(panelTop.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelTop.className = 'backdrop-panel panel-top';
+
+    let panelBottom = document.createElement('div');
+    Object.assign(panelBottom.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelBottom.className = 'backdrop-panel panel-bottom';
+    panelBottom.style.borderBottomLeftRadius = '8px';
+    panelBottom.style.borderBottomRightRadius = '8px';
+
+    let panelLeft = document.createElement('div');
+    Object.assign(panelLeft.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelLeft.className = 'backdrop-panel panel-left';
+    panelLeft.style.borderTopLeftRadius = '8px';
+
+    let panelRight = document.createElement('div');
+    Object.assign(panelRight.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    panelRight.className = 'backdrop-panel panel-right';
+    panelRight.style.borderTopRightRadius = '8px';
+
+    let holeVeil = document.createElement('div');
+    Object.assign(holeVeil.style, {
+      position: 'fixed',
+      background: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'none',
+      top: '0', left: '0', width: '0', height: '0'
+    });
+    holeVeil.className = 'backdrop-panel hole-veil';
+
+    backdrop.appendChild(panelTop);
+    backdrop.appendChild(panelBottom);
+    backdrop.appendChild(panelLeft);
+    backdrop.appendChild(panelRight);
+    backdrop.appendChild(holeVeil);
+
+    document.body.appendChild(backdrop);
+
+    // Layout the panels
+    try {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const bar = document.getElementById('topBarContainer');
+      const btns = document.getElementById('topBarButtonContainer');
+      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
+      const btnRect = btns ? btns.getBoundingClientRect() : null;
+      const holeHeight = Math.max(36, Math.min(64, barRect.height));
+      const centerX = vw / 2;
+      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
+      const leftBias = 0.70;
+      let holeLeft = centerX - holeWidth * leftBias;
+      let holeRight = centerX + holeWidth * (1 - leftBias);
+      const safety = 4;
+      if (btnRect) {
+        const maxRight = Math.max(0, btnRect.left - safety);
+        if (holeRight < maxRight) {
+          holeRight = maxRight;
+        } else if (holeRight > maxRight) {
+          const overlap = holeRight - maxRight;
+          holeRight -= overlap;
+          holeLeft -= overlap;
+        }
+      }
+      holeLeft = Math.max(8, holeLeft);
+      holeRight = Math.min(vw - 8, holeRight);
+      const minHoleWidth = 200;
+      if (holeRight - holeLeft < minHoleWidth) {
+        holeLeft = Math.max(8, holeRight - minHoleWidth);
+      }
+      const holeTop = Math.max(0, barRect.top);
+      const holeBottom = Math.min(vh, holeTop + holeHeight);
+
+      Object.assign(panelTop.style, {
+        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
+      });
+      Object.assign(panelBottom.style, {
+        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
+      });
+      Object.assign(panelLeft.style, {
+        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      Object.assign(panelRight.style, {
+        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+      Object.assign(holeVeil.style, {
+        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
+      });
+    } catch (e) { /* ignore */ }
+  } else {
+    backdrop.style.display = 'block';
+    backdrop.style.opacity = '1';
+  }
+
+  const advancedDialog = document.createElement('div');
+  advancedDialog.id = 'advancedDialogContainer';
+  advancedDialog.className = 'Menu Options AdvancedDialog';
+  advancedDialog.innerHTML = `
+    <div id="advanced-sidebar-nav">
+      <div class="sidebar-nav-item active" data-page="client-log">Theme Configuration</div>
+    </div>
+    <div class="MenuTop" id="menuContainerTop">
+      <div class="MenuHeading" id="menuHeading">Theme Configuration</div>
+      <div class="MenuExit" id="menuButtonCloseContainer">
+        <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
+      </div>
+    </div>
+    <div class="MenuInner" id="menuContent">
+      <div id="advanced-client-log-page">
+        <div class="OptionSection">
+          <div class="OptionLabel">
+            Built-In Backgrounds
+            <div class="OptionSubtext">After enabling this configuration, built-in background images will be used instead of using HoYoPlay backgrounds.</div>
+          </div>
+          <div class="OptionValue">
+            <div class="Checkbox">
+              <input type="checkbox" id="advancedUploadLogToggle">
+              <label for="advancedUploadLogToggle">
+                <div class="CheckboxDisplay"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Insert dialog above backdrop
+  document.body.appendChild(advancedDialog);
+  advancedDialog.style.zIndex = '10000';
+
+  // Event listeners
+  const closeBtn = advancedDialog.querySelector('#menuButtonCloseContainer');
+  const uploadToggle = advancedDialog.querySelector('#advancedUploadLogToggle');
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      advancedDialog.remove();
+      if (backdrop) {
+        backdrop.remove();
+      }
+    });
+  }
+
+  if (uploadToggle) {
+    // Initialize checkbox from persisted state
+    try {
+      uploadToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
+    } catch (_) {}
+
+    uploadToggle.addEventListener('change', () => {
+      try {
+        localStorage.setItem('useBuiltinBackground', uploadToggle.checked ? '1' : '0');
+      } catch (_) {}
+      // Show a banner notification (will auto-hide)
+      try {
+        showRestartDialog('Changed settings will only take effect after HoYoPlay is restarted.', () => {
+          try { location.reload(); } catch (_) {}
+        });
+      } catch (_) {}
+      console.log('Built-in background preference saved (applies on restart) — restart dialog shown');
+    });
+  }
+
+  // Close when clicking the dialog background area (mirrors secret menu behavior)
+  advancedDialog.addEventListener('click', (e) => {
+    if (e.target === advancedDialog) {
+      advancedDialog.remove();
+      if (backdrop) {
+        backdrop.remove();
+      }
+    }
+  });
 }
 
 // Add click listener to leftBar image
@@ -1156,7 +1605,7 @@ function injectSettingsSidebarNav() {
   const versionEl = document.getElementById('version');
   const versionText = versionEl ? versionEl.textContent.trim() : 'v1.0.0';
   // Current theme version (from index.json)
-  const THEME_VERSION = '7.0.0';
+  const THEME_VERSION = '8.0.0';
   
   aboutPage.style.display = 'none';
   aboutPage.innerHTML = `
@@ -1176,13 +1625,13 @@ function injectSettingsSidebarNav() {
         <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
       </div>
     </div>
-    <div class="HeaderText" style="margin-top: 16px;">Theme Log</div>
+    <div class="HeaderText" style="margin-top: 16px;">HoYoPlay Theme Log</div>
     <div class="OptionSection" id="aboutViewThemeUpdateLog">
-      <div class="OptionLabel">View Theme Update Log</div>
+      <div class="OptionLabel">View HoYoPlay Theme Update Log</div>
       <div class="about-arrow">›</div>
     </div>
     <div class="OptionSection">
-      <div class="OptionLabel">Check for the Latest Theme Version</div>
+      <div class="OptionLabel">Check for the Latest HoYoPlay Theme Version</div>
       <div class="BigButton" id="aboutCheckThemeVersionBtn" style="padding: 6px 16px; min-width: auto;">
         <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
       </div>
@@ -1527,7 +1976,7 @@ if (document.readyState === 'loading') {
   Object.assign(dialogBackdrop.style, {
     position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
     background: 'transparent',
-    zIndex: '9996', // below menus (10000), above app content
+    zIndex: '9999', // below dialogs (10000+), above app content
     pointerEvents: 'none', // container doesn't block, panels do
     opacity: '0',
     transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)',
@@ -2666,8 +3115,14 @@ if (document.readyState === 'loading') {
   } catch (e) {}
 
 // Selection logic + background change on hover
+// Helper to check persisted built-in mode
+function isUsingBuiltin() {
+  try { return localStorage.getItem('useBuiltinBackground') === '1'; } catch (_) { return false; }
+}
+
 // Map circle hover to index 0/1/2 (left/mid/right). Try left key first, then right as fallback.
 leftCircle.addEventListener('mouseenter', () => {
+  if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(0)) return; // offline with no cache for left -> do not switch
   updateCircles(0);
@@ -2677,6 +3132,7 @@ leftCircle.addEventListener('mouseenter', () => {
   applyMediaForIndex(0);
 });
 midCircle.addEventListener('mouseenter', () => {
+  if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(1)) return; // offline with no cache for mid -> do not switch
   updateCircles(1);
@@ -2687,6 +3143,7 @@ midCircle.addEventListener('mouseenter', () => {
   applyMediaForIndex(1);
 });
 rightCircle.addEventListener('mouseenter', () => {
+  if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(2)) return; // offline with no cache for right -> do not switch
   updateCircles(2);
@@ -2728,6 +3185,76 @@ rightCircle.addEventListener('mouseenter', () => {
       }
     }
   });
+
+  // --- Built-in background mode helpers -------------------------------
+  function setUseBuiltInBackground(enabled) {
+    try {
+      localStorage.setItem('useBuiltinBackground', enabled ? '1' : '0');
+    } catch (_) {}
+    // Update global runtime flag so other code (including setCustomBackground) honors the mode immediately
+    try { window.__USE_BUILTIN_BG = !!enabled; } catch (_) {}
+    // Disable/enable circle interactions
+    try {
+      const circles = [leftCircle, midCircle, rightCircle];
+      if (enabled) {
+        circles.forEach(c => { c.style.pointerEvents = 'none'; c.setAttribute('aria-disabled', 'true'); c.setAttribute('tabindex','-1'); });
+        // Apply built-in theme background (use setCustomBackground for fade)
+        try { setCustomBackground('background/bg.png'); } catch (_) {
+          try { setCustomBackground('/background/bg.png'); } catch (__) { /* ignore */ }
+        }
+        // Ensure vignette is present and visible
+        setTimeout(() => {
+          let appElement = document.querySelector('.App') || document.body;
+          let vignette = document.getElementById('vignetteCorners');
+          if (!vignette) {
+            vignette = document.createElement('div');
+            vignette.id = 'vignetteCorners';
+            appElement.appendChild(vignette);
+          }
+          vignette.style.display = '';
+          vignette.style.opacity = '1';
+        }, 180);
+      } else {
+        circles.forEach(c => { c.style.pointerEvents = 'auto'; c.removeAttribute('aria-disabled'); c.removeAttribute('tabindex'); });
+        // Restore currently-selected Hoyoplay background for the active circle
+        try {
+          updateCircles(selectedCircleIndex);
+          // Re-apply cached URL for current selection
+          let url = null;
+          if (selectedCircleIndex === 0) url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
+          else if (selectedCircleIndex === 1) url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
+          else url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
+          if (url) setCustomBackground(url);
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Apply persisted mode at startup if set
+  try {
+    const persisted = localStorage.getItem('useBuiltinBackground');
+    if (persisted === '1') {
+      // Try to apply now; if circles are not yet created, poll until they exist
+      const applyIfReady = () => {
+        const left = document.getElementById('hoyoplay-left');
+        if (left || (typeof leftCircle !== 'undefined' && leftCircle)) {
+          try { setUseBuiltInBackground(true); console.log('[Theme] Applied persisted built-in background mode at startup'); } catch (e) { console.warn('[Theme] Failed applying built-in mode', e); }
+          return true;
+        }
+        return false;
+      };
+      if (!applyIfReady()) {
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          if (applyIfReady() || attempts > 20) {
+            clearInterval(poll);
+            if (attempts > 20) console.warn('[Theme] Failed to apply persisted built-in mode: circles not found');
+          }
+        }, 200);
+      }
+    }
+  } catch (_) {}
 
   // Watch for Mods appearing/disappearing (throttled)
   let __modsScheduled = null;
@@ -2913,6 +3440,18 @@ rightCircle.addEventListener('mouseenter', () => {
 let __BG_FADE_STATE = { overlay: null, timer: null, current: null, duration: 180 };
 
 function setCustomBackground(url) {
+  try {
+    // If built-in background mode is active, ignore any attempts to set a different background
+    if (window.__USE_BUILTIN_BG) {
+      const s = window.__BUILTIN_BG_SUFFIX || 'background/bg.png';
+      try {
+        if (url && !(String(url).endsWith(s) || String(url).includes(s))) {
+          console.log('[Theme] Built-in mode active — ignoring setCustomBackground(', url, ')');
+          return;
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
   try {
     const appElement = document.querySelector('.App') || document.body;
     if (!appElement || !url) return;
