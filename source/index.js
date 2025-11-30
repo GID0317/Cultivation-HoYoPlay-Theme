@@ -937,7 +937,7 @@ function showSecretMenu() {
           <div class="OptionSection FooterOptions">
       <div class="OptionLabel">
         <div class="FooterButton tertiary" id="advancedOptionsBtn">
-          <img class="icon" src="src="/static/media/cog.08bd8fa3c3a1b1e18d7c8ce61bb70e2c.svg" alt="gear">
+          <img class="icon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png" alt="settings">
           <span>Advanced Settings</span>
         </div>
       </div>
@@ -1054,6 +1054,7 @@ function showSecretMenu() {
           <div class="OptionSection FooterOptions">
           <div class="OptionLabel">
             <div class="FooterButton tertiary" id="advancedOptionsBtn">
+              <img class="icon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png" alt="settings">
               <span>Advanced Settings</span>
             </div>
           </div>
@@ -1322,6 +1323,9 @@ function showAdvancedDialog() {
   if (uploadToggle) {
     // Initialize checkbox from persisted state
     try {
+      if (localStorage.getItem('useBuiltinBackground') === null) {
+        localStorage.setItem('useBuiltinBackground', '0');
+      }
       uploadToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
     } catch (_) {}
 
