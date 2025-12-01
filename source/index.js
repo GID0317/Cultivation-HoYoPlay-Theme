@@ -1872,6 +1872,11 @@ function startMenuObserver() {
     if (typeof injectCustomOptionSection === 'function') {
       try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
     }
+
+    // Also enhance Downloads dialog with subtexts when it appears
+    try { injectDownloadSubtexts(); } catch (e) { /* ignore */ }
+    // Hide the first Divider in Downloads dialog
+    try { hideFirstDownloadsDivider(); } catch (e) { /* ignore */ }
   });
   
   bodyObserver.observe(document.body, {
@@ -1883,6 +1888,109 @@ function startMenuObserver() {
   
   // Also run immediately
   injectSettingsSidebarNav();
+  try { injectDownloadSubtexts(); } catch (_) {}
+  try { hideFirstDownloadsDivider(); } catch (_) {}
+}
+
+// Inject OptionSubtext-style descriptions under Downloads labels
+function injectDownloadSubtexts() {
+  try {
+    const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
+    if (!menus.length) return false;
+
+    let insertedAny = false;
+
+    // ID-based descriptions (preferred when IDs are stable)
+    const idMap = {
+      // Common expected IDs (will be skipped if not found)
+      'downloadMenuLabelGCFullBuild': 'Download a full Grasscutter build, including repo, jar, and resources',
+      'downloadMenuLabelGCFullQuest': 'Download a full Grasscutter build, including repo, jar, and resources',
+      'downloadMenuLabelGCDev': 'Download a full Grasscutter build, including repo, jar, and resources',
+      'downloadMenuLabelResources': 'These are also required to run a Grasscutter server',
+      'downloadMenuLabelMigoto': 'For importing models from GameBanana'
+    };
+
+    // Text-based fallbacks if IDs differ across versions
+    const textFallbacks = [
+      { match: /full\s*build|full\s*game/i, text: 'Full game package. Use for first-time installs or clean setup.' },
+      { match: /quest|story/i, text: 'Quest/story data to improve in‑game content availability.' },
+      { match: /dev|developer|preview|bleeding/i, text: 'Experimental build for testing; may contain bugs.' },
+      { match: /resource|voice|asset|cinematic/i, text: 'Extra resources (voices, videos) — optional but recommended.' },
+      { match: /migoto|3d\s*migoto/i, text: '3DMigoto tools and shaders for graphics modding.' }
+    ];
+
+    menus.forEach(menu => {
+      const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
+
+      // Try ID-based mapping first
+      Object.entries(idMap).forEach(([id, desc]) => {
+        const label = container.querySelector('#' + id) || document.getElementById(id);
+        if (label && !label.querySelector('.OptionSubtext')) {
+          const sub = document.createElement('div');
+          sub.className = 'OptionSubtext';
+          sub.textContent = desc;
+          label.appendChild(sub);
+          insertedAny = true;
+        }
+      });
+
+      // Then add fallbacks for generic Download labels based on their text
+      const possibleLabels = Array.from(container.querySelectorAll('.DownloadLabel, .OptionLabel'));
+      possibleLabels.forEach(lbl => {
+        // Skip if already enhanced
+        if (lbl.querySelector('.OptionSubtext')) return;
+        const txt = (lbl.textContent || '').trim();
+        if (!txt) return;
+        for (const rule of textFallbacks) {
+          if (rule.match.test(txt)) {
+            const sub = document.createElement('div');
+            sub.className = 'OptionSubtext';
+            sub.textContent = rule.text;
+            lbl.appendChild(sub);
+            insertedAny = true;
+            break;
+          }
+        }
+      });
+
+      if (insertedAny) {
+        try { container.setAttribute('data-subtext-enhanced', '1'); } catch (_) {}
+      }
+    });
+
+    // If nothing inserted (likely due to timing), retry shortly
+    if (!insertedAny) {
+      setTimeout(() => { try { injectDownloadSubtexts(); } catch (_) {} }, 200);
+    }
+
+    return insertedAny;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Hide only the first Divider in the Downloads dialog
+function hideFirstDownloadsDivider() {
+  try {
+    const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
+    if (!menus.length) return false;
+    let changed = false;
+    menus.forEach(menu => {
+      if (menu.getAttribute('data-first-divider-hidden') === '1') return;
+      const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
+      const dividers = container ? container.querySelectorAll('.Divider') : [];
+      if (dividers && dividers.length > 0) {
+        const first = dividers[0];
+        first.style.display = 'none';
+        try { menu.setAttribute('data-first-divider-hidden', '1'); } catch (_) {}
+        changed = true;
+      }
+    });
+    if (!changed) setTimeout(() => { try { hideFirstDownloadsDivider(); } catch (_) {} }, 200);
+    return changed;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Start immediately and on DOM ready
