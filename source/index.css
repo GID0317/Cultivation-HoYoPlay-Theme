@@ -1447,7 +1447,12 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 
 /* Settings sidebar nav items */
-#menuContainer.Menu.Options #menuContent,
+#menuContainer.Menu.Options #menuContent{
+  margin-left: 240px;
+  flex: 1;
+  max-height: calc(480px - 50px) !important; /* dialog height minus header */
+}
+
 #advancedDialogContainer.Menu.Options #menuContent {
   margin-left: 255px;
   flex: 1;
