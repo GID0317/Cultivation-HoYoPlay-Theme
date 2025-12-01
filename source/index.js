@@ -3161,8 +3161,8 @@ rightCircle.addEventListener('mouseenter', () => {
   // Show/hide overlay and shadow on mouse movement near top center
   let isVisible = false;
   document.addEventListener('mousemove', function(e) {
-    if (isUiOverlayActive()) {
-      // Force hide when Mods is open
+    if (isUiOverlayActive() || isUsingBuiltin()) {
+      // Force hide when Mods is open or built-in background mode is enabled
       overlay.style.top = '0px';
       overlay.style.opacity = '0';
       shadowBg.style.opacity = '0';
@@ -3191,6 +3191,81 @@ rightCircle.addEventListener('mouseenter', () => {
   });
 
   // --- Built-in background mode helpers -------------------------------
+  // Dynamically set Version Highlights button contrast (black/white)
+  // based on background brightness under the button. Only active in built-in mode.
+  function updateVersionHighlightsContrastForBuiltIn() {
+    try {
+      if (!isUsingBuiltin()) return;
+      const btn = document.getElementById('customNewsButton');
+      if (!btn) return;
+      const app = document.querySelector('.App') || document.body;
+      const cs = window.getComputedStyle(app);
+      const bgImg = (cs.backgroundImage || '').toString();
+      const m = bgImg.match(/url\(["']?(.*?)["']?\)/i);
+      const src = m && m[1];
+      if (!src) return;
+
+      const img = new Image();
+      try { img.crossOrigin = 'anonymous'; } catch (_) {}
+      img.onload = () => {
+        try {
+          const iw = img.naturalWidth || img.width;
+          const ih = img.naturalHeight || img.height;
+          if (!iw || !ih) return;
+          const appRect = app.getBoundingClientRect();
+          const W = Math.max(1, appRect.width);
+          const H = Math.max(1, appRect.height);
+          // cover + center mapping
+          const scale = Math.max(W / iw, H / ih);
+          const dispW = iw * scale;
+          const dispH = ih * scale;
+          const offX = (W - dispW) / 2;
+          const offY = (H - dispH) / 2;
+          const r = btn.getBoundingClientRect();
+          const cx = (r.left - appRect.left) + r.width / 2;
+          const cy = (r.top - appRect.top) + r.height / 2;
+          // Map to image coords
+          const ix = (cx - offX) / scale;
+          const iy = (cy - offY) / scale;
+          const sampleW = Math.max(4, Math.floor(40 / scale));
+          const sampleH = Math.max(4, Math.floor(22 / scale));
+          const sx = Math.max(0, Math.min(iw - sampleW, Math.floor(ix - sampleW / 2)));
+          const sy = Math.max(0, Math.min(ih - sampleH, Math.floor(iy - sampleH / 2)));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = sampleW; canvas.height = sampleH;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, sampleW, sampleH, 0, 0, sampleW, sampleH);
+          const data = ctx.getImageData(0, 0, sampleW, sampleH).data;
+          let sum = 0, n = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            // relative luminance approximation
+            sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            n++;
+          }
+          const lum = n ? (sum / n) : 255;
+          const color = lum >= 160 ? '#000' : '#fff';
+          btn.style.color = color;
+          btn.style.borderColor = color;
+          // Subtle shadow in opposite color for readability
+          btn.style.textShadow = color === '#000' ? '0 1px 2px rgba(255,255,255,0.35)' : '0 1px 2px rgba(0,0,0,0.45)';
+        } catch (_) {
+          // Fallback: prefer white
+          const btn = document.getElementById('customNewsButton');
+          if (btn) { btn.style.color = '#fff'; btn.style.borderColor = '#fff'; btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.45)'; }
+        }
+      };
+      img.onerror = () => {
+        const b = document.getElementById('customNewsButton');
+        if (b) { b.style.color = '#fff'; b.style.borderColor = '#fff'; b.style.textShadow = '0 1px 2px rgba(0,0,0,0.45)'; }
+      };
+      // Avoid double-quoted urls with escapes
+      img.src = src;
+    } catch (_) { /* ignore */ }
+  }
+  // Recompute contrast on resize in built-in mode
+  window.addEventListener('resize', () => { try { if (isUsingBuiltin()) updateVersionHighlightsContrastForBuiltIn(); } catch (_) {} });
   function setUseBuiltInBackground(enabled) {
     try {
       localStorage.setItem('useBuiltinBackground', enabled ? '1' : '0');
@@ -3217,9 +3292,16 @@ rightCircle.addEventListener('mouseenter', () => {
           }
           vignette.style.display = '';
           vignette.style.opacity = '1';
+          // Update Version Highlights contrast after BG applies
+          try { updateVersionHighlightsContrastForBuiltIn(); } catch (_) {}
         }, 180);
       } else {
         circles.forEach(c => { c.style.pointerEvents = 'auto'; c.removeAttribute('aria-disabled'); c.removeAttribute('tabindex'); });
+        // Clear any contrast overrides when leaving built-in mode
+        try {
+          const btn = document.getElementById('customNewsButton');
+          if (btn) { btn.style.color = ''; btn.style.borderColor = ''; btn.style.textShadow = ''; }
+        } catch (_) {}
         // Restore currently-selected Hoyoplay background for the active circle
         try {
           updateCircles(selectedCircleIndex);
