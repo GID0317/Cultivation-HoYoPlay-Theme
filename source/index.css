@@ -2206,10 +2206,21 @@ input#profile_name {
   width: 800px !important;
 }
 
+#menuContainer.Menu.Downloads{
+  max-height: 450px !important;
+}
+
+#menuContainer.Menu.Downloads .Divider{
+  opacity: 0%;
+  height: 0px;
+  height: 25px !important;
+}
+
 #menuContainer.ExtrasMenu {
   width: 400px !important; /* Or whatever you want */
   height: 340px;
 }
+
 
 /* Only applies when the ExtrasMenu is active */
 #menuContainer.ExtrasMenu .ExtraLaunch {
