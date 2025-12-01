@@ -1273,6 +1273,10 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   z-index: 1;
 }
 
+#secretMenuContainer .FooterButton.tertiary {
+  margin-left: -15px;
+}
+
 /* Settings sidebar title "Settings" */
 #menuContainer.Menu.Options::after {
   content: 'Settings';
