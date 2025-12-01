@@ -1021,7 +1021,7 @@ function showSecretMenu() {
     })
     .catch(() => {
       // Fallback if fetch fails
-      const themeVersion = '7.0.0';
+      const themeVersion = '8.0.0';
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
       const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
