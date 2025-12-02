@@ -36,7 +36,7 @@ Virus Total Check: [Virus Total Result](https://www.virustotal.com/gui/file/dd0d
 4. Enjoy!  
 
 # UI Aplication Overview
-![Banners](https://github.com/user-attachments/assets/84351423-cc40-4902-9658-6039c98d19d7)
+![Banners](https://github.com/user-attachments/assets/5e541ce8-0751-4c72-8690-46a07e909d13)
 
 # This app made possible by
 - [Template](https://github.com/Grasscutters/Cultivation/blob/main/docs/ExampleTheme.zip) Provided by `Cultivation`
