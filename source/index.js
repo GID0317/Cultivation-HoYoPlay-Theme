@@ -801,8 +801,17 @@ function showRestartDialog(message, onRestart) {
     if (backdrop) { backdrop.remove(); }
   });
 
-  // Close when clicking outside
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) removeDlg(); });
+  // Close when clicking outside (but only if both mousedown and mouseup happen on the dialog background)
+  let mousedownOnDialog = false;
+  dlg.addEventListener('mousedown', (e) => {
+    mousedownOnDialog = (e.target === dlg);
+  });
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg && mousedownOnDialog) {
+      removeDlg();
+    }
+    mousedownOnDialog = false;
+  });
 }
 
 // Enhanced progress monitoring to detect completion
