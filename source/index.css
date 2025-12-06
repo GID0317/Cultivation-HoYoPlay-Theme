@@ -3227,6 +3227,22 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #ffffff;
 }
 
+/* Slide-in + fade animation for video control on startup (HoYoPlay mode only) */
+@keyframes hoyoplayVideoControlIntro {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hoyoplay-video-control.intro-animate {
+  animation: hoyoplayVideoControlIntro 0.28s cubic-bezier(.4,0,.2,1) both;
+}
+
 #menuOptionsContainerProfiles {
     width: auto;
     margin-right: 10px;
