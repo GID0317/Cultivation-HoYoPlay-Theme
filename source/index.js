@@ -2344,7 +2344,10 @@ if (document.readyState === 'loading') {
       } else {
         // Menu/dialog open: keep video playing and control visible if current circle has video
         if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          if (_selectedCircleHasVideo(selectedCircleIndex)) {
+          // Don't show control if built-in mode is active
+          if (isUsingBuiltin()) {
+            hoyoVideoControl.style.display = 'none';
+          } else if (_selectedCircleHasVideo(selectedCircleIndex)) {
             hoyoVideoControl.style.display = 'block';
             // Render under the dark backdrop (backdrop=9996), but visible through it
             hoyoVideoControl.style.zIndex = '9995';
@@ -2395,7 +2398,10 @@ if (document.readyState === 'loading') {
         if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none';
       }, 200);
       if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-        if (_selectedCircleHasVideo(selectedCircleIndex)) {
+        // Don't show control if built-in mode is active
+        if (isUsingBuiltin()) {
+          hoyoVideoControl.style.display = 'none';
+        } else if (_selectedCircleHasVideo(selectedCircleIndex)) {
           hoyoVideoControl.style.display = 'block';
         } else {
           hoyoVideoControl.style.display = 'none';
@@ -2722,6 +2728,8 @@ if (document.readyState === 'loading') {
   let HOYO_VIDEO_AVAILABLE = [false, false, false];
   let HOYO_OVERLAY_AVAILABLE = [false, false, false];
   try { window.__HOYO_OVERLAY_AVAILABLE = HOYO_OVERLAY_AVAILABLE; } catch (_) {}
+  // Track per-circle whether we've already played the intro slide animation this session
+  let HOYO_CONTROL_INTRO_PLAYED = [false, false, false];
   // Foreground images (dual A/B) shown on top of video for smooth crossfade
   let hoyoOverlayA = null;
   let hoyoOverlayB = null;
@@ -2765,16 +2773,46 @@ if (document.readyState === 'loading') {
   function refreshControlForSelection() {
     try {
       if (!hoyoVideoControl) return;
+      // Hide control entirely when built-in background mode is active
+      if (isUsingBuiltin()) {
+        hoyoVideoControl.style.display = 'none';
+        return;
+      }
       const idx = selectedCircleIndex | 0;
       if (hasVideoAssetAtIndex(idx)) {
         // Show control; enable only when overlay is also ready
         if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-        hoyoVideoControl.style.display = 'block';
-        requestAnimationFrame(() => {
-          const playable = hasPlayableAtIndex(idx);
-          hoyoVideoControl.style.opacity = playable ? '1' : '0.5';
-          hoyoVideoControl.style.pointerEvents = playable ? 'auto' : 'none';
-        });
+
+        // If this circle has not yet shown the intro animation this session,
+        // trigger the slide-in + fade once when control first becomes available.
+        if (!HOYO_CONTROL_INTRO_PLAYED[idx]) {
+          HOYO_CONTROL_INTRO_PLAYED[idx] = true;
+          hoyoVideoControl.style.display = 'block';
+          hoyoVideoControl.style.opacity = '0';
+          hoyoVideoControl.style.pointerEvents = 'auto';
+          // Small async boundary so layout is ready before animating
+          setTimeout(() => {
+            try {
+              if (isUsingBuiltin()) {
+                hoyoVideoControl.style.display = 'none';
+                return;
+              }
+              // Only animate if we're still on the same circle with video
+              if ((selectedCircleIndex | 0) === idx && hasVideoAssetAtIndex(idx)) {
+                hoyoVideoControl.classList.add('intro-animate');
+              }
+            } catch (_) {}
+          }, 30);
+        } else {
+          // Intro already played for this circle; just show normally
+          hoyoVideoControl.classList.remove('intro-animate');
+          hoyoVideoControl.style.display = 'block';
+          requestAnimationFrame(() => {
+            const playable = hasPlayableAtIndex(idx);
+            hoyoVideoControl.style.opacity = playable ? '1' : '0.5';
+            hoyoVideoControl.style.pointerEvents = playable ? 'auto' : 'none';
+          });
+        }
       } else {
         // Hide with fade
         hoyoVideoControl.style.opacity = '0';
@@ -3199,8 +3237,11 @@ if (document.readyState === 'loading') {
         } else {
           // Keep control visible (paused state)
           if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-          hoyoVideoControl.style.display = 'block';
-          requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
+          // Don't show control if built-in mode is active
+          if (!isUsingBuiltin()) {
+            hoyoVideoControl.style.display = 'block';
+            requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
+          }
         }
         // Ensure the icon shows the Play glyph instead of plain text
         const ic = hoyoVideoControl.querySelector('.hp-icon');
@@ -3221,15 +3262,9 @@ if (document.readyState === 'loading') {
       hoyoVideoControl.classList.remove('hidden');
       const ic = hoyoVideoControl.querySelector('.hp-icon');
       if (ic) { ic.classList.remove('pause'); ic.classList.add('play'); }
-      // Make sure control is visible on startup (paused state) without a fade
-      hoyoVideoControl.style.display = 'block';
-      const prevTransition = hoyoVideoControl.style.transition;
-      hoyoVideoControl.style.transition = 'none';
-      hoyoVideoControl.style.opacity = '1';
-      hoyoVideoControl.style.pointerEvents = 'auto';
-      // Force reflow, then restore transition for future fades
-      try { void hoyoVideoControl.offsetHeight; } catch (_) {}
-      hoyoVideoControl.style.transition = prevTransition || 'opacity 0.22s cubic-bezier(.4,0,.2,1)';
+      // On startup, just defer to refreshControlForSelection so that
+      // per-circle intro animation rules are applied consistently.
+      try { refreshControlForSelection(); } catch (_) {}
     }
     if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
     hoyoVideoPlaying = false;
@@ -3394,6 +3429,12 @@ rightCircle.addEventListener('mouseenter', () => {
       const circles = [leftCircle, midCircle, rightCircle];
       if (enabled) {
         circles.forEach(c => { c.style.pointerEvents = 'none'; c.setAttribute('aria-disabled', 'true'); c.setAttribute('tabindex','-1'); });
+        // Hide video control when entering built-in mode
+        try {
+          if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
+            hoyoVideoControl.style.display = 'none';
+          }
+        } catch (_) {}
         // Apply built-in theme background (use setCustomBackground for fade)
         try { setCustomBackground('background/bg.png'); } catch (_) {
           try { setCustomBackground('/background/bg.png'); } catch (__) { /* ignore */ }
@@ -3414,6 +3455,8 @@ rightCircle.addEventListener('mouseenter', () => {
         }, 180);
       } else {
         circles.forEach(c => { c.style.pointerEvents = 'auto'; c.removeAttribute('aria-disabled'); c.removeAttribute('tabindex'); });
+        // Show video control when leaving built-in mode (if video available for current circle)
+        try { refreshControlForSelection(); } catch (_) {}
         // Clear any contrast overrides when leaving built-in mode
         try {
           const btn = document.getElementById('customNewsButton');
