@@ -439,6 +439,176 @@ setInterval(startProgressObserver, 1000); // Retry every second in case elements
 // Also periodically ensure DownloadProgress is positioned correctly
 setInterval(adjustDownloadProgressPosition, 500);
 
+// Ensure hovering the MainProgressText behaves like clicking it (opens Mini Downloads)
+function ensureProgressHoverClick() {
+  try {
+    const text = document.querySelector('.MainProgressBarWrapper .MainProgressText');
+    if (!text || text.getAttribute('data-hover-click-attached') === '1') return;
+
+    const CLICK_COOLDOWN_MS = 60;
+    let closeTimer = null;
+    let cancelCloseAnimation = null;
+    const hoverState = { text: false, popup: false };
+
+    const getDialog = () => {
+      const container = document.getElementById('miniDownloadContainer');
+      if (!container) return null;
+      return container.querySelector('.MiniDialog') || container.querySelector('.MiniDownloads');
+    };
+
+    const isDialogVisible = () => {
+      const dialog = getDialog();
+      if (!dialog) return false;
+      const rect = dialog.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      const cs = window.getComputedStyle(dialog);
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '0') > 0.05;
+    };
+
+    const fireClickSequence = () => {
+      ['mousedown', 'mouseup', 'click'].forEach(type => {
+        text.dispatchEvent(new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        }));
+      });
+    };
+
+    const markTimestamp = (value) => {
+      text.setAttribute('data-hover-click-ts', String(value));
+    };
+
+    const clearClosingAnimation = () => {
+      if (typeof cancelCloseAnimation === 'function') {
+        cancelCloseAnimation();
+        cancelCloseAnimation = null;
+        markTimestamp(Date.now() - CLICK_COOLDOWN_MS - 10);
+      }
+    };
+
+    const triggerMiniDownloads = () => {
+      try {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+        clearClosingAnimation();
+
+        const now = Date.now();
+        const last = parseInt(text.getAttribute('data-hover-click-ts') || '0', 10);
+        if (!Number.isNaN(last) && now - last < CLICK_COOLDOWN_MS) return;
+
+        if (isDialogVisible()) {
+          // Already visible, just cancel any pending close
+          return;
+        }
+        markTimestamp(now);
+        // Use requestAnimationFrame to batch DOM updates
+        requestAnimationFrame(() => {
+          fireClickSequence();
+        });
+      } catch (e) { /* ignore */ }
+    };
+
+    const startCloseAnimation = () => {
+      const dialog = getDialog();
+      if (!dialog || !isDialogVisible()) return;
+      if (dialog.getAttribute('data-hover-closing') === '1') return;
+
+      dialog.setAttribute('data-hover-closing', '1');
+      
+      // Use requestAnimationFrame to batch the animation class addition
+      requestAnimationFrame(() => {
+        dialog.classList.add('mini-hover-closing');
+      });
+
+      const finishClose = () => {
+        dialog.classList.remove('mini-hover-closing');
+        dialog.removeAttribute('data-hover-closing');
+        cancelCloseAnimation = null;
+        markTimestamp(Date.now() - CLICK_COOLDOWN_MS - 10);
+        requestAnimationFrame(() => {
+          fireClickSequence();
+        });
+      };
+
+      const handleAnimationEnd = () => {
+        dialog.removeEventListener('animationend', handleAnimationEnd);
+        if (dialog.getAttribute('data-hover-closing') !== '1') return;
+        finishClose();
+      };
+
+      dialog.addEventListener('animationend', handleAnimationEnd, { once: true });
+      cancelCloseAnimation = () => {
+        dialog.removeEventListener('animationend', handleAnimationEnd);
+        dialog.classList.remove('mini-hover-closing');
+        dialog.removeAttribute('data-hover-closing');
+        cancelCloseAnimation = null;
+      };
+
+      setTimeout(() => {
+        if (dialog.getAttribute('data-hover-closing') !== '1') return;
+        dialog.removeEventListener('animationend', handleAnimationEnd);
+        finishClose();
+      }, 200);
+    };
+
+    const scheduleClose = () => {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => {
+        if (hoverState.text || hoverState.popup) return;
+        startCloseAnimation();
+      }, 60);
+    };
+
+    const ensurePopupHoverListeners = () => {
+      const container = document.getElementById('miniDownloadContainer');
+      if (!container || container.getAttribute('data-hover-listeners') === '1') return;
+
+      container.addEventListener('mouseenter', () => {
+        hoverState.popup = true;
+        clearTimeout(closeTimer);
+        closeTimer = null;
+        clearClosingAnimation();
+      });
+      container.addEventListener('mouseleave', () => {
+        hoverState.popup = false;
+        scheduleClose();
+      });
+      container.setAttribute('data-hover-listeners', '1');
+    };
+
+    text.addEventListener('mouseenter', () => {
+      hoverState.text = true;
+      triggerMiniDownloads();
+      ensurePopupHoverListeners();
+    });
+    text.addEventListener('mouseleave', () => {
+      hoverState.text = false;
+      scheduleClose();
+    });
+    text.addEventListener('focus', () => {
+      hoverState.text = true;
+      triggerMiniDownloads();
+      ensurePopupHoverListeners();
+    });
+    text.addEventListener('blur', () => {
+      hoverState.text = false;
+      scheduleClose();
+    });
+    text.addEventListener('touchstart', () => {
+      hoverState.text = true;
+      triggerMiniDownloads();
+      ensurePopupHoverListeners();
+      scheduleClose();
+    }, { passive: true });
+
+    text.setAttribute('data-hover-click-attached', '1');
+  } catch (_) {}
+}
+
+ensureProgressHoverClick();
+setInterval(ensureProgressHoverClick, 1000);
+
 function injectVersionHighlightsButton() {
   const newsSection = document.querySelector('.NewsSection');
   if (!newsSection || document.getElementById('customNewsButton')) return;
