@@ -3096,7 +3096,7 @@ body:has(#ExtrasMenuButton) .NotifShow {
 }
 
 #restartDialog .MenuInner{
-  padding-left: 20px !important;
+  padding-left: 13px !important;
   padding-right: 20px !important;
   padding-top: 0px !important;
 }
@@ -3105,6 +3105,7 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #dde5e1 !important;
   font-size: 0.95rem !important;
   line-height: 1.4 !important;
+  max-width: 90% !important;
 }
 
 /* Make each OptionSection inside restart dialog transparent to match tweak */
