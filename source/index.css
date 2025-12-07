@@ -2066,6 +2066,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   vertical-align: middle;
   color: inherit;
   pointer-events: none;
+  margin-top: -2px;
 }
 
 /* Show Recommended pill to the left of .HelpSection in PatchMeta option */
@@ -2283,8 +2284,10 @@ input#profile_name {
   padding-right: 31px !important;
 }
 
-.Menu.ModMenu {
-  width: 480px;             
+#menuContainer.Menu.ModMenu {
+  width: 600px !important;
+  max-height: 390px !important;
+  top: 63%;        
 }
 
 .ModDownloadList{
@@ -3117,6 +3120,9 @@ body:has(#ExtrasMenuButton) .NotifShow {
   padding-left: 13px !important;
   padding-right: 20px !important;
   padding-top: 0px !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
 }
 
 #restartDialog .OptionLabel {
@@ -3135,12 +3141,13 @@ body:has(#ExtrasMenuButton) .NotifShow {
 
 #restartDialog .FooterOptions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
+  align-items: flex-end;
   gap: 12px;
   padding-top: 27px !important;
   width: 96%;
   background: transparent !important;
+  margin-top: auto;
 }
 
 #restartDialog .FooterOptions .OptionValue.ExtraLaunch {
@@ -3205,6 +3212,10 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #fff;
 }
 
+/* Alert mode: auto-width button */
+#restartDialog.alert-mode .FooterButton.primary {
+  width: auto;
+}
 
 #hoyoplay-shadow-bg {
   border-top-left-radius: 8px !important;
@@ -3243,6 +3254,77 @@ body:has(#ExtrasMenuButton) .NotifShow {
   line-height: 20px;
   text-align: center;
   color: #ffffff;
+}
+
+/* Custom alert dialog */
+#hoyoplay-alert-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 12000;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#hoyoplay-alert-overlay.visible {
+  opacity: 1;
+}
+
+#hoyoplay-alert-dialog {
+  background: #212429;
+  border-radius: 12px;
+  border: 1px solid #56585c;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  width: min(420px, calc(100vw - 48px));
+  color: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  pointer-events: auto;
+}
+
+.hoyoplay-alert-message {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e1e5eb;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.hoyoplay-alert-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hoyoplay-alert-button {
+  min-width: 92px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #ffdb29;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.hoyoplay-alert-button:hover {
+  background: #ffc800;
+}
+
+.hoyoplay-alert-button:active {
+  transform: translateY(1px);
+  background: #f7bd00;
+}
+
+.hoyoplay-alert-button:focus-visible {
+  outline: 2px solid #7ab8ff;
+  outline-offset: 2px;
 }
 
 /* Slide-in + fade animation for video control on startup (HoYoPlay mode only) */
