@@ -113,6 +113,138 @@ if (!document.getElementById('leftBar')) {
   }
 }
 
+// Replace default alert dialog with themed modal
+(function setupCustomAlertDialog() {
+  const nativeAlert = typeof window.alert === 'function' ? window.alert.bind(window) : null;
+  const overlayId = 'hoyoplay-alert-overlay';
+  const dialogId = 'hoyoplay-alert-dialog';
+  const messageId = 'hoyoplay-alert-message';
+  const animationMs = 200;
+  let overlayEl = null;
+  let dialogEl = null;
+  let messageEl = null;
+  let confirmBtn = null;
+  let previousFocus = null;
+  let visible = false;
+  const queue = [];
+
+  function ensureElements() {
+    if (overlayEl) return true;
+    if (!document.body) return false;
+
+    overlayEl = document.createElement('div');
+    overlayEl.id = overlayId;
+    overlayEl.tabIndex = -1;
+
+    dialogEl = document.createElement('div');
+    dialogEl.id = dialogId;
+    dialogEl.setAttribute('role', 'alertdialog');
+    dialogEl.setAttribute('aria-modal', 'true');
+    dialogEl.setAttribute('aria-labelledby', messageId);
+    dialogEl.tabIndex = -1;
+
+    messageEl = document.createElement('div');
+    messageEl.id = messageId;
+    messageEl.className = 'hoyoplay-alert-message';
+
+    const actions = document.createElement('div');
+    actions.className = 'hoyoplay-alert-actions';
+
+    confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'hoyoplay-alert-button';
+    confirmBtn.textContent = 'OK';
+
+    actions.appendChild(confirmBtn);
+    dialogEl.appendChild(messageEl);
+    dialogEl.appendChild(actions);
+    overlayEl.appendChild(dialogEl);
+    document.body.appendChild(overlayEl);
+
+    const closeAlert = () => {
+      if (!visible) return;
+      overlayEl.classList.remove('visible');
+      visible = false;
+      setTimeout(() => {
+        if (visible) return;
+        overlayEl.style.display = 'none';
+        overlayEl.removeAttribute('data-open');
+        if (previousFocus && typeof previousFocus.focus === 'function') {
+          try { previousFocus.focus({ preventScroll: true }); } catch (_) { previousFocus.focus(); }
+        }
+        processQueue();
+      }, animationMs);
+    };
+
+    confirmBtn.addEventListener('click', () => closeAlert());
+    confirmBtn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        closeAlert();
+      }
+    });
+    overlayEl.addEventListener('click', (ev) => {
+      if (ev.target === overlayEl) {
+        ev.preventDefault();
+        closeAlert();
+      }
+    });
+    overlayEl.addEventListener('keydown', (ev) => {
+      if (!visible) return;
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        closeAlert();
+      }
+    });
+
+    overlayEl.__closeAlert = closeAlert;
+    return true;
+  }
+
+  function processQueue() {
+    if (visible) return;
+    if (!queue.length) return;
+    if (!ensureElements()) {
+      // Fallback to native alert if UI cannot be constructed
+      const fallbackMsg = queue.splice(0, queue.length).join('\n');
+      if (nativeAlert) nativeAlert(fallbackMsg);
+      return;
+    }
+
+    const nextMessage = queue.shift();
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    messageEl.textContent = nextMessage;
+    overlayEl.style.display = 'flex';
+    overlayEl.setAttribute('data-open', '1');
+    requestAnimationFrame(() => {
+      overlayEl.classList.add('visible');
+      confirmBtn.focus({ preventScroll: true });
+    });
+    visible = true;
+  }
+
+  window.alert = function customAlert(message) {
+    const msg = message == null ? '' : String(message);
+    // Prefer the existing restart-styled dialog if available
+    if (typeof showRestartDialog === 'function') {
+      try {
+        showRestartDialog(msg, () => {}, true);
+        return;
+      } catch (e) { /* fall back below */ }
+    }
+    // If we can't use the restart dialog, try our custom overlay
+    if (document.body && ensureElements()) {
+      queue.push(msg);
+      processQueue();
+      return;
+    }
+    // Final fallback to native alert
+    if (nativeAlert) nativeAlert(msg);
+  };
+
+  window.__HOYO_NATIVE_ALERT = nativeAlert;
+})();
+
 // Add commit message tooltips
 function addCommitTooltips() {
   const commitRows = document.querySelectorAll('.Commit');
@@ -793,8 +925,8 @@ function showBanner(message, extraClass) {
   }, 4000);
 }
 
-// Show a restart-needed dialog with actions
-function showRestartDialog(message, onRestart) {
+// Show a restart-needed dialog with actions (or alert-style with alertMode=true)
+function showRestartDialog(message, onRestart, alertMode) {
 
   // Create a unique backdrop for Restart dialog with same structure as shared
   let backdrop = document.getElementById('restart-dialog-backdrop');
@@ -930,6 +1062,7 @@ function showRestartDialog(message, onRestart) {
   const dlg = document.createElement('div');
   dlg.id = 'restartDialog';
   dlg.className = 'Menu Dialog RestartDialog';
+  if (alertMode) dlg.classList.add('alert-mode');
   dlg.innerHTML = `
     <div class="MenuTop" id="menuContainerTop">
       <div class="MenuHeading" id="menuHeading">Note</div>
@@ -944,8 +1077,7 @@ function showRestartDialog(message, onRestart) {
       <div class="OptionSection FooterOptions">
         <div class="OptionLabel"></div>
         <div class="OptionValue ExtraLaunch">
-          <div class="FooterButton secondary" id="restartLaterBtn"><span>Maybe Later</span></div>
-          <div class="FooterButton primary" id="restartNowBtn"><span>Restart Now</span></div>
+          ${alertMode ? '<div class="FooterButton primary" id="restartNowBtn"><span>OK</span></div>' : '<div class="FooterButton secondary" id="restartLaterBtn"><span>Maybe Later</span></div><div class="FooterButton primary" id="restartNowBtn"><span>Restart Now</span></div>'}
         </div>
       </div>
     </div>
@@ -2491,15 +2623,49 @@ if (document.readyState === 'loading') {
     ));
     const menuEls = Array.from(document.querySelectorAll('#menuContainer, .Menu.ModMenu, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'));
     const modListEls = Array.from(document.querySelectorAll('.ModList, .ModListInner, .Mods .ModList, .Mods .ModListInner'));
+    
+    // Update menuHeading text for ModMenu
+    if (modsActive) {
+      const modMenus = document.querySelectorAll('.Menu.ModMenu, #menuContainer.ModMenu');
+      modMenus.forEach(modMenu => {
+        const menuHeading = modMenu.querySelector('#menuHeading, .MenuHeading');
+        if (menuHeading && !menuHeading.hasAttribute('data-modmenu-heading-set')) {
+          menuHeading.textContent = 'Please Select Mods to Download';
+          menuHeading.setAttribute('data-modmenu-heading-set', '1');
+        }
+      });
+    }
+    
     if (active) {
       // Hide selector and shadow entirely, and hide video control too
       overlay.style.display = 'none';
       shadowBg.style.display = 'none';
-      // Show darkening backdrop only for menus/dialogs, not Mods
-      if (menuActive && !modsActive) {
+      
+      // Check if ModMenu dialog is active
+      const modMenuActive = document.querySelector('.Menu.ModMenu, #menuContainer.ModMenu');
+      const isModMenuDialog = modMenuActive && window.getComputedStyle(modMenuActive).display !== 'none';
+      
+      // Ensure backdrop mounts under the Mods container when ModMenu dialog is shown
+      if (isModMenuDialog) {
+        const modsRoot = modMenuActive.closest('.Mods, .mods');
+        if (modsRoot && dialogBackdrop.parentNode !== modsRoot) {
+          modsRoot.appendChild(dialogBackdrop);
+        }
+      } else if (dialogBackdrop.parentNode !== document.body) {
+        document.body.appendChild(dialogBackdrop);
+      }
+
+      // Show darkening backdrop for menus/dialogs and ModMenu, but not regular Mods page
+      if ((menuActive && !modsActive) || isModMenuDialog) {
         ensureBackdropPanels();
         layoutBackdropPanels();
         dialogBackdrop.style.display = 'block';
+        // Render backdrop between Mod lists and Mod dialog when active
+        if (isModMenuDialog) {
+          dialogBackdrop.style.zIndex = '10010';
+        } else {
+          dialogBackdrop.style.zIndex = '9999';
+        }
         requestAnimationFrame(() => { dialogBackdrop.style.opacity = '1'; });
       } else {
         dialogBackdrop.style.opacity = '0';
@@ -2530,6 +2696,7 @@ if (document.readyState === 'loading') {
       modCandidates.forEach(el => {
         if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
         el.style.zIndex = '10000';
+        try { el.setAttribute('data-mod-z-boosted', 'true'); } catch (_) {}
       });
       // When a menu is active inside Mods, raise the menu above any ModList
       if (menuActive) {
@@ -2538,6 +2705,7 @@ if (document.readyState === 'loading') {
           const cs = window.getComputedStyle(el);
           if (cs.position === 'static') el.style.position = 'relative';
           el.style.zIndex = '10020';
+          try { el.setAttribute('data-menu-z-boosted', 'true'); } catch (_) {}
         });
         // Nudge mod lists below the menu
         modListEls.forEach(el => {
@@ -2545,6 +2713,26 @@ if (document.readyState === 'loading') {
           const cs = window.getComputedStyle(el);
           if (cs.position === 'static') el.style.position = 'relative';
           el.style.zIndex = '10005';
+          try { el.setAttribute('data-modlist-z-boosted', 'true'); } catch (_) {}
+        });
+      }
+
+      // Special handling when ModMenu dialog is open but not counted as menuActive
+      if (!menuActive && isModMenuDialog) {
+        const modMenuEls = Array.from(document.querySelectorAll('.Menu.ModMenu, #menuContainer.ModMenu'));
+        modMenuEls.forEach(el => {
+          if (!el) return;
+          const cs = window.getComputedStyle(el);
+          if (cs.position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '10020';
+          try { el.setAttribute('data-modmenu-z-boosted', 'true'); } catch (_) {}
+        });
+        modListEls.forEach(el => {
+          if (!el) return;
+          const cs = window.getComputedStyle(el);
+          if (cs.position === 'static') el.style.position = 'relative';
+          el.style.zIndex = '10005';
+          try { el.setAttribute('data-modlist-z-boosted', 'true'); } catch (_) {}
         });
       }
 
@@ -2558,6 +2746,9 @@ if (document.readyState === 'loading') {
         try { el.setAttribute('data-mod-z-boosted', 'true'); } catch (_) {}
       });
     } else {
+      if (dialogBackdrop.parentNode !== document.body) {
+        document.body.appendChild(dialogBackdrop);
+      }
       // Restore selector visibility and control based on current selection
       overlay.style.display = 'flex';
       shadowBg.style.display = 'block';
@@ -2579,14 +2770,44 @@ if (document.readyState === 'loading') {
       }
       // Optionally reset Mods z-index we set
       modCandidates.forEach(el => {
-        if (el.style.zIndex === '10000') el.style.zIndex = '';
-        if (el.style.position === 'relative') el.style.position = '';
+        if (!el) return;
+        if (el.getAttribute && el.getAttribute('data-mod-z-boosted') === 'true') {
+          el.style.zIndex = '';
+          if (el.style.position === 'relative') el.style.position = '';
+          try { el.removeAttribute('data-mod-z-boosted'); } catch (_) {}
+        }
       });
       // Clear any elevated menu/list stacking set above
-      menuEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
-      modListEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
+      menuEls.forEach(el => {
+        if (!el) return;
+        if (el.getAttribute && el.getAttribute('data-menu-z-boosted') === 'true') {
+          el.style.zIndex = '';
+          if (el.style.position === 'relative') el.style.position = '';
+          try { el.removeAttribute('data-menu-z-boosted'); } catch (_) {}
+        }
+        if (el.getAttribute && el.getAttribute('data-modmenu-z-boosted') === 'true') {
+          el.style.zIndex = '';
+          if (el.style.position === 'relative') el.style.position = '';
+          try { el.removeAttribute('data-modmenu-z-boosted'); } catch (_) {}
+        }
+      });
+      modListEls.forEach(el => {
+        if (!el) return;
+        if (el.getAttribute && el.getAttribute('data-modlist-z-boosted') === 'true') {
+          el.style.zIndex = '';
+          if (el.style.position === 'relative') el.style.position = '';
+          try { el.removeAttribute('data-modlist-z-boosted'); } catch (_) {}
+        }
+      });
       const modDownloadEls = Array.from(document.querySelectorAll('.ModDownloadList'));
-      modDownloadEls.forEach(el => { if (el && el.style.zIndex) el.style.zIndex = ''; });
+      modDownloadEls.forEach(el => {
+        if (!el) return;
+        if (el.getAttribute && el.getAttribute('data-mod-z-boosted') === 'true') {
+          el.style.zIndex = '';
+          if (el.style.position === 'relative') el.style.position = '';
+          try { el.removeAttribute('data-mod-z-boosted'); } catch (_) {}
+        }
+      });
     }
 
   // Update tab navigation disables according to current page state
