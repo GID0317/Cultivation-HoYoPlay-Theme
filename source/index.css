@@ -2599,6 +2599,14 @@ input#profile_name {
   font-weight: 100;
 }
 
+.TextInput::selection {
+  background-color: #5c5e62;
+}
+
+.ModPagesPage .TextInputWrapper .TextInput::selection {
+  background-color: #053aa6 !important;
+}
+
 .ModPagesPage .TextInputWrapper .TextInput::placeholder {
   color: #7f7f88;
 }
