@@ -2287,7 +2287,7 @@ input#profile_name {
 #menuContainer.Menu.ModMenu {
   width: 600px !important;
   max-height: 390px !important;
-  top: 63%;        
+  top: 50%;        
 }
 
 .ModDownloadList{
