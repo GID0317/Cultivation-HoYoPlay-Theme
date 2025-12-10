@@ -2407,9 +2407,18 @@ input#profile_name {
   height: 340px;
 }
 
+.Mods {
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+}
+
 .ModList {
   background-color: #0c0f1d;
-  height: 110%;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .ModListItem {
@@ -2418,6 +2427,7 @@ input#profile_name {
 
 .ModListInner {
   justify-content: space-evenly;
+  padding-bottom: 20px;
 }
 
 /* Style the file name */
@@ -2524,16 +2534,20 @@ input#profile_name {
 
 .ModPages {
   background: #1b1d2a;
-      justify-content: flex-end;
-          position: absolute;
-          width: 200px;
-              margin-left: 1070px;
-    margin-top: -49px;
+  justify-content: flex-end;
+  position: absolute;
+  right: 0px;
+  top: 0;
+  width: 200px;
+  display: flex;
+  gap: 8px;
+  margin-top: 55px;
+  background: transparent;
 }
 
 .ModPagesPage {
   left: 82%;
-    margin-top: -45px;
+    margin-top: 60px;
 }
 
 .ModImage .ModImageInner {
@@ -2572,14 +2586,14 @@ input#profile_name {
 .ModPagesPage .TextInputWrapper .TextInput {
   background-color: #343746 !important;
   border: none;
-  color: #e0e0e0;
+  color: #e0e0e0 !important;
   padding: 10px 16px;
   border-radius: 999px; /* makes it pill-shaped */
-  font-size: 14px;
+  font-size: 14px !important;
   width: 100%;
   transition: box-shadow 0.2s ease, background-color 0.2s ease;
   box-shadow: inset 0 0 0 1px #3a3b45;
-      height: 16px;
+  height: 16px;
   position: relative; /* Enable positioning for pseudo-element */
   text-align: left;
   font-weight: 100;
@@ -2602,11 +2616,58 @@ input#profile_name {
     pointer-events: none;
 }
 
+/* Clear button */
+.ModPagesPage .TextInputWrapper .clear-search {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #40434c;
+    border: none;
+    color: #e0e0e0;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+    font-size: 8px;
+    padding: 0;
+    transition: background 0.15s ease;
+    z-index: 1;
+}
+
+.ModPagesPage .TextInputWrapper .clear-search:active {
+    background: #4a4c5b;
+}
+
+.ModPagesPage .TextInputWrapper .clear-search.visible {
+    display: flex;
+}
+
 .ModPagesPage .TextInputWrapper .TextInput:focus,
 .ModPagesPage .TextInputWrapper .TextInput:hover {
   outline: none;
   background-color: #1b1d2a !important;
   box-shadow: inset 0 0 0 1px #556de5;
+  font-size: 14px;
+}
+
+/* Keep dark styling when browser autofills from saved info flyout */
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill,
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill:hover,
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill:focus {
+  background-color: #343746 !important;
+  -webkit-box-shadow: 0 0 0 1000px #343746 inset !important;
+  box-shadow: inset 0 0 0 1px #556de5 !important;
+  -webkit-text-fill-color: #e0e0e0 !important;
+  color: #e0e0e0 !important;
+  font-size: 14px !important;
+  font-weight: 100 !important;
+  caret-color: #e0e0e0;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .MainProgressBarWrapper {
