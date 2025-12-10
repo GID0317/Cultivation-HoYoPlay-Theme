@@ -1,4829 +1,3408 @@
-  // Ensure backdrop is before dialog in DOM for correct stacking
-  var backdrop = document.getElementById('menu-dialog-backdrop');
-  if (backdrop) {
-    document.body.appendChild(backdrop);
-    document.body.insertBefore(backdrop, document.body.lastChild);
-    backdrop.style.display = 'block';
-    backdrop.style.opacity = '1';
-    if (typeof window.layoutBackdropPanels === 'function') window.layoutBackdropPanels();
+/* Keep install notifications above backdrop but below wallpaper selector */
+.GameInstallNotify,
+.GameInstallNotify.download-complete {
+  z-index: 9997 !important;
+}
+
+/* Force Extras and Server Launch icons to white only on hover/hold */
+#ExtrasMenuButton:hover img,
+#ExtrasMenuButton:hover svg,
+#ExtrasMenuButton:hover .icon,
+#ExtrasMenuButton:active img,
+#ExtrasMenuButton:active svg,
+#ExtrasMenuButton:active .icon,
+#serverLaunch:hover img,
+#serverLaunch:hover svg,
+#serverLaunch:hover .icon,
+#serverLaunch:active img,
+#serverLaunch:active svg,
+#serverLaunch:active .icon {
+  filter: invert(100%) brightness(100%) !important;
+}
+
+/* LoadingCircle: use theme asset image */
+.LoadingCircle {
+  position: relative; /* keep original layout */
+}
+.LoadingCircle > div {
+  width: 32px;               /* adjust as desired */
+  height: 32px;
+  background-image: url("https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/loading.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: loading-icon-spin 1s linear infinite; /* spin if default is removed */
+  border: none !important;            /* override default ring */
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+@keyframes loading-icon-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Wrapper container for custom dropdown */
+.custom-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Profiles dropdown: let wrapper and trigger size to content */
+.custom-dropdown-wrapper.custom-dropdown-profiles {
+  width: auto;
+  display: inline-flex;
+}
+
+/* Dropdown trigger button (replaces native select appearance) */
+.custom-dropdown-trigger {
+  width: 100%;
+  padding: 8px 32px 8px 10px;
+  background: #292C30 !important; /* Match TextInput background */
+  border: none;
+  border-radius: 7px;
+  color: #CAD2CE !important; /* Match TextInput text color */
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Make the Profiles dropdown trigger slightly translucent to match reference style */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger {
+  background: rgb(0 0 0 / 38%) !important; /* translucent version of #292C30 */
+  border: 1px solid rgb(156 156 156 / 35%); /* soft light border like reference pill */
+  padding: 6px 10px 6px 7px;
+  width: auto;         /* shrink-to-fit content */
+  max-width: none;     /* allow growth when text is long */
+}
+
+/* Preserve translucent styling for Profiles dropdown even when open/hover/focused */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger:hover,
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-trigger:focus,
+.custom-dropdown-wrapper.custom-dropdown-profiles.open .custom-dropdown-trigger {
+  background: rgb(0 0 0 / 48%) !important; /* keep translucent pill */
+}
+
+/* Leading icon inside specific dropdowns (e.g., Profiles) */
+.custom-dropdown-leading-icon {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', sans-serif;
+  font-size: 14px;
+  margin-right: 8px; /* a bit more space before text */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure text doesn't overlap icon in Profiles dropdown */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-text {
+  margin-left: 2px;
+}
+
+/* Hover state for trigger button */
+.custom-dropdown-trigger:hover {
+  background: #34373b !important;
+}
+
+/* Focus state for trigger button */
+.custom-dropdown-trigger:focus {
+  background: #3a3d40 !important;
+}
+
+/* Trigger button when dropdown is open */
+.custom-dropdown-wrapper.open .custom-dropdown-trigger {
+  background: #3a3d40 !important;
+}
+
+/* Text content inside trigger button */
+.custom-dropdown-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Profiles trigger text should size to content, not stretch */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-text {
+  flex: 0 0 auto;
+}
+
+/* Arrow indicator (hidden to use native arrow) */
+.custom-dropdown-arrow {
+  display: none;
+}
+
+/* Dropdown menu container (the list of options) */
+.custom-dropdown-menu {
+  position: absolute;
+  z-index: 10001; /* Above most UI elements */
+  background: #32353b; /* Solid dark background */
+  border-radius: 8px;
+  box-shadow: 0 0px 15px rgba(0, 0, 0, 0.211); /* Deep shadow for depth */
+  margin-top: 4px; /* Space below trigger */
+  /* Limit visible items to ~5; extra items scroll */
+  max-height: 224px; /* ~5 items, keeps menu from growing too tall */
+  overflow-y: auto; /* Enable scrolling for long lists */
+  /* Manage scrollbar gutter dynamically via a class to avoid extra right gap */
+  scrollbar-gutter: auto; /* No reserved space by default */
+  min-width: 200px; /* Minimum menu width */
+  width: max-content; /* Expand to fit content */
+  max-width: 300px; /* Maximum menu width */
+  padding: 6px;
+  right: 0; /* Right-aligned to trigger */
+  left: auto;
+  /* Animation properties */
+  transform-origin: top center; /* Scale from top */
+  box-sizing: border-box; /* Keep outer width stable when scrollbar appears */
+}
+
+/* When wrapper is marked to open upwards, flip menu origin and spacing */
+.custom-dropdown-wrapper.open-up .custom-dropdown-menu {
+  margin-top: 0; /* no space below trigger when opening up */
+  margin-bottom: 6px; /* small gap below the menu when above the trigger */
+  transform-origin: bottom center; /* Scale from bottom when opening upward */
+}
+
+/* Fallback for older Chromium/WebKit that still honors overflow: overlay */
+@supports (overflow: overlay) {
+  .custom-dropdown-menu {
+    overflow-y: overlay; /* Overlays scrollbar on content instead of reserving width */
   }
-  // Ensure backdrop is before dialog in DOM for correct stacking
-  var backdrop = document.getElementById('menu-dialog-backdrop');
-  if (backdrop) {
-    document.body.appendChild(backdrop);
-    document.body.insertBefore(backdrop, document.body.lastChild);
-    backdrop.style.display = 'block';
-    backdrop.style.opacity = '1';
-    if (typeof window.layoutBackdropPanels === 'function') window.layoutBackdropPanels();
+}
+
+/* Dropdown menu opening animation */
+.custom-dropdown-menu.opening {
+  animation: dropdownScaleIn 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dropdown menu closing animation (default: bottom-to-top collapse for menus that open downward) */
+.custom-dropdown-menu.closing {
+  animation: dropdownScaleOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* For upward-opening menus, override closing animation so they collapse toward the trigger (topwards) */
+.custom-dropdown-wrapper.open-up .custom-dropdown-menu.closing {
+  animation: dropdownScaleOutUp 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Profiles dropdown: slightly slower open/close for a softer feel */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu.opening {
+  animation: dropdownScaleIn 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu.closing {
+  animation: dropdownScaleOut 0.20s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.custom-dropdown-wrapper.custom-dropdown-profiles.open-up .custom-dropdown-menu.closing {
+  animation: dropdownScaleOutUp 0.20s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scale in animation (top to bottom) */
+@keyframes dropdownScaleIn {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
   }
-// Change play button label
-
-function injectPlayIcon() {
-  const playBtn = document.getElementById('officialPlay');
-  if (!playBtn || playBtn.querySelector('img')) return;
-
-  const icon = document.createElement('img');
-  icon.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/PlayIcon.png';
-  icon.style.height = '48px';
-  icon.style.verticalAlign = 'middle';
-  icon.style.marginRight = '190px';
-  icon.style.position = 'absolute';
-  icon.style.pointerEvents = 'none';
-  icon.style.userSelect = 'none';
-
-  playBtn.prepend(icon);
-}
-
-// Initial injection
-injectPlayIcon();
-
-// Global built-in background runtime flags (used to block other background changes)
-try {
-  window.__USE_BUILTIN_BG = (localStorage.getItem && localStorage.getItem('useBuiltinBackground') === '1');
-} catch (_) { window.__USE_BUILTIN_BG = false; }
-window.__BUILTIN_BG_SUFFIX = 'background/bg.png';
-
-// Observe for changes
-const playBtn = document.getElementById('officialPlay');
-if (playBtn) {
-  const observer = new MutationObserver(() => {
-    injectPlayIcon();
-  });
-  observer.observe(playBtn, { childList: true, subtree: true });
-}
-
-// HoYoPlay cache constants (must be initialized before any cache reads)
-const HOYO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
-
-
-
-const serverLaunchBtn = document.getElementById('serverLaunch');
-if (serverLaunchBtn) {
-  // Change button text
-  //serverLaunchBtn.innerText = 'Start Private Server';
-
-  // // Add a custom icon (optional)
-  // const icon = document.createElement('img');
-  // icon.src = '/your-server-icon.png'; // Make sure this icon is in your theme folder
-  // icon.style.height = '28px';
-  // icon.style.verticalAlign = 'middle';
-  // icon.style.marginRight = '10px';
-  // serverLaunchBtn.prepend(icon);
-}
-
-// Only add the bar if it doesn't exist
-if (!document.getElementById('leftBar')) {
-  const leftBar = document.createElement('div');
-  leftBar.id = 'leftBar';
-  leftBar.style.width = '67px';
-  leftBar.style.height = '99.8vh';
-  leftBar.style.background = 'linear-gradient(0deg, rgba(0, 0, 0, 0.83) 0%, rgb(0 0 0 / 21%) 60%)';
-  leftBar.style.position = 'fixed'; // Use fixed for overlay-style sidebars
-  leftBar.style.left = '0';
-  leftBar.style.top = '0';
-  leftBar.style.zIndex = '2'; // Keep above background fade overlay
-  leftBar.style.display = 'flex';
-  leftBar.style.flexDirection = 'column';
-  leftBar.style.justifyContent = 'flex-start';
-  leftBar.style.alignItems = 'center';
-
-  // Add an image icon at the top center
-  const icon = document.createElement('img');
-
-  // Use the GitHub-hosted URL for the image
-  icon.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/source/assets/CultivationIcon.png.png';
-  console.log('Icon source:', icon.src); // Debugging: Check the resolved path
-
-  // Set styles for the icon
-  icon.style.width = '40px'; // Adjust size as needed
-  icon.style.height = '40px';
-  icon.style.marginTop = '16px'; // Add some spacing from the top
-
-  // Apply a filter to make the icon white
-  icon.style.filter = 'invert(100%) brightness(100%)';
-
-  leftBar.appendChild(icon);
-
-  // Add to .App if available, else body
-  const appContainer = document.querySelector('.App');
-  if (appContainer) {
-    appContainer.appendChild(leftBar);
-  } else {
-    document.body.appendChild(leftBar);
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
   }
 }
 
-// Replace default alert dialog with themed modal
-(function setupCustomAlertDialog() {
-  const nativeAlert = typeof window.alert === 'function' ? window.alert.bind(window) : null;
-  const overlayId = 'hoyoplay-alert-overlay';
-  const dialogId = 'hoyoplay-alert-dialog';
-  const messageId = 'hoyoplay-alert-message';
-  const animationMs = 200;
-  let overlayEl = null;
-  let dialogEl = null;
-  let messageEl = null;
-  let confirmBtn = null;
-  let previousFocus = null;
-  let visible = false;
-  const queue = [];
+/* Scale out animation (bottom to top) for menus that open downward */
+@keyframes dropdownScaleOut {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+    /* Collapse should visually start disappearing from the bottom,
+       but to achieve a bottom-to-top effect we keep content anchored
+       to the top (so the bottom edge moves upward as we scale). */
+    transform-origin: top center;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: top center;
+  }
+}
 
-  function ensureElements() {
-    if (overlayEl) return true;
-    if (!document.body) return false;
+/* Scale out animation (top to bottom) for menus that open upward (so they visually close down toward the trigger) */
+@keyframes dropdownScaleOutUp {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: bottom center;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: bottom center;
+  }
+}
 
-    overlayEl = document.createElement('div');
-    overlayEl.id = overlayId;
-    overlayEl.tabIndex = -1;
+/* Custom scrollbar for dropdown menu */
+.custom-dropdown-menu::-webkit-scrollbar {
+  width: 4px;
+}
 
-    dialogEl = document.createElement('div');
-    dialogEl.id = dialogId;
-    dialogEl.setAttribute('role', 'alertdialog');
-    dialogEl.setAttribute('aria-modal', 'true');
-    dialogEl.setAttribute('aria-labelledby', messageId);
-    dialogEl.tabIndex = -1;
+/* Scrollbar track (background) */
+.custom-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-    messageEl = document.createElement('div');
-    messageEl.id = messageId;
-    messageEl.className = 'hoyoplay-alert-message';
+/* Scrollbar thumb (draggable handle) */
+.custom-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #393c42;
+  border-radius: 3px;
+  transition: background-color 0.18s ease, background 0.18s ease;
+}
 
-    const actions = document.createElement('div');
-    actions.className = 'hoyoplay-alert-actions';
+/* Scrollbar thumb on hover */
+.custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #4a4d52;
+}
 
-    confirmBtn = document.createElement('button');
-    confirmBtn.type = 'button';
-    confirmBtn.className = 'hoyoplay-alert-button';
-    confirmBtn.textContent = 'OK';
+.custom-dropdown-menu::-webkit-scrollbar-thumb:active {
+  background: #57595d;
+}
 
-    actions.appendChild(confirmBtn);
-    dialogEl.appendChild(messageEl);
-    dialogEl.appendChild(actions);
-    overlayEl.appendChild(dialogEl);
-    document.body.appendChild(overlayEl);
+/* Individual dropdown option item */
+.custom-dropdown-item {
+  padding: 10px 48px 10px 10px; /* Extra right padding for checkmark (slightly increased) */
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  border-radius: 7px;
+  position: relative;
+  margin: 5px 0;
+}
 
-    const closeAlert = () => {
-      if (!visible) return;
-      overlayEl.classList.remove('visible');
-      visible = false;
-      setTimeout(() => {
-        if (visible) return;
-        overlayEl.style.display = 'none';
-        overlayEl.removeAttribute('data-open');
-        if (previousFocus && typeof previousFocus.focus === 'function') {
-          try { previousFocus.focus({ preventScroll: true }); } catch (_) { previousFocus.focus(); }
-        }
-        processQueue();
-      }, animationMs);
-    };
+/* Subtext styling under a menu label (e.g., Built-in profile) */
+.custom-dropdown-item .custom-dropdown-subtext {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
 
-    confirmBtn.addEventListener('click', () => closeAlert());
-    confirmBtn.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Escape') {
-        ev.preventDefault();
-        closeAlert();
-      }
-    });
-    overlayEl.addEventListener('click', (ev) => {
-      if (ev.target === overlayEl) {
-        ev.preventDefault();
-        closeAlert();
-      }
-    });
-    overlayEl.addEventListener('keydown', (ev) => {
-      if (!visible) return;
-      if (ev.key === 'Escape') {
-        ev.preventDefault();
-        closeAlert();
-      }
-    });
+/* Dropdown item on hover */
+.custom-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+}
 
-    overlayEl.__closeAlert = closeAlert;
-    return true;
+/* Dropdown item on focus (keyboard navigation) */
+.custom-dropdown-item:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* Keyboard highlight for non-selected items (arrow navigation only; suppressed when hovered) */
+.custom-dropdown-item:not(.selected):not(.disabled):focus:not(:hover),
+.custom-dropdown-item:not(.selected):not(.disabled):focus-visible:not(:hover) {
+  background: #ecf5ff !important; /* Light highlight when navigated via keyboard */
+  color: #151515 !important;      /* Dark text for contrast */
+}
+
+/* Preserve selected item styling even when focused */
+.custom-dropdown-item.selected:focus,
+.custom-dropdown-item.selected:hover {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Selected dropdown item (current value) */
+.custom-dropdown-item.selected {
+  background: rgba(50, 53, 60, 0.8);
+  color: #f2d02a; /* Updated yellow highlight */
+  font-weight: 400;
+}
+
+/* Selected dropdown item on hover */
+.custom-dropdown-item.selected:hover {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Profiles dropdown: make selected item always look hovered (even without hover) */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu .custom-dropdown-item.selected {
+  background: rgba(60, 63, 70, 0.9);
+  color: #f2d02a;
+}
+
+/* Checkmark icon for selected item (Segoe Fluent Icons) */
+.custom-dropdown-item.selected::after {
+  content: '\E8FB'; /* Segoe Fluent Icons checkmark */
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #f2d02a; /* Updated yellow to match text */
+  font-size: 11.5px;
+  font-weight: bold;
+}
+
+/* Disabled dropdown item */
+.custom-dropdown-item.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* First item spacing */
+.custom-dropdown-item:first-child {
+  margin-top: 0;
+}
+
+/* Last item spacing */
+.custom-dropdown-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Here we disable the bottom blur */
+.BottomSection {
+  backdrop-filter: none;
+  box-shadow: none;
+  height: 250px;
+  left: 55%;
+}
+
+.BottomSection .CheckboxDisplay{
+  margin-top: 2.3px;
+}
+
+/* Make the titlebar transparent */
+#titleBar, #titlebar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Make the right toolbar background transparent */
+#topBarRight, .TopBarRight {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* If you want the left/top bar also transparent: */
+#topBarLeft, .TopBarLeft, #topBar, .TopBar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+#rightBar, .RightBar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-top: 8px !important;
+  width: 66px;
+  z-index: 1;
+}
+
+#rightBar button, #rightBar a,
+.RightBar button, .RightBar a {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Mimic Windows 11 default border style with transparency */
+.App, #root, body {
+  border-radius: 8px !important;
+  overflow: hidden;
+  height: 100vh;
+  box-sizing: border-box;
+
+  /* Add a semi-transparent border */
+  outline: 1.5px solid rgb(103 103 103 / 62%); /* Semi-transparent dark gray border */
+  outline-offset: -0.8px;
+
+  /* Add a subtle shadow for the glow effect */
+  box-shadow: 0 0 8px rgba(47, 47, 47, 0.3); /* Glow effect with transparency */
+}
+
+.App {
+  background-size: cover; /* Ensure the image covers the entire area */
+  background-position: left 50px top 0; /* Add a 50px margin-like effect on the left */
+  position: relative;
+}
+
+/* Corner vignettes layer (separate element to avoid interfering with UI stacking) */
+#vignetteCorners {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0; /* sits above fade overlay (-1) and below UI (>=1/10) */
+  background:
+    radial-gradient(ellipse 560px 420px at 100% 0%, rgba(0,0,0,0.55) 0%, transparent 72%),
+    radial-gradient(ellipse 560px 420px at 100% 100%, rgba(0,0,0,0.55) 0%, transparent 72%),
+    radial-gradient(ellipse 560px 420px at 0% 100%, rgba(0,0,0,0.55) 0%, transparent 72%);
+  /* Prevent paint bleed during transforms */
+  will-change: opacity;
+}
+
+#modsBtn img,
+#downloadsBtn img {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.80;
   }
 
-  function processQueue() {
-    if (visible) return;
-    if (!queue.length) return;
-    if (!ensureElements()) {
-      // Fallback to native alert if UI cannot be constructed
-      const fallbackMsg = queue.splice(0, queue.length).join('\n');
-      if (nativeAlert) nativeAlert(fallbackMsg);
-      return;
-    }
-
-    const nextMessage = queue.shift();
-    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    messageEl.textContent = nextMessage;
-    overlayEl.style.display = 'flex';
-    overlayEl.setAttribute('data-open', '1');
-    requestAnimationFrame(() => {
-      overlayEl.classList.add('visible');
-      confirmBtn.focus({ preventScroll: true });
-    });
-    visible = true;
+#modsBtn:hover img,
+#downloadsBtn:hover img {
+  opacity: 1;
   }
 
-  window.alert = function customAlert(message) {
-    const msg = message == null ? '' : String(message);
-    // Prefer the existing restart-styled dialog if available
-    if (typeof showRestartDialog === 'function') {
-      try {
-        showRestartDialog(msg, () => {}, true);
-        return;
-      } catch (e) { /* fall back below */ }
-    }
-    // If we can't use the restart dialog, try our custom overlay
-    if (document.body && ensureElements()) {
-      queue.push(msg);
-      processQueue();
-      return;
-    }
-    // Final fallback to native alert
-    if (nativeAlert) nativeAlert(msg);
-  };
-
-  window.__HOYO_NATIVE_ALERT = nativeAlert;
-})();
-
-// Add commit message tooltips
-function addCommitTooltips() {
-  const commitRows = document.querySelectorAll('.Commit');
-
-  commitRows.forEach(row => {
-    // Force non-tabbable for commit rows and descendants in news table
-    try {
-      row.setAttribute('tabindex', '-1');
-      row.querySelectorAll('*').forEach(el => {
-        if (el.matches('a, button, input, select, textarea, [tabindex]')) {
-          el.setAttribute('tabindex', '-1');
-        }
-      });
-    } catch (e) {}
-
-    const commitMessageCell = row.querySelector('.CommitMessage span');
-    if (commitMessageCell) {
-      const fullMessage = commitMessageCell.textContent || commitMessageCell.innerText;
-      const messageLength = fullMessage.trim().length;
-      
-      // Clean up any previous dynamic positioning handler to avoid stacking listeners.
-      row.onmouseenter = null;
-      
-      if (messageLength >= 86) {
-        // Very long messages (86+ chars): show tooltip on top
-        row.setAttribute('data-commit-message', fullMessage);
-        row.classList.add('CommitTooltipTop');
-        row.classList.remove('CommitTooltipBottom');
-        
-        row.onmouseenter = function () {
-          const rect = row.getBoundingClientRect();
-          // Anchor at row's top; CSS handles gap via transform
-          const anchorY = rect.top;
-          const anchorX = rect.left + (rect.width / 2);
-          row.style.setProperty('--tooltip-top', `${anchorY}px`);
-          row.style.setProperty('--tooltip-left', `${anchorX}px`);
-        };
-      } else if (messageLength >= 31) {
-        // Medium messages (31-85 chars): show tooltip on bottom
-        row.setAttribute('data-commit-message', fullMessage);
-        row.classList.add('CommitTooltipBottom');
-        row.classList.remove('CommitTooltipTop');
-        
-        row.onmouseenter = function () {
-          const rect = row.getBoundingClientRect();
-          const tooltipTop = rect.bottom; // Anchor at bottom; CSS adds gap
-          const tooltipLeft = rect.left + (rect.width / 2); // Center horizontally
-          row.style.setProperty('--tooltip-top', `${tooltipTop}px`);
-          row.style.setProperty('--tooltip-left', `${tooltipLeft}px`);
-        };
-      } else {
-        // Short messages (30 chars or less): no tooltip
-        row.removeAttribute('data-commit-message');
-        row.classList.remove('CommitTooltipTop', 'CommitTooltipBottom');
-      }
-    }
-  });
+#serverLaunchContainer {
+  display: flex;
+  width: 100%;               /* make the container span its parent */
+  align-items: center;       /* vertically center the two buttons */
+  justify-content: flex-end; /* push them to the right edge */
+  gap: 0px;                 /* adjust space between “Start Game” & the circle */
 }
 
-// Run when DOM is loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', addCommitTooltips);
-} else {
-  addCommitTooltips();
+.ServerConfig
+ {
+    margin-left: 28px;
 }
 
-// Also run when the news content changes (in case it's dynamically loaded)
-const observer = new MutationObserver(function(mutations) {
-  mutations.forEach(function(mutation) {
-    injectPlayIcon();
+#serverControls .Checkbox {
+  margin-left: 28px;
+  margin-top: 5px;
+}
 
-    if (mutation.type === 'childList') {
-      const newsContent = document.getElementById('newsContent');
-      if (newsContent && (mutation.target === newsContent || newsContent.contains(mutation.target))) {
-        setTimeout(() => {
-          addCommitTooltips();
-          // Re-apply tab disabling for News in case of re-render
-          try {
-            const newsRoots = Array.from(document.querySelectorAll('#newsContent, .NewsContent, .newsContent, #newsContainer, .NewsSection'));
-            if (newsRoots.length) {
-              newsRoots.forEach(root => {
-                // Disable container + descendants
-                setGroupTabDisabled(root, true);
-                const tableNodes = root.querySelectorAll('table, tbody, thead, tfoot, tr, th, td');
-                tableNodes.forEach(node => setTabDisabled(node, true));
-              });
-            }
-          } catch (_) {}
-        }, 100); // Small delay to ensure content is rendered
-      }
-    }
-  });
-});
-
-// Start observing
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
-
-function injectProgressRing() {
-  const wrapper = document.querySelector('.MainProgressBarWrapper');
-  if (!wrapper || document.querySelector('#customProgressRing')) return;
-
-  const ring = document.createElement('div');
-  ring.id = 'customProgressRing';
-  ring.innerHTML = `
-    <svg viewBox="0 0 42 42">
-      <circle class="bg" cx="21" cy="21" r="20" />
-      <circle class="progress" cx="21" cy="21" r="20" />
-    </svg>
-    <div id="customProgressRingText">0</div> <!-- 🔧 This was missing -->
-  `;
-  // Add the breathing class here
-  ring.classList.add('breathing');
-  wrapper.appendChild(ring);
+#serverControls{
+  height: 40px;
+  text-shadow: none !important;
 }
 
 
-function updateRingFromBar() {
-  const bar = document.querySelector('.MainProgressBarWrapper .InnerProgress');
-  const ring = document.querySelector('#customProgressRing .progress');
-  const text = document.querySelector('#customProgressRingText');
-  if (!bar || !ring) return;
+#officialPlay {
+  background: #FFDB29;
+  color: #212429;
+  border: none;
+  border-radius: 40px;
+  padding: 2.5px 0px;
+  width: 10px !important;
+  font-size: 1.1rem !important;
+  display: flex;
+  align-items: center;
+  box-shadow: none !important;
+  transition: background 0.2s;
+  height: 88% !important; /* Adjust height to fit the button */
+  font-weight: 700 !important; /* Make the text bold */
+}
 
-  const percent = parseFloat(bar.style.width || '0') / 100;
-  const radius = 20;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - percent * circumference;
-  ring.style.strokeDashoffset = offset;
+#officialPlay .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  border-radius: 50%;
+  background: #212429;     /* dark circle in default */
+  color: #FFDB29;          /* yellow arrow in default */
+  font-size: 1rem;
+  transition: background 0.2s, color 0.2s;
+}
 
-  if (text) {
-    // Check if we're in the mods page
-    const isModsPage = document.querySelector('.Mods') !== null;
+#officialPlay:hover {
+  background: #212429;
+  color: #FFDB29;
+  box-shadow: none;
+}
+
+#officialPlay:active {
+  background: #000000;
+  color: #FFDB29;
+  box-shadow: none;
+}
+
+#officialPlay:hover .icon {
+  background: #FFDB29;     /* yellow circle on hover */
+  color: #212429;          /* dark arrow on hover */
+}
+
+#officialPlay:active img {
+  filter:
+    invert(69%)
+    sepia(94%)
+    saturate(749%)
+    hue-rotate(1deg)
+    brightness(110%)
+    contrast(102%) !important;
+}
+
+/* Change the play icon image color on hover */
+#officialPlay:hover img {
+  filter:
+    invert(69%)
+    sepia(94%)
+    saturate(749%)
+    hue-rotate(1deg)
+    brightness(110%)
+    contrast(102%) !important;
+}
+
+
+#serverLaunch,
+#ExtrasMenuButton {
+  /* make it a perfect circle */
+  width: 56px !important;
+  height: 56px !important;
+  padding: 0;
+  border-radius: 50%;
+
+  /* dark charcoal background */
+  background: #32353b;
+
+  /* center the icon */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* no extra text color needed */
+  border: none;
+
+  /* subtle shadow for depth */
+  box-shadow: none !important;
+
+  transition: background 0.2s;
+}
+
+#serverLaunchIcon,
+#extrasIcon {
+  -webkit-filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(70%) contrast(110%);
+  filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(70%) contrast(110%);
+  /* Slightly brighter and more contrasted gray */
+  transition: -webkit-filter 0.2s ease-in-out, filter 0.2s ease-in-out; /* Smooth transition */
+}
+
+#serverLaunch:hover 
+#serverLaunchIcon
+#ExtrasMenuButton:hover
+#extrasIcon {
+  -webkit-filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+  filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+  /* Hover color: white */
+}
+
+#serverLaunch:hover,
+#ExtrasMenuButton:hover {
+  /* a tiny lift + darker shadow */
+  background: #292c30;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+#topBarContainer {
+  height: 48px !important;       /* ← increase until nothing clips */
+  min-height: 48px !important;
+  padding: 0 !important;         /* kill any built‑in padding */
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-app-region: drag;       /* keeps the bar draggable */
+}
+
+#topBarButtonContainer {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding: 0 0px !important;
+  margin-right: 6px;
+  -webkit-app-region: no-drag;    /* so clicks register on the buttons */
+  position: relative;
+  z-index: 10;
+}
+
+.TopButton {
+    margin: 0 8.5px;
+    position: relative;
+    z-index: 10;
+}
+
+#title {
+  line-height: normal !important;
+  margin: 0 8px !important;      
+}
+
+#leftBar {
+  width: 200px; /* Adjust width as needed */
+  height: 100vh; /* Full height */
+  position: absolute; /* Position it on the left */
+  left: 0;
+  top: 0;
+  z-index: 0; /* Ensure it is below the title bar */
+  border-top-left-radius: inherit;   /* Only top-left corner */
+  border-bottom-left-radius: inherit;/* Only bottom-left corner */
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  overflow: hidden; /* Clip content that overflows the rounded corners */
+
+  /* Replace outline with per-side borders (no right edge) */
+  border-top: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-left: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-bottom: 1.5px solid rgba(166, 166, 166, 0.5);
+  border-right: 1.5px solid rgb(13 13 13 / 13%);
+
+  /* Position relative for pseudo-element */
+  position: relative;
+}
+
+/* Make the icon non-draggable */
+#leftBar img {
+  pointer-events: auto !important; /* Override to make clickable */
+  user-select: none !important;
+  cursor: default !important; /* Use default cursor instead of pointer */
+}
+
+/* Pseudo-element no longer used for right divider; using border-right instead */
+
+/* While HoYoPlay video is playing, fade the left bar and its right-edge line */
+/* Removed empty ruleset to satisfy linter; styling intentionally handled elsewhere */
+
+/* 1) Make both controls flex–centered squares */
+
+/* Add the same border “brush” look over the video while playing */
+body.hoyoplay-video-playing #hoyoplay-video-overlay {
+  box-shadow: inset 0 0 0 1.5px rgb(103 103 103 / 62%);
+  border-radius: 8px; /* match the App’s rounded corners */
+}
+#closeBtn,
+#minBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px;        /* uniform padding */
+  width: 16px;         /* make the button box the same width */
+  height: 16px;        /* and height */
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  transition: background 0.2s ease-in-out;
+  cursor: pointer;
+
+  /* clear out any old nudges */
+  transform: none !important;
+}
+
+/* 2) Hover/focus for both */
+#closeBtn:hover,
+#closeBtn:focus,
+#minBtn:hover,
+#minBtn:focus {
+  background: rgba(0, 0, 0, 0.36) !important;
+  outline: none;
+}
+
+/* 1) Increase the button’s hit‑box to match */
+#settingsBtn,
+#downloadsBtn,
+#modsBtn,
+#backbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* tweak these until it’s as big as you like */
+  padding: 3px;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  transition: background 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+/* 2) Scale the actual icon inside */
+#settingsBtn svg,
+#settingsBtn .icon,
+#downloadsBtn svg,
+#downloadsBtn .icon,
+#modsBtn svg,
+#modsBtn .icon,
+#backbtn svg,
+#backbtn .icon  {
+  width: 20px !important;
+  height: 20px !important;
+  /* if it’s a font-icon: */
+  font-size: 20px !important;
+}
+
+/* 3) Keep hover effect */
+#settingsBtn:hover,
+#settingsBtn:focus,
+#downloadsBtn:hover,
+#downloadsBtn:focus,
+#modsBtn:hover,
+#modsBtn:focus,
+#backbtn:hover,
+#backbtn:focus {
+  background: rgba(0, 0, 0, 0.36) !important;
+  outline: none;
+}
+
+#settingsBtn:active,
+#downloadsBtn:active,
+#modsBtn:active,
+#backbtn:active,
+#minBtn:active,
+#closeBtn:active {
+  background: rgba(0, 0, 0, 0.552) !important;
+  outline: none;
+}
+
+.GameInstallNotify {
+  position: fixed;
+  top: 32px;
+  left: 0;
+  right: 0;                 /* allow centering via margin:auto */
+  background-color: #1a1a1a;        /* dark background */
+  color: #ffffff;                  /* white text */
+  padding: 5px 20px;              /* spacing inside */
+  border-radius: 16px;             /* rounded corners */
+  display: flex;                   /* for alignment */
+  align-items: center;            /* center vertically */
+  justify-content: space-between; /* space between text and close icon */
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 1rem;
+  width: fit-content;              /* shrink to fit content */
+  width: -moz-fit-content;         /* Firefox prefix safeguard */
+  width: max-content;              /* fallback */
+  margin: 16px auto;               /* center horizontally */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);  /* subtle shadow */
+  border: 2px solid #474748;       /* Add border with color (e.g., yellow) */
+
+/* Add slide-down animation */
+  animation: notifySlideDown 0.3s ease forwards;
+  
+  /* Start from hidden state */
+  opacity: 0;
+  transform: translateY(-20px);    /* animate only Y to avoid X-shift */
+}
+
+/* Slide-down animation keyframes */
+@keyframes notifySlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide animation: fade out only (no vertical slide) */
+.GameInstallNotify.hiding {
+  /* Fade out only so the element doesn't slide - preserves horizontal centering */
+  animation: notifyFadeOut 0.3s ease forwards;
+}
+
+@keyframes notifyFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.GameInstallNotify span {
+  margin-right: 16px;
+}
+
+.GameInstallNotify .close-icon {
+  cursor: pointer;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.GameInstallNotify .close-icon:hover {
+  opacity: 1;
+}
+
+/* Container to position the tooltip */
+#minBtn {
+  position: relative; /* Ensure the tooltip is positioned relative to the button */
+}
+
+/* Single unified tooltip with integrated arrow using pseudo-element styling */
+#minBtn::after {
+  content: 'Minimize'; /* Tooltip text */
+  position: absolute;
+  top: calc(100% + 12px); /* Move tooltip closer to arrow (was 12px) */
+  left: 50%;
+  transform: translateX(-50%) scale(0); /* Start with scale 0 (hidden) */
+  transform-origin: center top; /* Scale from the top center */
+  background-color: #e6e6e6; /* Light gray background */
+  color: #1a1a1a; /* Dark text color */
+  padding: 6px 10px; /* Spacing inside the tooltip */
+  font-size: 0.8rem; /* Slightly smaller font size */
+  border-radius: 6px; /* Rounded corners */
+  white-space: nowrap; /* Prevent text wrapping */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Prevent interaction */
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 10; /* Ensure it appears above other elements */
+  /* Anti-aliasing fixes for smooth text animation */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Create arrow using ::before pseudo-element */
+#minBtn::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 6px); /* Position just above the tooltip */
+  left: 50%;
+  transform: translateX(-50%) scale(0); /* Same scaling as tooltip */
+  transform-origin: center top; /* Scale from same point */
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;  /* Make arrow wider */
+  border-right: 13px solid transparent; /* Make arrow wider */
+  border-bottom: 15px solid #e6e6e6;  /* Make arrow taller - was 6px */
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 11; /* Above the tooltip */
+}
+
+/* Show tooltip on hover - both elements scale together with same transform */
+#minBtn:hover::after,
+#minBtn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Don't hide the ::before element - we need it for the arrow */
+
+/* Tooltip for Close Button */
+#closeBtn {
+  position: relative; /* Ensure the tooltip is positioned relative to the button */
+}
+
+/* Single unified tooltip with integrated arrow using pseudo-element styling */
+#closeBtn::after {
+  content: 'Close'; /* Tooltip text */
+  position: absolute;
+  top: calc(100% + 12px); /* Move tooltip closer to arrow (was 12px) */
+  left: 10%;
+  transform: translateX(-50%) scale(0); /* Start with scale 0 (hidden) */
+  transform-origin: center top; /* Scale from the top center */
+  background-color: #e6e6e6; /* Light gray background */
+  color: #1a1a1a; /* Dark text color */
+  padding: 6px 10px; /* Spacing inside the tooltip */
+  font-size: 0.8rem; /* Slightly smaller font size */
+  border-radius: 6px; /* Rounded corners */
+  white-space: nowrap; /* Prevent text wrapping */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Prevent interaction */
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 10; /* Ensure it appears above other elements */
+  /* Anti-aliasing fixes for smooth text animation */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Create arrow using ::before pseudo-element */
+#closeBtn::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 6px); /* Position just above the tooltip */
+  left: 50%;
+  transform: translateX(-50%) scale(0); /* Same scaling as tooltip */
+  transform-origin: center top; /* Scale from same point */
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;  /* Make arrow wider */
+  border-right: 13px solid transparent; /* Make arrow wider */
+  border-bottom: 15px solid #e6e6e6;  /* Make arrow taller - was 6px */
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 11; /* Above the tooltip */
+}
+
+/* Show tooltip on hover - both elements scale together with same transform */
+#closeBtn:hover::after,
+#closeBtn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Tooltip for Settings Button */
+#settingsBtn {
+  position: relative; /* Ensure the tooltip is positioned relative to the button */
+}
+
+/* Single unified tooltip with integrated arrow using pseudo-element styling */
+#settingsBtn::after {
+  content: 'Settings'; /* Tooltip text */
+  position: absolute;
+  top: calc(100% + 12px); /* Move tooltip closer to arrow (was 12px) */
+  left: 50%;
+  transform: translateX(-50%) scale(0); /* Start with scale 0 (hidden) */
+  transform-origin: center top; /* Scale from the top center */
+  background-color: #e6e6e6; /* Light gray background */
+  color: #1a1a1a; /* Dark text color */
+  padding: 6px 10px; /* Spacing inside the tooltip */
+  font-size: 0.8rem; /* Slightly smaller font size */
+  border-radius: 6px; /* Rounded corners */
+  white-space: nowrap; /* Prevent text wrapping */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Prevent interaction */
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 10; /* Ensure it appears above other elements */
+  /* Anti-aliasing fixes for smooth text animation */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Create arrow using ::before pseudo-element */
+#settingsBtn::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 6px); /* Position just above the tooltip */
+  left: 50%;
+  transform: translateX(-50%) scale(0); /* Same scaling as tooltip */
+  transform-origin: center top; /* Scale from same point */
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;  /* Make arrow wider */
+  border-right: 13px solid transparent; /* Make arrow wider */
+  border-bottom: 15px solid #e6e6e6;  /* Make arrow taller - was 6px */
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* 1 second delay before appearing */
+  z-index: 11; /* Above the tooltip */
+}
+
+/* Show tooltip on hover - both elements scale together with same transform */
+#settingsBtn:hover::after,
+#settingsBtn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+#rightBarButtonDiscord,
+#rightBarButtonGithub {
+  background: transparent;
+  border-radius: 8px; /* Subtle translucent background */
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px !important;
+  margin-top: 5px !important; /* Space between buttons */
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+  box-shadow: none; /* Clean appearance */
+  border: 2px solid transparent; /* Make the border color transparent */
+}
+
+#rightBarButtonDiscord:hover,
+#rightBarButtonGithub:hover {
+  background: rgba(0, 0, 0, 0.35); /* More solid black on hover */
+  border-radius: 8px; /* Rounded square */
+  border: 2px solid transparent; /* Ensure border remains transparent on hover */
+}
+
+/* Right bar icons: base assets are black; keep white conversion filter and fade opacity */
+#rightBarButtonDiscord img,
+#rightBarButtonGithub img {
+  filter: brightness(0) invert(1) !important; /* convert black source to white */
+  opacity: 0.80; /* subdued (appears like #dbd9ea over dark bg) */
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+#rightBarButtonDiscord:hover img,
+#rightBarButtonGithub:hover img {
+  opacity: 1; /* full white on hover */
+}
+
+/* Top bar window control icons (settings, minimize, close) same treatment */
+#settingsBtn img,
+#minBtn img,
+#closeBtn img {
+  filter: brightness(0) invert(1) !important; /* ensure white from black base */
+  opacity: 0.80;
+  transition: opacity 0.18s ease;
+}
+
+#settingsBtn:hover img,
+#minBtn:hover img,
+#closeBtn:hover img {
+  opacity: 1;
+}
+
+#title span:first-child {
+  display: none !important;
+}
+
+#version {
+  margin-left: 80px !important; /* or adjust to your liking */
+  font-size: 14px;              
+  color: #ffffff;
+  position: relative;
+  z-index: 10;
+}
+
+#unassumingButton {
+  display: none !important;
+}
+
+#newsContainer {
+  position: fixed;
+  bottom: 50px;
+  left: 125px;  /* push it to the right to avoid left bar overlap */
+  padding: 16px;
+  background: rgba(0,0,0,.685); /* semi-transparent dark */
+  border-radius: 12px;
+  color: white;
+  max-width: 350px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+#newsTabsContainer {
+  background: transparent;
+  color: #879098;
+}
+
+.NewsTab.selected {
+    border-bottom: none; /* Remove the original border */
+    position: relative;
+    padding-bottom: 1px; /* Add padding to prevent text from being cramped */
+    color: #FFFFFF;
+}
+
+.NewsTab:hover {
+  color: #FFFFFF;
+  transition: color 0.3s ease;
+}
+
+.NewsTab.selected::after {
+    content: '';
+    position: absolute;
+    bottom: -5px; /* Position 10px below the tab - negative value to go further down */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10%; /* Adjust this percentage to control the border width */
+    height: 2.4px;
+    background-color: #ffdb29;
+}
+
+.NewsContent {
+    color: #dcdcdc;
+}
+
+/* Hover effect for newsCommitsTable rows */
+.Commit .CommitAuthor span,
+.Commit .CommitMessage span,
+.NewsContent {
+  color: #dcdcdc;
+  font-size: 14px;
+}
+
+/* Hover effect for newsCommitsTable rows */
+.Commit:hover .CommitAuthor span,
+.Commit:hover .CommitMessage span {
+  color: #ffdb29; /* Yellow text on hover */
+}
+
+/* Tooltip for commit messages (default: below) */
+.Commit::after {
+  content: attr(data-commit-message);
+  position: fixed; /* Use fixed to escape container overflow */
+  top: var(--tooltip-top, -9999px); /* Anchor line: row edge */
+  left: var(--tooltip-left, 50%);
+  transform: translate(-50%, 0px) scale(0); /* Default below with 12px gap */
+  transform-origin: center top; /* Scale from top when below */
+  background-color: #e6e6e6; /* Light gray background */
+  color: #1a1a1a; /* Dark text color */
+  padding: 6px 10px; /* Match minBtn tooltip padding */
+  font-size: 0.8rem; /* Match minBtn tooltip font size */
+  border-radius: 6px; /* Rounded corners */
+  white-space: pre-wrap; /* Preserve line breaks */
+  max-width: 300px; /* Limit width */
+  max-height: 150px; /* Limit height */
+  overflow: hidden; /* Scroll if content overflows */
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Prevent interaction */
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* small delay before appearing */
+  z-index: 50000; /* High enough to appear above video controls and all UI */
+}
+
+/* Arrow for default (below) placement */
+.Commit::before {
+  content: '';
+  position: fixed;
+  top: calc(var(--tooltip-top, -9999px) + var(--tooltip-arrow-offset, 3px)); /* Use CSS variable for arrow offset */
+  left: var(--tooltip-left, 50%);
+  transform: translate(-50%, 0) scale(0); /* Start hidden */
+  transform-origin: center top; /* Scale from top */
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent; /* Match arrow width */
+  border-right: 8px solid transparent; /* Match arrow width */
+  border-bottom: 8px solid #e6e6e6; /* Up-pointing arrow (tooltip below) */
+  opacity: 0; /* Hidden by default */
+  pointer-events: none; /* Prevent interaction */
+  transition: transform 0.2s ease, opacity 0.2s ease-out; /* Smooth animation */
+  transition-delay: 0.2s; /* small delay */
+  z-index: 49999; /* Just below tooltip but above all other UI */
+}
+
+/* Top placement overrides */
+.Commit.CommitTooltipTop::after {
+  /* Move tooltip above the anchor by its own height + 12px gap */
+  /* Nudge down a bit to reduce the visible gap between arrow and body */
+  transform: translate(-50%, calc(-100% - 11px)) scale(0);
+  transform-origin: center bottom; /* Scale from bottom when above */
+  z-index: 999999 !important; /* Force highest z-index with !important */
+}
+
+.Commit.CommitTooltipTop:hover::after {
+  transform: translate(-50%, calc(-100% - 10px)) scale(1);
+}
+
+.Commit.CommitTooltipTop::before {
+  top: calc(var(--tooltip-top, -9999px) - 11px); /* halfway in the 12px gap above anchor */
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: none;
+  border-top: 8px solid #e6e6e6; /* Down-pointing arrow (tooltip above) */
+}
+
+/* Hover: show tooltip and arrow while preserving Y translate */
+.Commit:hover::after {
+  opacity: 1;
+  transform: translate(-50%, var(--tooltip-bottom-offset, 10.5px)) scale(1);
+}
+
+.Commit:hover::before {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* 1. Bungkus utama: rounded corners, semi‑translucent, drop‑shadow */
+#menuContainer,
+#advancedDialogContainer {
+  background: #212429 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  /* atur lebar & tinggi sesuai desain */
+  width: 760px !important;
+  max-height: 480px !important;
+  overflow: hidden !important;
+  border: 1px solid #56585C !important; /* Add border color */
+  padding: 0px !important; /* Remove any default padding */
+  display: flex !important;
+  flex-direction: column !important;
+
+  /* Center and animate menuContainer */
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: menuSlideFromTop 0.3s ease;
+
+  /* Add transition for fade-out */
+  transition: opacity 0.3s ease, transform 0.3s ease !important;
+  opacity: 1;
+}
+
+/* Advanced dialog appears above secret menu */
+#advancedDialogContainer {
+  z-index: 10000 !important;
+}
+
+/* Options menu: wider to fit sidebar + content */
+#menuContainer.Menu.Options,
+#advancedDialogContainer.Menu.Options {
+  width: 800px !important;
+  height: 480px !important;
+  max-height: 480px !important;
+}
+
+/* Settings sidebar (left panel) */
+#menuContainer.Menu.Options::before,
+#advancedDialogContainer.Menu.Options::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 240px;
+  background: #1e2025;
+  z-index: 1;
+}
+
+#secretMenuContainer .FooterButton.tertiary {
+  margin-left: -15px;
+}
+
+/* Settings sidebar title "Settings" */
+#menuContainer.Menu.Options::after {
+  content: 'Settings';
+  position: absolute;
+  left: 30px;
+  top: 29px;
+  font-size: 1.13rem;
+  font-weight: 500;
+  color: #8b8b8e;
+  z-index: 2;
+}
+
+/* Advanced dialog sidebar title "Advanced Settings" */
+#advancedDialogContainer.Menu.Options::after {
+  content: 'Advanced Settings';
+  position: absolute;
+  left: 30px;
+  top: 29px;
+  font-size: 1.13rem;
+  font-weight: 500;
+  color: #8b8b8e;
+  z-index: 2;
+}
+
+/* Settings sidebar "General" nav button - injected via JS */
+#settings-sidebar-nav,
+#advanced-sidebar-nav {
+  position: absolute;
+  left: 0;
+  top: 60px;
+  width: 240px;
+  padding: 10px 14px;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+#settings-sidebar-nav .sidebar-nav-item,
+#advanced-sidebar-nav .sidebar-nav-item {
+  display: block;
+  padding: 9px 16px;
+  border-radius: 8px;
+  color: #b0b0b0;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.33s, color 0.33s;
+  margin-bottom: 2px;
+}
+
+#settings-sidebar-nav .sidebar-nav-item:hover,
+#advanced-sidebar-nav .sidebar-nav-item:hover {
+  background: #292b30;
+  color: #ffffff;
+  transition: background 0.3s, color 0.3s;
+}
+
+#settings-sidebar-nav .sidebar-nav-item.active,
+#advanced-sidebar-nav .sidebar-nav-item.active {
+  background: #303136;
+  color: #ffffff;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Settings About page */
+#settings-about-page {
+  margin-left: 250px;
+  padding: 16px 24px;
+  padding-top: 0px;
+  padding-left: 10px;
+  padding-right: 0px;
+  max-height: calc(480px - 50px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#settings-about-page .OptionSection {
+  background: #292c30 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 1px !important;
+  width: 90%;
+}
+
+/* About page Check button with search icon */
+#aboutCheckVersionBtn::before {
+  content: '\E721';
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.8em;
+  margin-right: 8px;
+  margin-bottom: -2.5px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+/* Theme check button icon (same search icon) */
+#aboutCheckThemeVersionBtn::before {
+  content: '\E721';
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.8em;
+  margin-right: 8px;
+  margin-bottom: -2.5px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+/* View Update Log - interactive section */
+#aboutViewUpdateLog,
+#aboutViewThemeUpdateLog {
+  cursor: pointer;
+  transition: background 0s;
+}
+
+#aboutViewUpdateLog:hover,
+#aboutViewThemeUpdateLog:hover {
+  background: #32363b !important;
+}
+
+#aboutViewUpdateLog:active,
+#aboutViewThemeUpdateLog:active {
+  background: #3a3f45 !important;
+}
+
+/* About page app info section */
+#settings-about-page #aboutAppInfo.OptionSection {
+  background: transparent !important;
+  padding-left: 0px !important;
+}
+
+#aboutAppInfo .OptionLabel {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px;
+}
+
+/* About page Cultivation icon */
+#aboutCultivationIcon {
+  width: 40px;
+  border-radius: 8px;
+}
+
+#aboutAppName {
+  line-height: 1;
+  font-weight: 400;
+  font-size: medium;
+  color: #ffffff;
+}
+
+.about-separator {
+  color: #5c5e62;
+  margin: 0 -4px;
+  font-weight: 300;
+}
+
+.about-version {
+  color: #7f7f88;
+  font-weight: 400;
+  font-size: medium;
+}
+
+/* About page arrow icon */
+.about-arrow {
+  color: #7f7f88 !important;
+  font-size: 26px;
+}
+
+
+
+/* Settings sidebar nav items */
+#menuContainer.Menu.Options #menuContent{
+  margin-left: 240px;
+  flex: 1;
+  max-height: calc(480px - 50px) !important; /* dialog height minus header */
+}
+
+#advancedDialogContainer.Menu.Options #menuContent {
+  margin-left: 255px;
+  flex: 1;
+  max-height: calc(480px - 50px) !important; /* dialog height minus header */
+}
+
+/* Profile input wrapper aligned to the right in Options dialog */
+#menuContainer.Menu.Options #profileConfigContainer .TextInputWrapper {
+  margin-left: auto;
+}
+
+#menuContainer.Menu.Options #menuContainerTop,
+#advancedDialogContainer.Menu.Options #menuContainerTop {
+  margin-left: 250px;
+}
+
+/* Fade-out state when closing */
+#menuContainer.closing {
+  opacity: 0 !important;
+  transform: translate(-50%, -55%) scale(0.95) !important;
+  pointer-events: none !important;
+}
+
+@keyframes menuSlideFromTop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -55%) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* 2. Header (judul “Options” dan tombol close) */
+#menuContainerTop {
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-left: 15px;
+  margin-top: 10px;
+}
+#menuHeading {
+  font-size: 1.1rem !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+}
+
+/* 3. Kontainer isi, dengan scroll jika overflow */
+#menuContent {
+  padding: 16px 24px !important;
+  padding-left: 10px !important;
+  padding-right: 0px !important;
+  max-height: calc(56.5vh - 64px) !important; /* header + bottom */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative;
+  z-index: 2;
+}
+
+.MenuInner {
+    justify-content: space-between;
+}
+
+/* 4. Section heading dan label */
+.OptionSection,
+.DownloadMenuSection {
+  margin-bottom: 1px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.HeaderText {
+    align-items: center;
+    justify-content: start;
+    width: 94%;
+    color: #888A8C;
+    text-decoration-line: none;
+    font-size: 0.9rem !important;
+}
+
+/* Reduce height for the About page 'Theme' header to avoid built-in header interference */
+#settings-about-page .HeaderText {
+  display: block !important;
+  width: 100% !important;
+  margin: 30px 0px 8px 0 !important;
+  padding: 0 !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  align-items: normal !important;
+  justify-content: normal !important;
+}
+
+.Divider {
+    width: 156%;
+    opacity: 10%;
+    margin: 0px !important;
+}
+
+.OptionLabel,
+.DownloadLabel,
+.ModDownloadName {
+  font-size: 0.9rem !important;
+  color: #dde5e1 !important;
+  margin-bottom: 0px !important;
+  position: relative !important; /* Allow positioning of pseudo-elements */
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 80%;
+}
+
+/* Subtext styling for option descriptions */
+.OptionSubtext {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+  line-height: 1.2;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+/* Ensure OptionValue doesn't grow and stays right-aligned */
+.OptionValue {
+  flex: 0 0 auto;
+  margin-left: 16px;
+}
+
+#menuOptionsContainerMigoto .SmallButtonSection{
+  margin-right: 10px;
+  margin-left: 0px;
+}
+
+#menuOptionsContainerMigoto .SmallButtonSection .SmallButtonButton {
+  height: 14px;
+    filter: invert(99%) sepia(0) saturate(1188%) hue-rotate(186deg) brightness(97%) contrast(67%);
+    margin-bottom: 6px;
+}
+
+/* Add subtext using CSS pseudo-elements for specific options */
+#menuOptionsContainermetaDownload .OptionLabel::after {
+  content: 'Force delete RSA patch if something went wrong';
+  display: block;
+  font-size: 0.75rem;
+  color: #888888;
+  margin-top: 4px;
+  opacity: 0.8;
+  line-height: 1.3;
+}
+
+#menuOptionsContainerPatchMeta .OptionLabel::after {
+  content: 'Auto patch/unpatch game RSA. Enable unless using old versions (3.0 or older)';
+  display: block;
+  font-size: 0.75rem;
+  color: #888888;
+  margin-top: 0px;
+  opacity: 0.8;
+  line-height: 1.3;
+}
+
+#menuOptionsContainerUseProxy .OptionLabel::after {
+  content: 'Use Cultivation internal proxy. Enable unless using external tools like Fiddler';
+  display: block;
+  font-size: 0.75rem;
+  color: #888888;
+  margin-top: 0px;
+  opacity: 0.8;
+  line-height: 1.3;
+}
+
+#menuOptionsContainerToggleEnc .OptionLabel::after {
+  content: 'Usually should be disabled for normal operation';
+  display: block;
+  font-size: 0.75rem;
+  color: #888888;
+  margin-top: 4px;
+  opacity: 0.8;
+  line-height: 1.3;
+}
+
+
+
+/* container sizing, centering and smooth bg transition */
+#menuButtonCloseContainer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  transition: background 0.2s !important;
+}
+
+/* hover state: subtle light overlay */
+#menuButtonCloseContainer:hover {
+  background: #2C2F34 !important;
+}
+
+#menuButtonCloseContainer:active {
+  background: #32353a !important;
+}
+
+/* make the “X” white */
+#menuButtonCloseIcon {
+  filter: invert(100%) brightness(60%) !important;
+  transition: filter 0.2s !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+#menuButtonCloseIcon:hover {
+  filter: invert(100%) brightness(200%) !important;
+  transition: filter 0.2s !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* Sync icon state with parent hover/focus so they animate together */
+#menuButtonCloseContainer:hover #menuButtonCloseIcon,
+#menuButtonCloseContainer:focus #menuButtonCloseIcon {
+  filter: invert(100%) brightness(200%) !important;
+}
+
+/* Slightly dim on active press, matching container active state */
+#menuButtonCloseContainer:active #menuButtonCloseIcon {
+  filter: invert(100%) brightness(160%) !important;
+}
+
+.MenuExit {
+    margin-top: 0px;
+    margin-bottom: 35px;
+    margin-left: 0px;
+    margin-right: 10px;
+}
+
+
+/* 6. Checkbox/switch custom look */
+.CheckboxDisplay {
+  width: 31.5px !important;
+  height: 18px !important;
+  background: #2E3136 !important;
+  border: 2px solid #5C5E62 !important;
+  border-radius: 10px !important;
+  position: relative !important;
+  transition: background 0.2s, border-color 0.3s !important;
+}
+.Checkbox input:checked + label .CheckboxDisplay {
+  border-color: #f6d429 !important;
+  background: #2E3136 !important;
+}
+.Checkbox input:checked:hover + label .CheckboxDisplay {
+  border-color: #fac000 !important;
+}
+.Checkbox input:hover + label .CheckboxDisplay {
+  transition: border-color 0.4s !important;
+  border-color: #7f8184 !important;
+}
+.CheckboxDisplay::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: #fff !important;
+  border-radius: 50% !important;
+  transition: transform 0.2s, background 0.2s !important;
+}
+.Checkbox input:checked + label .CheckboxDisplay::after {
+  transform: translateX(14px) !important;
+}
+
+.CheckboxDisplay img {
+    display: none;
+}
+
+/* 7. Divider line yang halus */
+.DividerLine {
+  height: 1px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  margin: 16px 0 !important;
+}
+
+/* 2) Style each option section as its own “card” */
+#menuContent .OptionSection,
+#menuContent .DownloadMenuSection,
+#menuContent .ModDownloadItem {
+  background: #292c30 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background 0.2s !important;
+  width: 90%;
+}
+
+#menuContent .OptionSection,
+#menuContent .DownloadMenuSection,
+#menuContent .ModDownloadItem {
+  background: #292c30 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background 0.2s !important;
+}
+
+/* Adjust specificity to ensure custom dropdown styles override #menuContent select */
+#menuContent #menuOptionsSelectThemes select,
+#menuContent #menuOptionsSelectMenuLang {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  width: auto;
+  min-width: 120px; 
+  max-width: 100%;  
+  padding: 8px 0px 8px 12px !important;  /* space for text + caret */
+  background: transparent !important;
+  border: 1px solid transparent !important; /* transparent border */
+  border-radius: 6px !important;
+  color: #828485 !important;
+  font-size: 0.9rem !important;
+  cursor: pointer !important;
+  transition: background 0.15s, border-color 0.15s !important;
+  outline: none !important;
+  box-sizing: content-box; /* Ensure width is based on content */
+}
+
+#menuContent #menuOptionsSelectThemes select:hover,
+#menuContent #menuOptionsSelectThemes select:focus,
+#menuContent #menuOptionsSelectMenuLang:hover,
+#menuContent #menuOptionsSelectMenuLang:focus {
+  background: #34373b !important; 
+  color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
+}
+
+#menuContent #menuOptionsSelectThemes select:has(:active),
+#menuContent #menuOptionsSelectThemes select:active,
+#menuContent #menuOptionsSelectMenuLang:has(:active),
+#menuContent #menuOptionsSelectMenuLang:active {
+  background: #3a3d40 !important; 
+  color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
+}
+
+#menuContent #menuOptionsSelectThemes,
+#menuContent #menuOptionsSelectLang {
+  position: relative;
+  display: inline-block;
+}
+#menuContent #menuOptionsSelectThemes::after,
+#menuContent #menuOptionsSelectLang::after {
+  content: '\E70D';
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #ccc;
+  font-size: 0.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease-out;
+}
+
+/* Rotate chevron when dropdown is focused/opened */
+#menuContent #menuOptionsSelectThemes select:focus + #menuContent #menuOptionsSelectThemes::after,
+#menuContent #menuOptionsSelectThemes:focus-within::after,
+#menuContent #menuOptionsSelectMenuLang:focus + #menuContent #menuOptionsSelectLang::after,
+#menuContent #menuOptionsSelectLang:focus-within::after {
+  transform: translateY(-50%) rotate(-180deg);
+}
+
+/* 4) Option list items (inside the native popup) */
+#menuContent #menuOptionsSelectThemes select option,
+#menuContent #menuOptionsSelectMenuLang option {
+  background: #32353b !important; /* dark menu background */
+  color: #fff !important;         /* light text */
+}
+#menuContent #menuOptionsSelectThemes select option:hover,
+#menuContent #menuOptionsSelectMenuLang option:hover {
+  background: red !important;
+  color: #fff;
+}
+#menuContent #menuOptionsSelectThemes select option:checked,
+#menuContent #menuOptionsSelectThemes select option[selected],
+#menuContent #menuOptionsSelectMenuLang option:checked,
+#menuContent #menuOptionsSelectMenuLang option[selected] {
+  color: #FFD950 !important;      /* yellow highlight */
+}
+
+/* Style all BigButtons inside OptionSection */
+.OptionSection .BigButton {
+  /* size & layout */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 5px !important;
+  max-height: 3px !important;
+  padding: 0px 10px !important;
+  
+  /* colors & borders */
+  background: #292C30 !important;       /* default dark bg */
+  border: 2px solid #626468 !important; /* subtle gray border */
+  border-radius: 8px !important;        /* gentle rounding */
+  color: #FFFFFF !important;            /* white text */
+  font-size: 0.9rem !important;
+  font-weight: normal !important;         
+  
+  /* cursor & transition */
+  transition: background 0.15s ease, border-color 0.15s ease !important;
+}
+
+.OptionSection .BigButton,
+.DownloadMenuSection .BigButton,
+.ModDownloadItem .BigButton {
+  /* size & layout */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2.5px !important;
+  max-height: 0px !important;
+  min-height: 0px;
+  padding: 13.5px 9.5px !important;
+  
+  /* colors & borders */
+  background: #292C30;       /* default dark bg */
+  border: 2px solid #56585c !important; /* subtle gray border */
+  border-radius: 6px !important;        /* gentle rounding */
+  color: #FFFFFF !important;            /* white text */
+  font-size: 0.9rem !important;
+  font-weight: normal !important;         
+  
+  /* cursor & transition */
+  transition: background 0.1s;
+}
+
+/* Hover state */
+.OptionSection .BigButton:hover,
+.DownloadMenuSection .BigButton:hover,
+.ModDownloadItem .BigButton:hover {     /* slightly lighter */
+  border-color: #717376 !important;     /* brighter border */
+}
+
+.OptionSection .BigButton:active,
+.DownloadMenuSection .BigButton:active,
+.ModDownloadItem .BigButton:active {     /* slightly lighter */
+  border-color: #56585c !important;     /* brighter border */
+}
+
+/* If you have an icon inside the button: */
+.OptionSection .BigButton img,
+.OptionSection .BigButton .icon,
+.DownloadMenuSection .BigButton img,
+.DownloadMenuSection .BigButton .icon {
+  margin-right: 8px !important;         /* space before the text */
+  filter: brightness(0) invert(1) !important; /* ensure white icon */
+}
+
+.OptionSection .BigButton.disabled,
+.DownloadMenuSection .BigButton.disabled,
+.ModDownloadItem .BigButton.disabled {
+    background: none !important;
+    border: 2px solid #626468 !important;
+    color: #e2e2e2 !important;
+    cursor: default !important;
+}
+
+#downloadMenuContainerResources .BigButton.disabled::before {
+  content: '\EC61' !important; /* Override with new icon for disabled state */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif !important;
+  font-size: 0.9em !important;
+  margin-right: 8px !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  color: inherit !important;
+  pointer-events: none !important;
+  color: #7CDA64 !important; /* Use the green color for disabled state */
+}
+
+#menuOptionsContainermetaDownload .BigButton::before {
+  content: '\E74D'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#menuOptionsButtonInstallCert .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#menuOptionsContainerAdvanced .BigButton::before {
+  content: '\E74D'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#menuOptionsContainerFixRes .BigButton::before {
+  content: '\E90F'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuButtonGCFullBuild .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuContainerGCFullQuest .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuContainerGCDev .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuContainerResources .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuContainerMigoto .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+#downloadMenuContainerGCDevData .BigButton::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
+/* mod download btn icon */
+.ModDownloadItem .BigButtonText::before {
+  content: '\E896'; /* Unicode for the icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+  margin-top: -2px;
+}
+
+/* Show Recommended pill to the left of .HelpSection in PatchMeta option */
+
+/* Keyframe animation for the expand effect - horizontal only */
+@keyframes expandPill {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scaleX(1); /* Slight horizontal overshoot */
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* for has subtext */
+#menuOptionsContainerPatchMeta .HelpSection::before, 
+#menuOptionsContainerUseProxy .HelpSection::before {
+  content: 'Recommended';
+  display: block; /* Move to its own line above */
+  margin-bottom: 6px; /* Space below the pill, not below the whole section */
+  background: #5E6063;
+  color: #E5E5E5;
+  font-size: 0.7rem;
+  border-radius: 5px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  pointer-events: none;
+  /* vertical-align not applicable on block elements */
+
+/* Animation properties - horizontal scaling only */
+  transform: scaleX(0);
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  animation: expandPill 0.4s ease-out 0.2s forwards;
+}
+
+/* for not has subtext */
+#menuOptionsContainerRedirect .OptionLabel::after,
+#menuOptionsContainerInstallCert .OptionLabel::after,
+#menuOptionsContainerAutoMongodb .OptionLabel::after {
+  content: 'Recommended';
+    display: inline-block; 
+  margin-bottom: 6px; /* Space below the pill, not below the whole section */
+  margin-left: 10px;
+  background: #5E6063;
+  color: #E5E5E5;
+  font-size: 0.7rem;
+  border-radius: 5px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  pointer-events: none;
+  vertical-align: middle;
+
+  /* Animation properties - horizontal scaling only */
+  transform: scaleX(0);
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  animation: expandPill 0.4s ease-out 0.2s forwards;
+}
+
+.HelpButton {
+    display: none;
+}
+
+.HelpSection {
+    margin-left: 10px !important;
+}
+
+.ServerConfig input{
+  border-bottom: 1px solid #ffffff;
+}
+
+.TextInput {
+    background: #292C30 !important;
+    border-bottom: 1px solid #5b5d61;
+    color: #CAD2CE !important;
+}
+
+input#profile_name {
+  border-radius: 0px !important;
+}
+
+.TextClear {
+    position: sticky;
+    display: none !important;
+}
+
+#playButton {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    right: 9%;
+    padding-bottom: 50px !important;
+}
+
+/* 1) Global scrollbar width */
+::-webkit-scrollbar {
+  width: 7.5px;
+  height: 8px;            /* also style horizontal if you need */
+}
+
+/* 2) Track (background) */
+::-webkit-scrollbar-track {
+  background: transparent; /* invisible track */
+  display: none;
+}
+
+/* 3) Thumb (the draggable handle) NOTE: The transition doesn't work still finding a way to fix it*/
+::-webkit-scrollbar-thumb {
+  background: #292d30;  /* subtle light on dark */
+  border-radius: 4px;        /* gives a little padding */
+  transition: background-color 0.18s ease, background 0.18s ease;
+}
+
+/* 4) Thumb on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #3b3e42;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #494c50;
+}
+
+/* 5) Corner when both scrollbars are visible */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+#menuContainer.Menu.Options{
+  width: 800px !important;
+}
+
+#menuContainer.Menu.Downloads{
+  max-height: 450px !important;
+}
+
+#menuContainer.Menu.Downloads .Divider{
+  opacity: 0%;
+  height: 0px;
+  height: 25px !important;
+}
+
+#menuContainer.ExtrasMenu {
+  width: 400px !important; /* Or whatever you want */
+  height: 340px;
+}
+
+
+/* Only applies when the ExtrasMenu is active */
+#menuContainer.ExtrasMenu .ExtraLaunch {
+  margin-top: 16px !important;
+  display: flex !important;
+  justify-content: center !important; /* Center the button */
+  margin-left: 237px;
+  height: 60px;
+}
+
+/* Style the button itself */
+#menuContainer.ExtrasMenu #ExtraLaunch {
+  width: auto;
+  height: 12px;
+  background: #FFDB29;
+  
+  border: 1px solid #626468;
+  border-radius: 8px;
+  text-align: center;
+  padding: 12px 30px;
+  transition: background 0.1s;
+}
+
+#menuContainer.ExtrasMenu #ExtraLaunch:hover {
+  background: #FFC800;
+}
+
+/* ExtrasMenu: hold (mouse down) color only */
+#menuContainer.ExtrasMenu #ExtraLaunch:has(:active),
+#menuContainer.ExtrasMenu #ExtraLaunch:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
+}
+
+#menuContainer.ExtrasMenu #ExtraLaunch .BigButtonText {
+  color: #16171A;
+  font-weight: 650;
+  font-size: 15px;
+}
+
+#menuContainer.ExtrasMenu .ExtraItemLabel {
+  color: #FDFDFD;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#menuContainer.ExtrasMenu .ExtraItem {
+  background: #292c30 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background 0.2s !important;
+  width: 90%;
+}
+
+#menuContainer.ExtrasMenu .MenuInner {
+  padding-left: 30px !important;
+  padding-right: 31px !important;
+}
+
+#menuContainer.Menu.ModMenu {
+  width: 600px !important;
+  max-height: 390px !important;
+  top: 63%;        
+}
+
+.ModDownloadList{
+  width: 97%;
+}
+
+.ModDownloadItem {
+  margin-bottom: 1px !important;
+  margin-top: 0px;
+}
+
+/* Download area popup */
+#miniDownloadContainer .MiniDialog {
+  color: white;
+  background: rgb(0 0 0 / 80%);
+  box-shadow: none;
+  border-radius: 12px;
+  height: auto;
+  padding: 0px;
+  max-width: 350px;
+
+/* Start hidden - same as minBtn tooltip */
+  transform: scale(0);
+  transform-origin: center bottom;
+  opacity: 0;
+  pointer-events: none;
+  
+  /* Use keyframe animation that mimics minBtn tooltip exactly */
+  animation: miniDialogTooltipAppear 0.2s ease forwards;
+  
+  /* Anti-aliasing fixes - same as minBtn */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Keyframe animation that mimics minBtn tooltip behavior */
+@keyframes miniDialogTooltipAppear {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+  }
+  100% {
+    transform: scale(1); /* No bounce - just like minBtn tooltip */
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@keyframes miniDialogTooltipDisappear {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* Mini Download Container Animation */
+.MiniDownloads {
+  left: auto;
+  position: fixed;
+  max-height: 80vh !important;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  z-index: 1000;
+  top: auto;
+  right: 38%;
+  bottom: 18%;
+
+
+}
+
+.DownloadTitle {
+    justify-content: space-around;
+}
+
+/* Apply the bounce animation when appearing */
+.MiniDownloads.animated {
+  animation: miniDownloadAppear 0.3s ease-out;
+}
+
+/* Reverse order of items inside */
+.MiniDialogInner .MiniDialogInner {
+      justify-content: space-around;
+}
+
+#miniDownloadContainer .MiniDownloads {
+  left: 27%;
+  top: 63%;
+}
+
+#miniDownloadContainer .arrow-down {
+  display: none;
+}
+
+#miniDownloadContainer .ProgressBarWrapper {
+  display: none;
+}
+
+#miniDownloadContainer .MiniDialog.mini-hover-closing,
+#miniDownloadContainer .MiniDownloads.mini-hover-closing {
+  animation: miniDialogTooltipDisappear 0.18s ease forwards !important;
+}
+
+/* mod download menu dialog */
+#menuContainer.ExtrasMenu {
+  width: 400px !important; 
+  height: 340px;
+}
+
+.ModList {
+  background-color: #0c0f1d;
+  height: 110%;
+}
+
+.ModListItem {
+  border-radius: 12px;
+}
+
+.ModListInner {
+  justify-content: space-evenly;
+}
+
+/* Style the file name */
+.MiniDownloads .DownloadPath {
+  font-weight: 600;
+  font-size: 13px;
+  color: #f5f5f5;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Style the status text (size or error coloring) */
+.MiniDownloads .DownloadStatus {
+  font-size: 12px;
+  color: #888888;
+  margin-left: 4px;
+}
+
+
+/* Change ModName on parent hover */
+.ModListItem:hover .ModName {
+  color: #556de5;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+/* Change ModName on parent hover */
+.ModListItem:hover{
+  background: #343746;
+}
+
+/* Change ModAuthor on parent hover */
+.ModAuthor {
+  font-size: 12px;
+  color: #827d71;
+}
+
+.ModInner .likes span,
+.ModInner .views span {
+  color: #827d71;
+  font-size: 12px;
+}
+
+.ModInner .likes img,
+.ModInner .views img {
+  filter: brightness(0) saturate(100%) invert(59%) sepia(10%) saturate(282%) hue-rotate(9deg) brightness(92%) contrast(91%);
+  opacity: 0.9;
+}
+
+.ModInner .likes img {
+  width: 16px;
+  height: 16px;
+  padding-bottom: 2px;
+}
+
+.ModListItem .ModInner {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 12px; 
+}
+
+
+
+/* Container of the header tabs */
+.ModHeader {
+  background: #1b1d2a;
+  justify-content: flex-start;
+}
+
+/* Each tab */
+.ModHeaderTitle {
+  position: relative;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #82838a;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  width: 80px;
+}
+
+/* Hover effect */
+.ModHeaderTitle:hover {
+  color: #d0d1d6;
+}
+
+/* Selected (active) tab */
+.ModHeaderTitle.selected {
+  border-bottom: none; /* Remove the original border */
+  color: #fff;
+}
+
+.ModHeaderTitle.selected::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; /* Position 10px below the tab - negative value to go further down */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 13%; /* Adjust this percentage to control the border width */
+  height: 4px;
+  background-color: #556de5;
+  border-radius: 10px;
+}
+
+.ModPages {
+  background: #1b1d2a;
+      justify-content: flex-end;
+          position: absolute;
+          width: 200px;
+              margin-left: 1070px;
+    margin-top: -49px;
+}
+
+.ModPagesPage {
+  left: 82%;
+    margin-top: -45px;
+}
+
+.ModImage .ModImageInner {
+  border-radius: 12px;
+  border: 1px solid var(--bottom-image-border-color);
+  margin-left: 10px;
+  margin-right: 10px;
+  max-width: 93.5%;
+}
+
+/* back and formard mod pages */
+
+.ModPages .ModPagesTitle {
+  color: #82838a;
+}
+
+.ModPages .ModPagesTitle:hover {
+  color: #556de5;
+}
+
+.ModPages .ModPagesTitle.selected {
+  color: #82838a;
+}
+
+.ModPages .ModPagesTitle.selected:hover {
+  color: #556de5;
+}
+
+/*search mod pages */
+
+.ModPagesPage .TextInputWrapper {
+    background: none !important;
     
-    if (isModsPage && percent >= 1) {
-      // Show download icon when in mods page (idle state)
-      text.textContent = '\uE896'; // Download icon
-      text.style.fontFamily = "'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif";
-      text.style.fontSize = '14px';
-      text.style.color = '#ffffff';
-    } else {
-      // Show normal percentage everywhere else
-      text.textContent = Math.round(percent * 100);
-      text.style.fontFamily = "inherit";
-      text.style.fontSize = '12px';
-      text.style.color = '#ffffff';
-    }
-  }
+}
+
+.ModPagesPage .TextInputWrapper .TextInput {
+  background-color: #343746 !important;
+  border: none;
+  color: #e0e0e0 !important;
+  padding: 10px 16px;
+  border-radius: 999px; /* makes it pill-shaped */
+  font-size: 14px !important;
+  width: 100%;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+  box-shadow: inset 0 0 0 1px #3a3b45;
+  height: 16px;
+  position: relative; /* Enable positioning for pseudo-element */
+  text-align: left;
+  font-weight: 100;
+}
+
+.ModPagesPage .TextInputWrapper .TextInput::placeholder {
+  color: #7f7f88;
+}
+
+.ModPagesPage .TextInputWrapper::after {
+    content: '\F78B'; /* Updated Windows 11 search icon - faces left */
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+    position: absolute;
+    right: -15px; /* Position from the right edge */
+    top: 50%;
+    transform: translateY(-50%); /* Center vertically */
+    color: #7f7f88; /* Same color as placeholder */
+    font-size: 16px;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* Clear button */
+.ModPagesPage .TextInputWrapper .clear-search {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #40434c;
+    border: none;
+    color: #e0e0e0;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+    font-size: 8px;
+    padding: 0;
+    transition: background 0.15s ease;
+    z-index: 1;
+}
+
+.ModPagesPage .TextInputWrapper .clear-search:active {
+    background: #4a4c5b;
+}
+
+.ModPagesPage .TextInputWrapper .clear-search.visible {
+    display: flex;
+}
+
+.ModPagesPage .TextInputWrapper .TextInput:focus,
+.ModPagesPage .TextInputWrapper .TextInput:hover {
+  outline: none;
+  background-color: #1b1d2a !important;
+  box-shadow: inset 0 0 0 1px #556de5;
+  font-size: 14px;
+}
+
+/* Keep dark styling when browser autofills from saved info flyout */
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill,
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill:hover,
+.ModPagesPage .TextInputWrapper .TextInput:-webkit-autofill:focus {
+  background-color: #343746 !important;
+  -webkit-box-shadow: 0 0 0 1000px #343746 inset !important;
+  box-shadow: inset 0 0 0 1px #556de5 !important;
+  -webkit-text-fill-color: #e0e0e0 !important;
+  color: #e0e0e0 !important;
+  font-size: 14px !important;
+  font-weight: 100 !important;
+  caret-color: #e0e0e0;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.MainProgressBarWrapper {
+    position: relative;
+    display: flex
+;
+    flex-direction: row;
+    align-items: center;
+    justify-content: end;
+    padding-left: 54px;
+}
+
+/* Hide original bar */
+.MainProgressBarWrapper .ProgressBar {
+  visibility: hidden;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 
-// Start syncing
-injectProgressRing();
-setInterval(() => {
-  injectProgressRing();      // Ensure it's injected
-  updateRingFromBar();       // Sync progress
-}, 200);
 
-let testProgress = 0;
-let testInterval = null;
-
-function startTestProgress() {
-  stopTestProgress(); // Reset if already running
-
-  const bar = document.querySelector('.MainProgressBarWrapper .InnerProgress');
-  if (!bar) return;
-
-  testProgress = 0;
-
-  testInterval = setInterval(() => {
-    testProgress += 1;
-    if (testProgress > 1000) {
-      stopTestProgress();
-      return;
-    }
-
-    // Simulate width on real element
-    bar.style.width = `${testProgress}%`;
-
-    // Update ring
-    updateRingFromBar();
-
-  }, 50); // 50ms step
+/* Container */
+#customProgressRing {
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  top: 5px;
+  right: 194px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
-function stopTestProgress() {
-  clearInterval(testInterval);
-  testInterval = null;
+/* Ring */
+#customProgressRing svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+#customProgressRing circle {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
 }
 
-// Adjust DownloadProgress position depending on Extras menu presence
-function adjustDownloadProgressPosition() {
-  try {
-    const dp = document.querySelector('#DownloadProgress');
-    if (!dp) return;
-    const container = document.getElementById('serverLaunchContainer') || document.getElementById('serverLaunch');
-    // Find Extras button by id or class within serverLaunchContainer
-    let extrasBtn = null;
-    if (container) {
-      extrasBtn = container.querySelector('#ExtrasMenuButton') || container.querySelector('.ExtrasMenuButton');
-    }
-    if (!extrasBtn) {
-      // Fallback: global lookup
-      extrasBtn = document.getElementById('ExtrasMenuButton') || document.querySelector('.ExtrasMenuButton');
-    }
-    // Consider visible only if present and rendered
-    let extrasVisible = false;
-    if (extrasBtn) {
-      const cs = window.getComputedStyle(extrasBtn);
-      extrasVisible = cs.display !== 'none' && cs.visibility !== 'hidden' && extrasBtn.getClientRects().length > 0;
-    }
-    // If Extras is visible, right: 20%; else 15.1%
-    const rightVal = extrasVisible ? '20%' : '15.1%';
-    dp.style.setProperty('right', rightVal, 'important');
-  } catch (_) {}
+/* Background */
+#customProgressRing .bg {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+#customProgressRing.breathing .bg {
+  animation: track-breathe 3.5s ease-in-out infinite;
+}
+@keyframes track-breathe {
+  0%, 100% { stroke: rgba(255,255,255,0.04); }
+  50%      { stroke: rgba(255,255,255,0.16); }
 }
 
-// Function to check if progress is active and update button state
-function updatePlayButtonState() {
-  const downloadProgress = document.querySelector('#DownloadProgress');
-  const progressWrapper = document.querySelector('.MainProgressBarWrapper');
-  const progressBar = document.querySelector('.MainProgressBarWrapper .InnerProgress');
-  const playButton = document.querySelector('#officialPlay');
-  
-  if (!playButton) return;
-  
-  let hasProgress = false;
-  
-  // Check if DownloadProgress exists and has children
-  if (downloadProgress && downloadProgress.children.length > 0) {
-    // Check if MainProgressBarWrapper exists and is visible
-    if (progressWrapper && progressWrapper.style.display !== 'none') {
-      // Check if there's actual progress (width > 0)
-      if (progressBar) {
-        const progressWidth = parseFloat(progressBar.style.width || '0');
-        hasProgress = progressWidth > 0;
-      } else {
-        // If no progress bar but wrapper exists, assume there's progress
-        hasProgress = true;
-      }
-    }
+/* Progress stroke */
+#customProgressRing .progress {
+  stroke: #ffdb29;
+  stroke-dasharray: 126;
+  stroke-dashoffset: 126;
+  transition: stroke-dashoffset 0.2s linear;
+}
+#customProgressRing.paused .progress {
+  stroke: #ffffff;
+}
+
+/* Center number or icon */
+#customProgressRingText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  user-select: none;
+  pointer-events: none;
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+}
+
+/* Style the main text below the ring */
+.MainProgressBarWrapper .MainProgressText {
+  font-size: 12px;
+  color: #FFFFFF;
+  font-weight: 400;
+  margin-top: 4px;
+  text-align: left;
+      padding-left: 20px;
+  opacity: 0.85;
+  line-height: 1.4;
+  width: 172px;
+  text-shadow: none;
+  position: static;
+    max-width: 172px;
+    max-height: 40px;
+}
+
+#DownloadProgress {
+    left: auto;
+    top: 64%;
+    width: auto;
+    right: 20%;
+}
+
+/* Style only the ring inside .TopDownloads */
+.TopDownloads #customProgressRing {
+  top: -3px;
+  right: auto;
+  left: -114%;
+  pointer-events: none;
+}
+
+/* Optional breathing effect ONLY under TopDownloads
+.TopDownloads #customProgressRing.breathing .bg {
+  animation: top-ring-breathe 3.5s ease-in-out infinite;
+}
+
+@keyframes top-ring-breathe {
+  0%, 100% { stroke: rgba(255,255,255,0.04); }
+  50%      { stroke: rgba(255,255,255,0.16); }
+} */
+
+/* Hide text and apply hover style when progress is active */
+.MainProgressBarWrapper:not([style*="display: none"]) ~ #playButton #officialPlay,
+.MainProgressBarWrapper[style*="display: block"] ~ #playButton #officialPlay,
+.MainProgressBarWrapper[style*="display: flex"] ~ #playButton #officialPlay,
+body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="width: 0"])) #officialPlay {
+  background: #0D0D0F !important; /* Apply progress background */
+  color: #FFDB29 !important;
+}
+
+/* Allow hover background when progress is active */
+.MainProgressBarWrapper:not([style*="display: none"]) ~ #playButton #officialPlay:hover,
+.MainProgressBarWrapper[style*="display: block"] ~ #playButton #officialPlay:hover,
+.MainProgressBarWrapper[style*="display: flex"] ~ #playButton #officialPlay:hover,
+body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="width: 0"])) #officialPlay:hover {
+  background: #212429 !important; /* Apply default hover background */
+  color: #FFDB29 !important;
+}
+
+/* Hide the text when progress is active */
+.MainProgressBarWrapper:not([style*="display: none"]) ~ #playButton #officialPlay .BigButtonText,
+.MainProgressBarWrapper[style*="display: block"] ~ #playButton #officialPlay .BigButtonText,
+.MainProgressBarWrapper[style*="display: flex"] ~ #playButton #officialPlay .BigButtonText,
+body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="width: 0"])) #officialPlay .BigButtonText {
+  display: none !important;
+}
+
+/* Apply hover icon style when progress is active */
+.MainProgressBarWrapper:not([style*="display: none"]) ~ #playButton #officialPlay .icon,
+.MainProgressBarWrapper[style*="display: block"] ~ #playButton #officialPlay .icon,
+.MainProgressBarWrapper[style*="display: flex"] ~ #playButton #officialPlay .icon,
+body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="width: 0"])) #officialPlay .icon {
+  background: #FFDB29 !important; /* yellow circle like on hover */
+  color: #212429 !important; /* dark arrow like on hover */
+}
+
+/* JavaScript-controlled progress state */
+#officialPlay.progress-active {
+  background: #0D0D0F !important;
+  color: #FFDB29 !important;
+}
+
+/* Allow hover on JavaScript-controlled progress state */
+#officialPlay.progress-active:hover {
+  background: #212429 !important;
+  color: #FFDB29 !important;
+}
+
+/* Hide the img when progress is active - CSS selectors */
+.MainProgressBarWrapper:not([style*="display: none"]) ~ #playButton #officialPlay img,
+.MainProgressBarWrapper[style*="display: block"] ~ #playButton #officialPlay img,
+.MainProgressBarWrapper[style*="display: flex"] ~ #playButton #officialPlay img,
+body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="width: 0"])) #officialPlay img {
+  display: none !important;
+}
+
+/* Hide the img when progress is active - JavaScript-controlled */
+#officialPlay.progress-active img {
+  display: none !important;
+}
+
+.version-button-style {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: white;
+  font-size: 12px;
+  padding: 12px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.2s ease, border 0.2s ease;
+  position: absolute;
+    bottom: 51.5%;
+        margin-left: 126px;
+}
+
+.version-button-style:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Default notification (game path not found) - Warning icon with red color */
+.GameInstallNotify span::before {
+  content: '\EB90'; /* Warning icon */
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  color: #FF4444; /* Red color for warnings */
+  font-size: 1.2rem;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Download complete notification - Success icon with green color */
+.GameInstallNotify.download-complete span::before {
+  content: '\EC61'; /* Checkmark icon */
+  color: #7CDA64; /* Green color for success */
+}
+
+/* Secret Menu - inherits standard menuContainer styles */
+#secretMenuContainer {
+  /* Use all the standard menuContainer styles */
+  background: #212429 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+    width: 600px !important;
+    max-height: 280px !important;
+    overflow: hidden !important;
+    border: 1px solid #56585C !important;
+    padding: 0px !important;
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: menuSlideFromTop 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
+    opacity: 1;
+}
+
+@keyframes secretMenuAppear {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8) rotateY(90deg);
   }
-  
-  if (hasProgress) {
-    // Apply progress state (hover-like appearance, hide text)
-    playButton.classList.add('progress-active');
-  } else {
-    // Remove progress state (normal appearance, show text)
-    playButton.classList.remove('progress-active');
-  }
-  // Keep DownloadProgress aligned appropriately
-  adjustDownloadProgressPosition();
-}
-
-// Monitor progress changes more frequently
-setInterval(updatePlayButtonState, 50);
-
-// Enhanced mutation observer to watch for DownloadProgress changes
-const enhancedProgressObserver = new MutationObserver(function(mutations) {
-  let shouldUpdate = false;
-  
-  mutations.forEach(function(mutation) {
-    // Check for attribute changes (style, class)
-    if (mutation.type === 'attributes' && 
-        (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
-      shouldUpdate = true;
-    }
-    
-    // Check for child list changes (elements being added/removed)
-    if (mutation.type === 'childList') {
-      shouldUpdate = true;
-    }
-  });
-  
-  if (shouldUpdate) {
-    updatePlayButtonState();
-  }
-});
-
-// Start observing both DownloadProgress and its children
-function startProgressObserver() {
-  const downloadProgress = document.querySelector('#DownloadProgress');
-  const progressWrapper = document.querySelector('.MainProgressBarWrapper');
-  const progressBar = document.querySelector('.MainProgressBarWrapper .InnerProgress');
-  
-  // Observe DownloadProgress for child changes
-  if (downloadProgress) {
-    enhancedProgressObserver.observe(downloadProgress, { 
-      attributes: true, 
-      childList: true, 
-      subtree: true 
-    });
-    // Also watch for style/layout changes to keep position correct
-    enhancedProgressObserver.observe(downloadProgress, { attributes: true });
-  }
-  
-  // Observe progress wrapper for style changes
-  if (progressWrapper) {
-    enhancedProgressObserver.observe(progressWrapper, { 
-      attributes: true 
-    });
-  }
-  
-  // Observe progress bar for style changes
-  if (progressBar) {
-    enhancedProgressObserver.observe(progressBar, { 
-      attributes: true 
-    });
-  }
-
-  // Watch for ExtrasMenuButton appearing/disappearing under serverLaunchContainer
-  const serverLaunchContainer = document.getElementById('serverLaunchContainer') || document.getElementById('serverLaunch');
-  if (serverLaunchContainer) {
-    const extrasObserver = new MutationObserver(adjustDownloadProgressPosition);
-    extrasObserver.observe(serverLaunchContainer, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-  }
-}
-
-// Start observing immediately and retry if elements don't exist yet
-startProgressObserver();
-setInterval(startProgressObserver, 1000); // Retry every second in case elements are created later
-
-// Also periodically ensure DownloadProgress is positioned correctly
-setInterval(adjustDownloadProgressPosition, 500);
-
-// Ensure hovering the MainProgressText behaves like clicking it (opens Mini Downloads)
-function ensureProgressHoverClick() {
-  try {
-    const text = document.querySelector('.MainProgressBarWrapper .MainProgressText');
-    if (!text || text.getAttribute('data-hover-click-attached') === '1') return;
-
-    const CLICK_COOLDOWN_MS = 60;
-    let closeTimer = null;
-    let cancelCloseAnimation = null;
-    const hoverState = { text: false, popup: false };
-
-    const getDialog = () => {
-      const container = document.getElementById('miniDownloadContainer');
-      if (!container) return null;
-      return container.querySelector('.MiniDialog') || container.querySelector('.MiniDownloads');
-    };
-
-    const isDialogVisible = () => {
-      const dialog = getDialog();
-      if (!dialog) return false;
-      const rect = dialog.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return false;
-      const cs = window.getComputedStyle(dialog);
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '0') > 0.05;
-    };
-
-    const fireClickSequence = () => {
-      ['mousedown', 'mouseup', 'click'].forEach(type => {
-        text.dispatchEvent(new MouseEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          view: window
-        }));
-      });
-    };
-
-    const markTimestamp = (value) => {
-      text.setAttribute('data-hover-click-ts', String(value));
-    };
-
-    const clearClosingAnimation = () => {
-      if (typeof cancelCloseAnimation === 'function') {
-        cancelCloseAnimation();
-        cancelCloseAnimation = null;
-        markTimestamp(Date.now() - CLICK_COOLDOWN_MS - 10);
-      }
-    };
-
-    const triggerMiniDownloads = () => {
-      try {
-        clearTimeout(closeTimer);
-        closeTimer = null;
-        clearClosingAnimation();
-
-        const now = Date.now();
-        const last = parseInt(text.getAttribute('data-hover-click-ts') || '0', 10);
-        if (!Number.isNaN(last) && now - last < CLICK_COOLDOWN_MS) return;
-
-        if (isDialogVisible()) {
-          // Already visible, just cancel any pending close
-          return;
-        }
-        markTimestamp(now);
-        // Use requestAnimationFrame to batch DOM updates
-        requestAnimationFrame(() => {
-          fireClickSequence();
-        });
-      } catch (e) { /* ignore */ }
-    };
-
-    const startCloseAnimation = () => {
-      const dialog = getDialog();
-      if (!dialog || !isDialogVisible()) return;
-      if (dialog.getAttribute('data-hover-closing') === '1') return;
-
-      dialog.setAttribute('data-hover-closing', '1');
-      
-      // Use requestAnimationFrame to batch the animation class addition
-      requestAnimationFrame(() => {
-        dialog.classList.add('mini-hover-closing');
-      });
-
-      const finishClose = () => {
-        dialog.classList.remove('mini-hover-closing');
-        dialog.removeAttribute('data-hover-closing');
-        cancelCloseAnimation = null;
-        markTimestamp(Date.now() - CLICK_COOLDOWN_MS - 10);
-        requestAnimationFrame(() => {
-          fireClickSequence();
-        });
-      };
-
-      const handleAnimationEnd = () => {
-        dialog.removeEventListener('animationend', handleAnimationEnd);
-        if (dialog.getAttribute('data-hover-closing') !== '1') return;
-        finishClose();
-      };
-
-      dialog.addEventListener('animationend', handleAnimationEnd, { once: true });
-      cancelCloseAnimation = () => {
-        dialog.removeEventListener('animationend', handleAnimationEnd);
-        dialog.classList.remove('mini-hover-closing');
-        dialog.removeAttribute('data-hover-closing');
-        cancelCloseAnimation = null;
-      };
-
-      setTimeout(() => {
-        if (dialog.getAttribute('data-hover-closing') !== '1') return;
-        dialog.removeEventListener('animationend', handleAnimationEnd);
-        finishClose();
-      }, 200);
-    };
-
-    const scheduleClose = () => {
-      clearTimeout(closeTimer);
-      closeTimer = setTimeout(() => {
-        if (hoverState.text || hoverState.popup) return;
-        startCloseAnimation();
-      }, 60);
-    };
-
-    const ensurePopupHoverListeners = () => {
-      const container = document.getElementById('miniDownloadContainer');
-      if (!container || container.getAttribute('data-hover-listeners') === '1') return;
-
-      container.addEventListener('mouseenter', () => {
-        hoverState.popup = true;
-        clearTimeout(closeTimer);
-        closeTimer = null;
-        clearClosingAnimation();
-      });
-      container.addEventListener('mouseleave', () => {
-        hoverState.popup = false;
-        scheduleClose();
-      });
-      container.setAttribute('data-hover-listeners', '1');
-    };
-
-    text.addEventListener('mouseenter', () => {
-      hoverState.text = true;
-      triggerMiniDownloads();
-      ensurePopupHoverListeners();
-    });
-    text.addEventListener('mouseleave', () => {
-      hoverState.text = false;
-      scheduleClose();
-    });
-    text.addEventListener('focus', () => {
-      hoverState.text = true;
-      triggerMiniDownloads();
-      ensurePopupHoverListeners();
-    });
-    text.addEventListener('blur', () => {
-      hoverState.text = false;
-      scheduleClose();
-    });
-    text.addEventListener('touchstart', () => {
-      hoverState.text = true;
-      triggerMiniDownloads();
-      ensurePopupHoverListeners();
-      scheduleClose();
-    }, { passive: true });
-
-    text.setAttribute('data-hover-click-attached', '1');
-  } catch (_) {}
-}
-
-ensureProgressHoverClick();
-setInterval(ensureProgressHoverClick, 1000);
-
-function injectVersionHighlightsButton() {
-  const newsSection = document.querySelector('.NewsSection');
-  if (!newsSection || document.getElementById('customNewsButton')) return;
-
-  const button = document.createElement('button');
-  button.id = 'customNewsButton';
-  button.textContent = 'Version Highlights';
-
-  // Add class for styling
-  button.className = 'version-button-style';
-
-  // Optional: click behavior
-  button.onclick = (event) => {
-    // Prevent default behavior and stop propagation
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const url = 'https://github.com/Grasscutters/Cultivation/releases/latest';
-    
-    // Create a temporary link and click it
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.style.display = 'none'; // Hide the link
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Return false to ensure no further event handling
-    return false;
-  };
-
-  // Insert before news section
-  newsSection.parentNode.insertBefore(button, newsSection);
-}
-
-// Wait for DOM
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', injectVersionHighlightsButton);
-} else {
-  injectVersionHighlightsButton();
-}
-
-// Function to make text inputs writable
-function makeTextInputsWritable() {
-  const textInputs = document.querySelectorAll('.TextInput[readonly]');
-  textInputs.forEach(input => {
-    input.removeAttribute('readonly');
-    input.readOnly = false; // Also set the property directly
-  });
-}
-
-// Run on DOM load and periodically check for new inputs
-function startTextInputObserver() {
-  makeTextInputsWritable();
-  
-  // Also observe for dynamically added inputs
-  const observer = new MutationObserver(() => {
-    makeTextInputsWritable();
-  });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['readonly']
-  });
-}
-
-// Start immediately and on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startTextInputObserver);
-} else {
-  startTextInputObserver();
-}
-
-// Also check periodically in case elements are recreated
-setInterval(makeTextInputsWritable, 1000);
-
-// Function to show download complete notification
-function showDownloadCompleteNotification() {
-  let notification = document.querySelector('.GameInstallNotify');
-  
-  if (!notification) {
-    // Create notification if it doesn't exist
-    notification = document.createElement('div');
-  // class names should not include the '.' prefix
-  notification.className = 'GameInstallNotify';
-    document.body.appendChild(notification);
-  }
-  
-  // Add the download-complete class for different styling
-  notification.classList.add('download-complete');
-  
-  // Update the notification content
-  const span = notification.querySelector('span') || document.createElement('span');
-  span.textContent = 'Download and extraction complete. Enjoy the game!';
-  
-  if (!notification.querySelector('span')) {
-    notification.appendChild(span);
-  }
-  
-  // Show the notification
-  notification.style.display = 'flex';
-  notification.classList.remove('hiding');
-  
-  // Auto-hide after 5 seconds
-  setTimeout(() => {
-    notification.classList.add('hiding');
-    setTimeout(() => {
-      notification.style.display = 'none';
-      notification.classList.remove('hiding');
-      notification.classList.remove('download-complete'); // Clean up the class
-    }, 300);
-  }, 5000);
-}
-
-// Function to show copy success notification
-function showCopySuccessNotification() {
-  let notification = document.querySelector('.GameInstallNotify');
-  
-  if (!notification) {
-    // Create notification if it doesn't exist
-    notification = document.createElement('div');
-    notification.className = 'GameInstallNotify';
-    document.body.appendChild(notification);
-  }
-  
-  // Add the download-complete class for the green checkmark
-  notification.classList.add('download-complete');
-  
-  // Update the notification content
-  const span = notification.querySelector('span') || document.createElement('span');
-  span.textContent = 'Copied successfully';
-  
-  if (!notification.querySelector('span')) {
-    notification.appendChild(span);
-  }
-  
-  // Show the notification
-  notification.style.display = 'flex';
-  notification.classList.remove('hiding');
-  
-  // Auto-hide after 3 seconds (shorter than download complete)
-  setTimeout(() => {
-    notification.classList.add('hiding');
-    setTimeout(() => {
-      notification.style.display = 'none';
-      notification.classList.remove('hiding');
-      notification.classList.remove('download-complete'); // Clean up the class
-    }, 300);
-  }, 3000);
-}
-
-// Generic banner notification (reuses GameInstallNotify element)
-function showBanner(message, extraClass) {
-  let notification = document.querySelector('.GameInstallNotify');
-  if (!notification) {
-    notification = document.createElement('div');
-    notification.className = 'GameInstallNotify';
-    document.body.appendChild(notification);
-  }
-  // Optionally add extra class for styling variants
-  if (extraClass) notification.classList.add(extraClass);
-
-  const span = notification.querySelector('span') || document.createElement('span');
-  span.textContent = message || '';
-  if (!notification.querySelector('span')) notification.appendChild(span);
-
-  notification.style.display = 'flex';
-  notification.classList.remove('hiding');
-
-  // Auto-hide after 4 seconds
-  setTimeout(() => {
-    notification.classList.add('hiding');
-    setTimeout(() => {
-      notification.style.display = 'none';
-      notification.classList.remove('hiding');
-      if (extraClass) notification.classList.remove(extraClass);
-    }, 300);
-  }, 4000);
-}
-
-// Show a restart-needed dialog with actions (or alert-style with alertMode=true)
-function showRestartDialog(message, onRestart, alertMode) {
-
-  // Create a unique backdrop for Restart dialog with same structure as shared
-  let backdrop = document.getElementById('restart-dialog-backdrop');
-  if (!backdrop) {
-    backdrop = document.createElement('div');
-    backdrop.id = 'restart-dialog-backdrop';
-    Object.assign(backdrop.style, {
-      position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-      background: 'transparent',
-      zIndex: '10999',
-      pointerEvents: 'none',
-      opacity: '1',
-      transition: 'opacity 0.2s',
-      display: 'block'
-    });
-
-    // Create panels like the shared backdrop
-    let panelTop = document.createElement('div');
-    Object.assign(panelTop.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelTop.className = 'backdrop-panel panel-top';
-
-    let panelBottom = document.createElement('div');
-    Object.assign(panelBottom.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelBottom.className = 'backdrop-panel panel-bottom';
-    panelBottom.style.borderBottomLeftRadius = '8px';
-    panelBottom.style.borderBottomRightRadius = '8px';
-
-    let panelLeft = document.createElement('div');
-    Object.assign(panelLeft.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelLeft.className = 'backdrop-panel panel-left';
-    panelLeft.style.borderTopLeftRadius = '8px';
-
-    let panelRight = document.createElement('div');
-    Object.assign(panelRight.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelRight.className = 'backdrop-panel panel-right';
-    panelRight.style.borderTopRightRadius = '8px';
-
-    let holeVeil = document.createElement('div');
-    Object.assign(holeVeil.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'none',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    holeVeil.className = 'backdrop-panel hole-veil';
-
-    backdrop.appendChild(panelTop);
-    backdrop.appendChild(panelBottom);
-    backdrop.appendChild(panelLeft);
-    backdrop.appendChild(panelRight);
-    backdrop.appendChild(holeVeil);
-
-    document.body.appendChild(backdrop);
-
-    // Layout the panels
-    try {
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const bar = document.getElementById('topBarContainer');
-      const btns = document.getElementById('topBarButtonContainer');
-      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
-      const btnRect = btns ? btns.getBoundingClientRect() : null;
-      const holeHeight = Math.max(36, Math.min(64, barRect.height));
-      const centerX = vw / 2;
-      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
-      const leftBias = 0.70;
-      let holeLeft = centerX - holeWidth * leftBias;
-      let holeRight = centerX + holeWidth * (1 - leftBias);
-      const safety = 4;
-      if (btnRect) {
-        const maxRight = Math.max(0, btnRect.left - safety);
-        if (holeRight < maxRight) {
-          holeRight = maxRight;
-        } else if (holeRight > maxRight) {
-          const overlap = holeRight - maxRight;
-          holeRight -= overlap;
-          holeLeft -= overlap;
-        }
-      }
-      holeLeft = Math.max(8, holeLeft);
-      holeRight = Math.min(vw - 8, holeRight);
-      const minHoleWidth = 200;
-      if (holeRight - holeLeft < minHoleWidth) {
-        holeLeft = Math.max(8, holeRight - minHoleWidth);
-      }
-      const holeTop = Math.max(0, barRect.top);
-      const holeBottom = Math.min(vh, holeTop + holeHeight);
-
-      Object.assign(panelTop.style, {
-        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
-      });
-      Object.assign(panelBottom.style, {
-        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
-      });
-      Object.assign(panelLeft.style, {
-        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      Object.assign(panelRight.style, {
-        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      Object.assign(holeVeil.style, {
-        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-    } catch (e) { /* ignore */ }
-  } else {
-    backdrop.style.display = 'block';
-    backdrop.style.opacity = '1';
-  }
-
-  // Remove existing if present
-  const existing = document.getElementById('restartDialog');
-  if (existing) existing.remove();
-
-  const dlg = document.createElement('div');
-  dlg.id = 'restartDialog';
-  dlg.className = 'Menu Dialog RestartDialog';
-  if (alertMode) dlg.classList.add('alert-mode');
-  dlg.innerHTML = `
-    <div class="MenuTop" id="menuContainerTop">
-      <div class="MenuHeading" id="menuHeading">Note</div>
-      <div class="MenuExit" id="menuButtonCloseContainer">
-        <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
-      </div>
-    </div>
-    <div class="MenuInner" id="menuContent">
-      <div class="OptionSection">
-        <div class="OptionLabel">${message}</div>
-      </div>
-      <div class="OptionSection FooterOptions">
-        <div class="OptionLabel"></div>
-        <div class="OptionValue ExtraLaunch">
-          ${alertMode ? '<div class="FooterButton primary" id="restartNowBtn"><span>OK</span></div>' : '<div class="FooterButton secondary" id="restartLaterBtn"><span>Maybe Later</span></div><div class="FooterButton primary" id="restartNowBtn"><span>Restart Now</span></div>'}
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Insert dialog above backdrop
-  document.body.appendChild(dlg);
-  dlg.style.zIndex = '11000';
-
-  // Wire buttons
-  const later = dlg.querySelector('#restartLaterBtn');
-  const now = dlg.querySelector('#restartNowBtn');
-  const closeBtn = dlg.querySelector('#menuButtonCloseContainer');
-
-  const removeDlg = () => { try { dlg.remove(); if (backdrop) { backdrop.remove(); } } catch (_) {} };
-
-  if (later) later.addEventListener('click', removeDlg);
-  if (closeBtn) closeBtn.addEventListener('click', removeDlg);
-  if (now) now.addEventListener('click', () => {
-    try { if (typeof onRestart === 'function') onRestart(); } catch (_) {}
-    // fallback: reload
-    try { location.reload(); } catch (_) {}
-    if (backdrop) { backdrop.remove(); }
-  });
-
-  // Close when clicking outside (but only if both mousedown and mouseup happen on the dialog background)
-  let mousedownOnDialog = false;
-  dlg.addEventListener('mousedown', (e) => {
-    mousedownOnDialog = (e.target === dlg);
-  });
-  dlg.addEventListener('click', (e) => {
-    if (e.target === dlg && mousedownOnDialog) {
-      removeDlg();
-    }
-    mousedownOnDialog = false;
-  });
-}
-
-// Enhanced progress monitoring to detect completion
-function monitorDownloadCompletion() {
-  let wasDownloading = false;
-  
-  const checkCompletion = () => {
-    const downloadProgress = document.querySelector('#DownloadProgress');
-    const progressWrapper = document.querySelector('.MainProgressBarWrapper');
-    const progressBar = document.querySelector('.MainProgressBarWrapper .InnerProgress');
-    
-    let isCurrentlyDownloading = false;
-    
-    // Check if there's active progress
-    if (downloadProgress && downloadProgress.children.length > 0) {
-      if (progressWrapper && progressWrapper.style.display !== 'none') {
-        if (progressBar) {
-          const progressWidth = parseFloat(progressBar.style.width || '0');
-          isCurrentlyDownloading = progressWidth > 0 && progressWidth < 100;
-          
-          // Check if download just completed
-          if (wasDownloading && !isCurrentlyDownloading && progressWidth === 100) {
-            setTimeout(() => {
-              const finalCheck = parseFloat(progressBar.style.width || '0');
-              if (finalCheck === 100 || progressWrapper.style.display === 'none') {
-                showDownloadCompleteNotification();
-              }
-            }, 1000);
-          }
-        }
-      }
-    }
-    
-    wasDownloading = isCurrentlyDownloading;
-  };
-  
-  setInterval(checkCompletion, 500);
-}
-
-// Start monitoring
-monitorDownloadCompletion();
-
-// Also check periodically in case elements are recreated
-setInterval(makeTextInputsWritable, 1000);
-
-// Test function to trigger download complete notification
-function testDownloadCompleteNotification() {
-  console.log('Testing download complete notification...');
-  showDownloadCompleteNotification();
-}
-
-// Add test trigger - you can call this from browser console
-window.testDownloadComplete = testDownloadCompleteNotification;
-
-// Optional: Add a keyboard shortcut to trigger it (Ctrl+Shift+T)
-document.addEventListener('keydown', function(event) {
-  if (event.ctrlKey && event.shiftKey && event.key === 'T') {
-    testDownloadCompleteNotification();
-  }
-});
-
-// Easter egg: Secret menu when clicking leftBar image 5 times
-let leftBarClickCount = 0;
-let leftBarClickTimer = null;
-
-function handleLeftBarImageClick() {
-  console.log('LeftBar image clicked!', leftBarClickCount + 1); // Debug log
-  
-  leftBarClickCount++;
-  
-  // Reset timer
-  if (leftBarClickTimer) {
-    clearTimeout(leftBarClickTimer);
-  }
-  
-  // Reset count after 2 seconds of no clicks
-  leftBarClickTimer = setTimeout(() => {
-    leftBarClickCount = 0;
-    console.log('Click count reset'); // Debug log
-  }, 2000);
-  
-  // Check if we reached 5 clicks
-  if (leftBarClickCount >= 5) {
-    console.log('5 clicks reached! Opening secret menu'); // Debug log
-    leftBarClickCount = 0; // Reset counter
-    showSecretMenu();
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotateY(0deg);
   }
 }
 
-function showSecretMenu() {
-  // Remove any existing secret menu
-  const existingMenu = document.getElementById('secretMenuContainer');
-  if (existingMenu) {
-    existingMenu.remove();
-  }
-
-  // Fetch theme version from index.json
-  fetch('index.json')
-    .then(response => response.json())
-    .then(themeData => {
-      const themeVersion = themeData.version || '8.0.0';
-      
-      // Get the real application version from the #version element
-      const appVersionElement = document.getElementById('version');
-      const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
-      
-      // Create secret menu container using standard menu structure
-      const secretMenu = document.createElement('div');
-      secretMenu.id = 'secretMenuContainer';
-      secretMenu.className = 'Menu SecretMenu'; // Keep SecretMenu class for special styling
-      secretMenu.innerHTML = `
-        <div class="MenuTop" id="menuContainerTop">
-          <div class="MenuHeading" id="menuHeading">Theme info</div>
-          <div class="MenuExit" id="menuButtonCloseContainer">
-            <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
-          </div>
-        </div>
-        <div class="MenuInner" id="menuContent">
-          
-          <div class="OptionSection">
-            <div class="OptionLabel">Theme version:</div>
-            <div class="OptionValue secret-menu-version">
-             ${themeVersion}
-            </div>
-          </div>
-          <div class="OptionSection">
-            <div class="OptionLabel">Launcher version:</div>
-            <div class="OptionValue secret-menu-version">
-              ${appVersion}
-            </div>
-          </div>
-          <div class="OptionSection FooterOptions">
-      <div class="OptionLabel">
-        <div class="FooterButton tertiary" id="advancedOptionsBtn">
-          <img class="icon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png" alt="settings">
-          <span>Advanced Settings</span>
-        </div>
-      </div>
-      <div class="OptionValue ExtraLaunch">
-        <div class="FooterButton secondary" id="copyInfoBtn">
-          <span>Copy information</span>
-        </div>
-        <div class="FooterButton primary" id="okBtn">
-          <span>OK</span>
-        </div>
-      </div>
-    </div>
-
-
-
-        </div>
-        
-      `;
-      
-      // Add to body
-      document.body.appendChild(secretMenu);
-      
-      // Add event listeners - use correct ID
-      const closeBtn = secretMenu.querySelector('#menuButtonCloseContainer');
-      const testNotificationBtn = secretMenu.querySelector('#testNotificationBtn');
-      const testProgressBtn = secretMenu.querySelector('#testProgressBtn');
-      const okBtn = secretMenu.querySelector('#okBtn');
-      const copyBtn = secretMenu.querySelector('#copyInfoBtn');
-      const advancedBtn = secretMenu.querySelector('#advancedOptionsBtn');
-      
-      if (advancedBtn) {
-        advancedBtn.addEventListener('click', () => {
-          showAdvancedDialog();
-        });
-      }
-      
-      if (okBtn) {
-        okBtn.addEventListener('click', () => {
-          secretMenu.remove();
-        });
-      }
-      
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          const themeVersionText = secretMenu.querySelector('.OptionSection .OptionValue.secret-menu-version')?.textContent.trim() || '';
-          const launcherVersionText = secretMenu.querySelectorAll('.OptionSection .OptionValue.secret-menu-version')[1]?.textContent.trim() || '';
-          const output = `Theme version: ${themeVersionText}\nLauncher version: ${launcherVersionText}`;
-          navigator.clipboard.writeText(output).then(() => {
-            copyBtn.querySelector('span').textContent = 'Copied!';
-            setTimeout(() => {
-              copyBtn.querySelector('span').textContent = 'Copy information';
-            }, 1200);
-          });
-        });
-      }
-      
-      closeBtn.addEventListener('click', () => {
-        secretMenu.remove();
-      });
-      
-      testNotificationBtn.addEventListener('click', () => {
-        showDownloadCompleteNotification();
-      });
-      
-      testProgressBtn.addEventListener('click', () => {
-        if (testInterval) {
-          stopTestProgress();
-          testProgressBtn.querySelector('.BigButtonText').textContent = 'Start Test';
-        } else {
-          startTestProgress();
-          testProgressBtn.querySelector('.BigButtonText').textContent = 'Stop Test';
-        }
-      });
-      
-      // Close when clicking outside
-      secretMenu.addEventListener('click', (e) => {
-        if (e.target === secretMenu) {
-          secretMenu.remove();
-        }
-      });
-    })
-    .catch(() => {
-      // Fallback if fetch fails
-      const themeVersion = '8.0.0';
-      // Get the real application version from the #version element
-      const appVersionElement = document.getElementById('version');
-      const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
-      
-      // Create secret menu container using standard menu structure
-      const secretMenu = document.createElement('div');
-      secretMenu.id = 'secretMenuContainer';
-      secretMenu.className = 'Menu SecretMenu'; // Keep SecretMenu class for special styling
-      secretMenu.innerHTML = `
-        <div class="MenuTop" id="menuContainerTop">
-          <div class="MenuHeading" id="menuHeading">Theme info</div>
-          <div class="MenuExit" id="menuButtonCloseContainer">
-            <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
-          </div>
-        </div>
-        <div class="MenuInner" id="menuContent">
-          
-          <div class="OptionSection">
-            <div class="OptionLabel">Theme version:</div>
-            <div class="OptionValue secret-menu-version">
-             ${themeVersion}
-            </div>
-          </div>
-          <div class="OptionSection">
-            <div class="OptionLabel">Launcher version:</div>
-            <div class="OptionValue secret-menu-version">
-              ${appVersion}
-            </div>
-          </div>
-          <div class="OptionSection FooterOptions">
-          <div class="OptionLabel">
-            <div class="FooterButton tertiary" id="advancedOptionsBtn">
-              <img class="icon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png" alt="settings">
-              <span>Advanced Settings</span>
-            </div>
-          </div>
-      <div class="OptionValue ExtraLaunch">
-        <div class="FooterButton secondary" id="copyInfoBtn">
-          <span>Copy information</span>
-        </div>
-        <div class="FooterButton primary" id="okBtn">
-          <span>OK</span>
-        </div>
-      </div>
-    </div>
-
-
-
-        </div>
-        
-      `;
-      
-      // Add to body
-      document.body.appendChild(secretMenu);
-      
-      // Add event listeners - use correct ID
-      const closeBtn = secretMenu.querySelector('#menuButtonCloseContainer');
-      const testNotificationBtn = secretMenu.querySelector('#testNotificationBtn');
-      const testProgressBtn = secretMenu.querySelector('#testProgressBtn');
-      const okBtn = secretMenu.querySelector('#okBtn');
-      const copyBtn = secretMenu.querySelector('#copyInfoBtn');
-      const advancedBtn = secretMenu.querySelector('#advancedOptionsBtn');
-      
-      if (advancedBtn) {
-        advancedBtn.addEventListener('click', () => {
-          showAdvancedDialog();
-        });
-      }
-      
-      if (okBtn) {
-        okBtn.addEventListener('click', () => {
-          secretMenu.remove();
-        });
-      }
-      
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          const themeVersionText = secretMenu.querySelector('.OptionSection .OptionValue.secret-menu-version')?.textContent.trim() || '';
-          const launcherVersionText = secretMenu.querySelectorAll('.OptionSection .OptionValue.secret-menu-version')[1]?.textContent.trim() || '';
-          const output = `Theme version: ${themeVersionText}\nLauncher version: ${launcherVersionText}`;
-          navigator.clipboard.writeText(output).then(() => {
-            showCopySuccessNotification();
-          });
-        });
-      }
-      
-      closeBtn.addEventListener('click', () => {
-        secretMenu.remove();
-      });
-      
-      testNotificationBtn.addEventListener('click', () => {
-        showDownloadCompleteNotification();
-      });
-      
-      testProgressBtn.addEventListener('click', () => {
-        if (testInterval) {
-          stopTestProgress();
-          testProgressBtn.querySelector('.BigButtonText').textContent = 'Start Test';
-        } else {
-          startTestProgress();
-          testProgressBtn.querySelector('.BigButtonText').textContent = 'Stop Test';
-        }
-      });
-      
-      // Close when clicking outside
-      secretMenu.addEventListener('click', (e) => {
-        if (e.target === secretMenu) {
-          secretMenu.remove();
-        }
-      });
-    });
+/* Secret menu specific styles */
+#secretMenuContainer .MenuHeading {
+  font-size: 1.1rem !important;
+    color: #ffffff !important;
 }
 
-// Advanced Dialog with side navigation (like Options dialog)
-function showAdvancedDialog() {
-  const existingDialog = document.getElementById('advancedDialogContainer');
-  if (existingDialog) {
-    existingDialog.remove();
-  }
-
-
-  // Create a unique backdrop for Advanced dialog with same structure as shared
-  let backdrop = document.getElementById('advanced-dialog-backdrop');
-  if (!backdrop) {
-    backdrop = document.createElement('div');
-    backdrop.id = 'advanced-dialog-backdrop';
-    Object.assign(backdrop.style, {
-      position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-      background: 'transparent',
-      zIndex: '9999',
-      pointerEvents: 'none',
-      opacity: '1',
-      transition: 'opacity 0.2s',
-      display: 'block'
-    });
-
-    // Create panels like the shared backdrop
-    let panelTop = document.createElement('div');
-    Object.assign(panelTop.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelTop.className = 'backdrop-panel panel-top';
-
-    let panelBottom = document.createElement('div');
-    Object.assign(panelBottom.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelBottom.className = 'backdrop-panel panel-bottom';
-    panelBottom.style.borderBottomLeftRadius = '8px';
-    panelBottom.style.borderBottomRightRadius = '8px';
-
-    let panelLeft = document.createElement('div');
-    Object.assign(panelLeft.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelLeft.className = 'backdrop-panel panel-left';
-    panelLeft.style.borderTopLeftRadius = '8px';
-
-    let panelRight = document.createElement('div');
-    Object.assign(panelRight.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'auto',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    panelRight.className = 'backdrop-panel panel-right';
-    panelRight.style.borderTopRightRadius = '8px';
-
-    let holeVeil = document.createElement('div');
-    Object.assign(holeVeil.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'none',
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    holeVeil.className = 'backdrop-panel hole-veil';
-
-    backdrop.appendChild(panelTop);
-    backdrop.appendChild(panelBottom);
-    backdrop.appendChild(panelLeft);
-    backdrop.appendChild(panelRight);
-    backdrop.appendChild(holeVeil);
-
-    document.body.appendChild(backdrop);
-
-    // Layout the panels
-    try {
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const bar = document.getElementById('topBarContainer');
-      const btns = document.getElementById('topBarButtonContainer');
-      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
-      const btnRect = btns ? btns.getBoundingClientRect() : null;
-      const holeHeight = Math.max(36, Math.min(64, barRect.height));
-      const centerX = vw / 2;
-      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
-      const leftBias = 0.70;
-      let holeLeft = centerX - holeWidth * leftBias;
-      let holeRight = centerX + holeWidth * (1 - leftBias);
-      const safety = 4;
-      if (btnRect) {
-        const maxRight = Math.max(0, btnRect.left - safety);
-        if (holeRight < maxRight) {
-          holeRight = maxRight;
-        } else if (holeRight > maxRight) {
-          const overlap = holeRight - maxRight;
-          holeRight -= overlap;
-          holeLeft -= overlap;
-        }
-      }
-      holeLeft = Math.max(8, holeLeft);
-      holeRight = Math.min(vw - 8, holeRight);
-      const minHoleWidth = 200;
-      if (holeRight - holeLeft < minHoleWidth) {
-        holeLeft = Math.max(8, holeRight - minHoleWidth);
-      }
-      const holeTop = Math.max(0, barRect.top);
-      const holeBottom = Math.min(vh, holeTop + holeHeight);
-
-      Object.assign(panelTop.style, {
-        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
-      });
-      Object.assign(panelBottom.style, {
-        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
-      });
-      Object.assign(panelLeft.style, {
-        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      Object.assign(panelRight.style, {
-        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      Object.assign(holeVeil.style, {
-        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-    } catch (e) { /* ignore */ }
-  } else {
-    backdrop.style.display = 'block';
-    backdrop.style.opacity = '1';
-  }
-
-  const advancedDialog = document.createElement('div');
-  advancedDialog.id = 'advancedDialogContainer';
-  advancedDialog.className = 'Menu Options AdvancedDialog';
-  advancedDialog.innerHTML = `
-    <div id="advanced-sidebar-nav">
-      <div class="sidebar-nav-item active" data-page="client-log">Theme Configuration</div>
-    </div>
-    <div class="MenuTop" id="menuContainerTop">
-      <div class="MenuHeading" id="menuHeading">Theme Configuration</div>
-      <div class="MenuExit" id="menuButtonCloseContainer">
-        <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
-      </div>
-    </div>
-    <div class="MenuInner" id="menuContent">
-      <div id="advanced-client-log-page">
-        <div class="OptionSection">
-          <div class="OptionLabel">
-            Built-In Backgrounds
-            <div class="OptionSubtext">After enabling this configuration, built-in background images will be used instead of using HoYoPlay backgrounds.</div>
-          </div>
-          <div class="OptionValue">
-            <div class="Checkbox">
-              <input type="checkbox" id="advancedUploadLogToggle">
-              <label for="advancedUploadLogToggle">
-                <div class="CheckboxDisplay"></div>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Insert dialog above backdrop
-  document.body.appendChild(advancedDialog);
-  advancedDialog.style.zIndex = '10000';
-
-  // Event listeners
-  const closeBtn = advancedDialog.querySelector('#menuButtonCloseContainer');
-  const uploadToggle = advancedDialog.querySelector('#advancedUploadLogToggle');
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      advancedDialog.remove();
-      if (backdrop) {
-        backdrop.remove();
-      }
-    });
-  }
-
-  if (uploadToggle) {
-    // Initialize checkbox from persisted state
-    try {
-      if (localStorage.getItem('useBuiltinBackground') === null) {
-        localStorage.setItem('useBuiltinBackground', '0');
-      }
-      uploadToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
-    } catch (_) {}
-
-    uploadToggle.addEventListener('change', () => {
-      try {
-        localStorage.setItem('useBuiltinBackground', uploadToggle.checked ? '1' : '0');
-      } catch (_) {}
-      // Show a banner notification (will auto-hide)
-      try {
-        showRestartDialog('Changed settings will only take effect after Cultivation is restarted.', () => {
-          try { location.reload(); } catch (_) {}
-        });
-      } catch (_) {}
-      console.log('Built-in background preference saved (applies on restart) — restart dialog shown');
-    });
-  }
-
-  // Close when clicking the dialog background area (mirrors secret menu behavior)
-  advancedDialog.addEventListener('click', (e) => {
-    if (e.target === advancedDialog) {
-      advancedDialog.remove();
-      if (backdrop) {
-        backdrop.remove();
-      }
-    }
-  });
+/* Secret menu version styling */
+#secretMenuContainer .secret-menu-version {
+  color: #939597 !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
 }
 
-// Add click listener to leftBar image
-function addLeftBarClickListener() {
-  const leftBarImage = document.querySelector('#leftBar img');
-  if (leftBarImage && !leftBarImage.hasAttribute('data-click-listener')) {
-    // Enable pointer events and set cursor
-    leftBarImage.style.pointerEvents = 'auto'; // Override the CSS that disables pointer events
-    leftBarImage.style.cursor = 'pointer';
-    leftBarImage.addEventListener('click', handleLeftBarImageClick);
-    leftBarImage.setAttribute('data-click-listener', 'true');
-    
-    console.log('Click listener added to leftBar image'); // Debug log
+#secretMenuContainer .MenuInner{
+      padding-left: 20px !important;
+    padding-right: 20px !important;
+}
+
+/* Inherit menu styles; no overrides needed for these selectors */
+
+#secretMenuContainer .FooterOptions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 40px !important;
+      width: 96%;
+    background: #292c3000 !important;
+}
+
+#secretMenuContainer .FooterOptions .OptionLabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
+}
+
+#secretMenuContainer .FooterOptions .OptionValue.ExtraLaunch {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+/* Common button base */
+#secretMenuContainer .FooterButton {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 650;
+  font-size: 14px;
+  border-radius: 7px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Icon inside left button */
+#secretMenuContainer .FooterButton.tertiary .icon {
+  width: 29.8px;
+  height: 34.8px;
+  margin-right: -3px;
+  margin-top: 0.8px;
+  filter: invert(60%);
+}
+
+/* Tertiary = left "Advanced Settings" */
+#secretMenuContainer .FooterButton.tertiary {
+  color: #aaa;
+  background: transparent;
+  border: none;
+  font-weight: 400 !important;
+}
+#secretMenuContainer .FooterButton.tertiary:hover {
+  color: #E1E1E1;
+}
+#secretMenuContainer .FooterButton.tertiary:hover .icon {
+  filter: invert(80%);
+}
+
+/* Temporary styling while waiting the main aplication to actualy fix the style*/
+/* Profile Save button: show icon only (Segoe MDL2 Assets E74E) */
+/* Override button styling - remove background and border */
+#profileConfigContainer #saveProfile.BigButton,
+#profileConfigContainer .BigButton#saveProfile,
+.OptionSection #saveProfile.BigButton {
+  background: transparent !important;
+  border: none !important;
+  padding: 8px !important;
+  min-width: auto !important;
+  width: auto !important;
+  transition: opacity 0.1s !important;
+  margin-left: 2px;
+}
+#profileConfigContainer #saveProfile.BigButton:hover,
+#profileConfigContainer .BigButton#saveProfile:hover,
+.OptionSection #saveProfile.BigButton:hover {
+  opacity: 0.7 !important;
+}
+/* Hide text and show icon */
+#profileConfigContainer #saveProfile .BigButtonText,
+#profileConfigContainer .BigButton#saveProfile .BigButtonText,
+#saveProfile.BigButton .BigButtonText {
+  position: relative !important;
+  color: transparent !important;   /* hide original text */
+  font-size: 0 !important;         /* collapse text glyph */
+  line-height: 0 !important;
+}
+#profileConfigContainer #saveProfile .BigButtonText::before,
+#profileConfigContainer .BigButton#saveProfile .BigButtonText::before,
+#saveProfile.BigButton .BigButtonText::before {
+  content: '\E74E' !important;
+  font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
+  font-size: 19px !important;      /* icon size */
+  line-height: 1 !important;
+  color: #cecece !important;       /* inherit white; theme overrides still apply */
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+#saveprofile .BigButton {
+  background: none !important;
+  border: none !important;
+}
+
+/* Secondary = middle "Copy Information" */
+#secretMenuContainer .FooterButton.secondary {
+  border: 2px solid #56585c !important;
+  background: transparent;
+  color: #E5E5E5;
+  height: 22px;
+  transition: background 0.1s;
+}
+#secretMenuContainer .FooterButton.secondary:hover {
+  border-color: #717376 !important;
+  color: #fff;
+}
+
+#secretMenuContainer .FooterButton.secondary:active {
+  border-color: #56585c !important;
+  color: #fff;
+}
+
+/* Primary = right "OK" */
+#secretMenuContainer .FooterButton.primary {
+  background: #FFDB29;
+  color: #000;
+  padding-right: 20px;
+  padding-left: 20px;
+  transition: background 0.1s;
+}
+#secretMenuContainer .FooterButton.primary:hover {
+  background: #ffc800;
+}
+
+/* SecretMenu: hold (mouse down) color only */
+#secretMenuContainer .FooterButton.primary:has(:active),
+#secretMenuContainer .FooterButton.primary:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
+}
+
+.NotifShow {
+    top: 84%;
+    right: 30%;
+    z-index: 1000;
+    transition: none !important;
+}
+
+/* When ExtrasMenuButton exists, move notification more to the right */
+body:has(#ExtrasMenuButton) .NotifShow {
+    right: 35% !important;
+}
+
+.Notification {
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #ffff;
+    font-weight: 600;
+    text-shadow: #222 1px 0 10px;
+}
+
+.Notification.NotifShow .NotificationMessage a {
+  color: #ffd429;
+  text-decoration: none;
+}
+
+.Notification.NotifShow .NotificationMessage a:hover {
+  color: #ffc800;
+  text-decoration: none;
+}
+
+#hoyoplay-selector {
+  pointer-events: none !important;
+}
+#hoyoplay-selector .hoyoplay-circle {
+  pointer-events: auto !important;
+}
+#hoyoplay-outline {
+  pointer-events: none !important;
+}
+
+.hoyoplay-circle {
+  border-radius: 50%;
+   border: 0.5px solid #0000007f;
+}
+
+.hoyoplay-circle.selected {
+  position: relative;
+  background: #fff !important;
+  border-radius: 50%;
+   border: 0.5px solid #0000007f;
+}
+
+/* Add a white border with a gap using a pseudo-element */
+.hoyoplay-circle.selected::after {
+  content: "";
+  position: absolute;
+  top: -6px; left: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border-radius: 50%;
+  border: 2.3px solid #ffffff65;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: transparent;
+}
+
+/* Restart dialog styles (match Secret Menu appearance) */
+#restartDialog {
+  background: #212429 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  width: 400px !important;
+  max-height: 229px !important;
+  overflow: hidden !important;
+  border: 1px solid #56585C !important;
+  padding: 0px !important;
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: menuSlideFromTop 0.22s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  opacity: 1;
+  z-index: 11000 !important;
+}
+
+#restartDialog .MenuHeading {
+  font-size: 1.1rem !important;
+  color: #ffffff !important;
+}
+
+#restartDialog .MenuInner{
+  padding-left: 13px !important;
+  padding-right: 20px !important;
+  padding-top: 0px !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+#restartDialog .OptionLabel {
+  color: #dde5e1 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.4 !important;
+  max-width: 90% !important;
+}
+
+/* Make each OptionSection inside restart dialog transparent to match tweak */
+#restartDialog .OptionSection {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 8px 0 !important;
+}
+
+#restartDialog .FooterOptions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 27px !important;
+  width: 96%;
+  background: transparent !important;
+  margin-top: auto;
+}
+
+#restartDialog .FooterOptions .OptionValue.ExtraLaunch {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+#restartDialog .FooterButton {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 650;
+  font-size: 14px;
+  border-radius: 7px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+#restartDialog .FooterButton.tertiary {
+  color: #aaa;
+  background: transparent;
+  border: none;
+  font-weight: 400 !important;
+}
+
+#restartDialog .FooterButton.primary {
+  background: #FFDB29;
+  color: #000;
+  padding-right: 20px;
+  padding-left: 20px;
+  transition: background 0.1s;
+  width: 83px;
+  height: 22px !important;
+}
+#restartDialog .FooterButton.primary:hover {
+  background: #ffc800;
+}
+#restartDialog .FooterButton.primary:has(:active),
+#restartDialog .FooterButton.primary:active {
+  background-color: #f7bd00 !important;
+  transition: background 0s;
+}
+
+/* Secondary = middle button (match secret menu) */
+#restartDialog .FooterButton.secondary {
+  border: 2px solid #56585c !important;
+  background: transparent;
+  color: #E5E5E5;
+  height: 22px;
+  transition: background 0.1s;
+  width: 83px;
+  height: 20px !important;
+}
+#restartDialog .FooterButton.secondary:hover {
+  border-color: #717376 !important;
+  color: #fff;
+}
+#restartDialog .FooterButton.secondary:active {
+  border-color: #56585c !important;
+  color: #fff;
+}
+
+/* Alert mode: auto-width button */
+#restartDialog.alert-mode .FooterButton.primary {
+  width: auto;
+}
+
+#hoyoplay-shadow-bg {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+}
+
+/* HoYoPlay video control button styles */
+.hoyoplay-video-control {
+  position: absolute;
+  z-index: 0 !important; /* low, so it doesn't cover core UI */
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,10,20,0.85); /* dark circular button */
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+.hoyoplay-video-control.hidden {
+  display: none !important;
+}
+.hoyoplay-video-control:hover {
+  background: rgba(255, 255, 255, 0.252);
+}
+.hoyoplay-video-control .hp-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  color: #ffffff;
+}
+
+/* Custom alert dialog */
+#hoyoplay-alert-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 12000;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#hoyoplay-alert-overlay.visible {
+  opacity: 1;
+}
+
+#hoyoplay-alert-dialog {
+  background: #212429;
+  border-radius: 12px;
+  border: 1px solid #56585c;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  width: min(420px, calc(100vw - 48px));
+  color: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  pointer-events: auto;
+}
+
+.hoyoplay-alert-message {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e1e5eb;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.hoyoplay-alert-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hoyoplay-alert-button {
+  min-width: 92px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #ffdb29;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.hoyoplay-alert-button:hover {
+  background: #ffc800;
+}
+
+.hoyoplay-alert-button:active {
+  transform: translateY(1px);
+  background: #f7bd00;
+}
+
+.hoyoplay-alert-button:focus-visible {
+  outline: 2px solid #7ab8ff;
+  outline-offset: 2px;
+}
+
+/* Slide-in + fade animation for video control on startup (HoYoPlay mode only) */
+@keyframes hoyoplayVideoControlIntro {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
   }
-}
-
-// Initialize the click listener
-addLeftBarClickListener();
-
-// Also check periodically in case the leftBar is recreated
-setInterval(addLeftBarClickListener, 1000);
-
-// Variables to track notification state
-let hijackedNotification = null;
-let originalNotificationContent = '';
-
-// Function to hijack and preserve notification
-function hijackVersionNotification() {
-  document.querySelectorAll('.Notification').forEach(el => {
-    const msgDiv = el.querySelector('.NotificationMessage');
-    
-    if (msgDiv && msgDiv.innerHTML && msgDiv.innerHTML.trim() !== '') {
-      const messageContent = msgDiv.innerHTML.trim();
-      
-      // Check if this is a version notification
-      if (messageContent.includes('Cultivation') && 
-          (messageContent.includes('available') || messageContent.includes('version'))) {
-        
-        // Store the original content if we haven't already
-        if (!originalNotificationContent) {
-          originalNotificationContent = messageContent;
-          console.log('Hijacked notification content:', originalNotificationContent);
-        }
-        
-        // Store reference to this notification
-        hijackedNotification = el;
-        
-        // Apply our styling
-  el.classList.add('NotifShow');
-  el.style.top = '84%';
-  el.style.right = '30%';
-  // Keep below backdrop (9996) and selector (9999), but above app content
-  el.style.zIndex = '9990';
-        
-        // Update the link to point to latest releases
-        const versionLink = msgDiv.querySelector('a');
-        if (versionLink) {
-          versionLink.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
-          versionLink.target = '_blank';
-          versionLink.rel = 'noopener noreferrer';
-        }
-      }
-    }
-  });
-}
-
-// Function to restore hijacked content if it gets cleared
-function restoreHijackedContent() {
-  if (hijackedNotification && originalNotificationContent) {
-    const msgDiv = hijackedNotification.querySelector('.NotificationMessage');
-    
-    // If the content was cleared or changed, restore it
-    if (msgDiv && (!msgDiv.innerHTML || msgDiv.innerHTML.trim() === '' || 
-        !msgDiv.innerHTML.includes('Cultivation'))) {
-      
-      console.log('Restoring hijacked notification content');
-      msgDiv.innerHTML = originalNotificationContent;
-      
-      // Reapply link fix
-      const versionLink = msgDiv.querySelector('a');
-      if (versionLink) {
-        versionLink.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
-        versionLink.target = '_blank';
-        versionLink.rel = 'noopener noreferrer';
-      }
-      
-      // Ensure styling is maintained
-  hijackedNotification.classList.add('NotifShow');
-  hijackedNotification.style.top = '84%';
-  hijackedNotification.style.right = '30%';
-  // Keep below backdrop (9996) and selector (9999), but above app content
-  hijackedNotification.style.zIndex = '9990';
-    }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-// Enhanced monitoring with faster intervals
-setInterval(hijackVersionNotification, 100); // Check every 100ms for new notifications
-setInterval(restoreHijackedContent, 200);    // Restore content every 200ms if needed
-
-// Also use mutation observer for immediate detection
-const notificationObserver = new MutationObserver((mutations) => {
-  mutations.forEach((mutation) => {
-    if (mutation.type === 'childList' || mutation.type === 'characterData') {
-      hijackVersionNotification();
-      // Small delay then check if we need to restore
-      setTimeout(restoreHijackedContent, 50);
-    }
-  });
-});
-
-// Start observing the document for notification changes
-notificationObserver.observe(document.body, {
-  childList: true,
-  subtree: true,
-  characterData: true
-});
-
-// // Game data for API calls (fail due to CSP. Pull Request if you can fix this!)
-// const gameData = {
-//   GI: {
-//     name: "Genshin Impact",
-//     url: "https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=VYTpXlbWo8&language=en-us&game_id=gopR6Cufr3"
-//   },
-//   HSR: {
-//     name: "Honkai Star Rail", 
-//     url: "https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=VYTpXlbWo8&language=en-us&game_id=4ziysqXOQ8"
-//   },
-//   ZZZ: {
-//     name: "Zenless Zone Zero",
-//     url: "https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=VYTpXlbWo8&language=en-us&game_id=U5hbdsT9W7"
-//   },
-//   BH3: {
-//     name: "Honkai Impact 3rd",
-//     url: "https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=VYTpXlbWo8&language=en-us&game_id=bxPTXSET5t"
-//   }
-// };
-
-// // Function to fetch and apply background from HoYoVerse API
-// async function applyHoYoPlayBackground(gameId) {
-//   const game = gameData[gameId];
-//   if (!game) return;
-
-//   try {
-//     // Use a CORS proxy to bypass CORS restrictions
-//     const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-//     const response = await fetch(proxyUrl + game.url);
-//     const data = await response.json();
-    
-//     // Get background URL from API response
-//     const backgroundUrl = data.data.game_info_list[0].backgrounds[0].background.url;
-    
-//     // Apply background to the .App element
-//     const appElement = document.querySelector('.App');
-//     if (appElement) {
-//       appElement.style.background = `url("${backgroundUrl}") fixed`;
-//       appElement.style.backgroundSize = 'cover';
-//       appElement.style.backgroundPosition = 'center';
-//     }
-    
-//     console.log(`Applied ${game.name} background:`, backgroundUrl);
-//   } catch (error) {
-//     console.error(`Error fetching ${game.name} background:`, error);
-//   }
-// }
-
-// // Function to inject new option section with dropdown
-// function injectCustomOptionSection() {
-//   const useThemeBGSection = document.getElementById('menuOptionsContainerUseThemeBG');
-//   if (!useThemeBGSection || document.getElementById('menuOptionsContainerCustomOption')) return;
-
-//   const newOptionSection = document.createElement('div');
-//   newOptionSection.className = 'OptionSection';
-//   newOptionSection.id = 'menuOptionsContainerCustomOption';
-//   newOptionSection.innerHTML = `
-//     <div class="OptionLabel" id="menuOptionsLabelCustomOption">Use background supplied by HoYoPlay</div>
-//     <div class="OptionValue" id="menuOptionsCustomOption">
-//       <select id="hoyoplayGameSelect">
-//         <option value="GI">Genshin Impact</option>
-//         <option value="HSR">Honkai Star Rail</option>
-//         <option value="ZZZ">Zenless Zone Zero</option>
-//         <option value="BH3">Honkai Impact 3rd</option>
-//       </select>
-//     </div>
-//   `;
-
-//   // Insert after the useThemeBG section
-//   useThemeBGSection.parentNode.insertBefore(newOptionSection, useThemeBGSection.nextSibling);
-  
-//   // Get elements
-//   const dropdown = newOptionSection.querySelector('#hoyoplayGameSelect');
-//   const useThemeBGCheckbox = document.getElementById('useThemeBG');
-  
-//   // Load saved state
-//   const savedGame = localStorage.getItem('hoyoplay-selected-game') || 'GI';
-//   dropdown.value = savedGame;
-  
-//   // Function to apply background based on current settings
-//   function applyBackgroundBasedOnSettings() {
-//     const useThemeBackground = useThemeBGCheckbox && useThemeBGCheckbox.checked;
-    
-//     if (useThemeBackground) {
-//       // Use the theme's built-in background - restore original
-//       const appElement = document.querySelector('.App');
-//       if (appElement) {
-//         // Reset to original theme background
-//         appElement.style.background = 'url("https://asset.localhost/C%3A%2FUsers%2FUser%2FAppData%2FRoaming%2Fcultivation%2Fbg%2Fbg.png") fixed';
-//       }
-//     } else {
-//       // Use HoYoPlay background
-//       applyHoYoPlayBackground(dropdown.value);
-//     }
-//   }
-  
-//   // Apply background on load
-//   applyBackgroundBasedOnSettings();
-  
-//   // Save selection and apply background when dropdown changes
-//   dropdown.addEventListener('change', function() {
-//     const selectedGame = this.value;
-//     localStorage.setItem('hoyoplay-selected-game', selectedGame);
-    
-//     // Only apply if theme background is not enabled
-//     if (!useThemeBGCheckbox || !useThemeBGCheckbox.checked) {
-//       applyHoYoPlayBackground(selectedGame);
-//     }
-    
-//     console.log('HoYoPlay game selection saved:', selectedGame);
-//   });
-  
-//   // Monitor theme background checkbox changes
-//   if (useThemeBGCheckbox) {
-//     useThemeBGCheckbox.addEventListener('change', applyBackgroundBasedOnSettings);
-//   }
-// }
-
-// Function to inject sidebar nav into Options menu
-function injectSettingsSidebarNav() {
-  const menuContainer = document.getElementById('menuContainer');
-  if (!menuContainer || !menuContainer.classList.contains('Options')) return;
-  if (document.getElementById('settings-sidebar-nav')) return;
-  
-  const nav = document.createElement('div');
-  nav.id = 'settings-sidebar-nav';
-  nav.innerHTML = `
-    <div class="sidebar-nav-item active" data-page="general">General</div>
-    <div class="sidebar-nav-item" data-page="about">About</div>
-  `;
-  menuContainer.appendChild(nav);
-  
-  // Create About page content (hidden by default)
-  const aboutPage = document.createElement('div');
-  aboutPage.id = 'settings-about-page';
-  // Get version from #version element
-  const versionEl = document.getElementById('version');
-  const versionText = versionEl ? versionEl.textContent.trim() : 'v1.0.0';
-  // Current theme version (from index.json)
-  const THEME_VERSION = '8.0.0';
-  
-  aboutPage.style.display = 'none';
-  aboutPage.innerHTML = `
-    <div class="OptionSection" id="aboutAppInfo">
-      <div class="OptionLabel">
-        <img id="aboutCultivationIcon" src="https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/CultivationAboutIcon.png" />
-        <span id="aboutAppName">Cultivation</span><span class="about-separator">|</span><span class="about-version">V${versionText}</span>
-      </div>
-    </div>
-    <div class="OptionSection" id="aboutViewUpdateLog">
-      <div class="OptionLabel">View Update Log</div>
-      <div class="about-arrow">›</div>
-    </div>
-    <div class="OptionSection">
-      <div class="OptionLabel">Check for the Latest Version</div>
-      <div class="BigButton" id="aboutCheckVersionBtn" style="padding: 6px 16px; min-width: auto;">
-        <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
-      </div>
-    </div>
-    <div class="HeaderText" style="margin-top: 16px;">HoYoPlay Theme Log</div>
-    <div class="OptionSection" id="aboutViewThemeUpdateLog">
-      <div class="OptionLabel">View HoYoPlay Theme Update Log</div>
-      <div class="about-arrow">›</div>
-    </div>
-    <div class="OptionSection">
-      <div class="OptionLabel">Check for the Latest HoYoPlay Theme Version</div>
-      <div class="BigButton" id="aboutCheckThemeVersionBtn" style="padding: 6px 16px; min-width: auto;">
-        <div class="BigButtonText" style="font-size: 0.85rem;">Check</div>
-      </div>
-    </div>
-  `;
-  
-  const menuContent = document.getElementById('menuContent');
-  if (menuContent) {
-    menuContent.parentNode.insertBefore(aboutPage, menuContent.nextSibling);
-  }
-  
-  // Change the menu heading to match the selected nav item
-  const menuHeading = document.getElementById('menuHeading');
-  if (menuHeading) {
-    menuHeading.textContent = 'General';
-  }
-  
-  // Add click handlers for nav items
-  nav.querySelectorAll('.sidebar-nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      // Update active state
-      nav.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      
-      // Update heading
-      const page = item.dataset.page;
-      if (menuHeading) {
-        menuHeading.textContent = item.textContent;
-      }
-      
-      // Toggle content visibility
-      const generalContent = document.getElementById('menuContent');
-      const aboutContent = document.getElementById('settings-about-page');
-      
-      if (page === 'general') {
-        if (generalContent) generalContent.style.display = '';
-        if (aboutContent) aboutContent.style.display = 'none';
-        hideUpdateLogPage();
-      } else if (page === 'about') {
-        if (generalContent) generalContent.style.display = 'none';
-        if (aboutContent) aboutContent.style.display = 'block';
-        hideUpdateLogPage();
-      }
-    });
-  });
-  
-  // Add click handler for View Update Log - open releases page directly
-  const updateLogBtn = document.getElementById('aboutViewUpdateLog');
-  if (updateLogBtn) {
-    updateLogBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const url = 'https://github.com/Grasscutters/Cultivation/releases';
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-  }
-  
-  // Add click handler for View Theme Update Log - opens theme GitHub releases page
-  const themeUpdateLogBtn = document.getElementById('aboutViewThemeUpdateLog');
-  if (themeUpdateLogBtn) {
-    themeUpdateLogBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      const url = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases';
-      
-      // Create a temporary link and click it
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-  }
-  
-  // Add click handler for Check Version button
-  const checkVersionBtn = document.getElementById('aboutCheckVersionBtn');
-  if (checkVersionBtn) {
-    checkVersionBtn.addEventListener('click', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      const btnText = checkVersionBtn.querySelector('.BigButtonText');
-      const originalText = btnText ? btnText.textContent : 'Check';
-      
-      // Show loading state
-      if (btnText) btnText.textContent = 'Checking...';
-      
-      try {
-        // Fetch latest release from GitHub API
-        const response = await fetch('https://api.github.com/repos/Grasscutters/Cultivation/releases/latest');
-        
-        if (!response.ok) throw new Error('Failed to fetch');
-        
-        const release = await response.json();
-        const latestVersion = release.tag_name.replace(/^v/i, ''); // Remove 'v' prefix if present
-        
-        // Get current version
-        const versionEl = document.getElementById('version');
-        const currentVersion = versionEl ? versionEl.textContent.trim() : '0.0.0';
-        
-        // Compare versions
-        const isOutdated = compareVersions(currentVersion, latestVersion) < 0;
-        
-        if (isOutdated) {
-          if (btnText) btnText.textContent = 'Update Available!';
-          checkVersionBtn.style.background = '#f6d429';
-          checkVersionBtn.style.color = '#000';
-          
-          // Make it clickable to open releases page
-          checkVersionBtn.onclick = () => {
-            const link = document.createElement('a');
-            link.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          };
-        } else {
-          if (btnText) btnText.textContent = 'Up to date!';
-          checkVersionBtn.style.background = '#4CAF50';
-          checkVersionBtn.style.color = '#fff';
-        }
-      } catch (error) {
-        console.error('Version check failed:', error);
-        // Fallback: just open the releases page
-        if (btnText) btnText.textContent = originalText;
-        
-        const link = document.createElement('a');
-        link.href = 'https://github.com/Grasscutters/Cultivation/releases/latest';
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    });
-  }
-
-  // Add click handler for Check Theme Version button
-  const checkThemeVersionBtn = document.getElementById('aboutCheckThemeVersionBtn');
-  if (checkThemeVersionBtn) {
-    checkThemeVersionBtn.addEventListener('click', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const btnText = checkThemeVersionBtn.querySelector('.BigButtonText');
-      const originalText = btnText ? btnText.textContent : 'Check';
-
-      if (btnText) btnText.textContent = 'Checking...';
-
-      try {
-        const resp = await fetch('https://api.github.com/repos/GID0317/Cultivation-HoYoPlay-Theme/releases/latest');
-        if (!resp.ok) throw new Error('Failed to fetch');
-        const release = await resp.json();
-        const latestTheme = (release.tag_name || release.name || '').replace(/^v/i, '');
-
-        const isOutdated = compareVersions(THEME_VERSION.replace(/^v/i,'').trim(), latestTheme) < 0;
-
-        if (isOutdated) {
-          if (btnText) btnText.textContent = 'Theme Update Available!';
-          checkThemeVersionBtn.style.background = '#f6d429';
-          checkThemeVersionBtn.style.color = '#000';
-          checkThemeVersionBtn.onclick = () => {
-            const link = document.createElement('a');
-            link.href = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest';
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          };
-        } else {
-          if (btnText) btnText.textContent = 'Theme up to date!';
-          checkThemeVersionBtn.style.background = '#4CAF50';
-          checkThemeVersionBtn.style.color = '#fff';
-        }
-      } catch (e) {
-        console.error('Theme version check failed:', e);
-        if (btnText) btnText.textContent = originalText;
-        const link = document.createElement('a');
-        link.href = 'https://github.com/GID0317/Cultivation-HoYoPlay-Theme/releases/latest';
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    });
-  }
+.hoyoplay-video-control.intro-animate {
+  animation: hoyoplayVideoControlIntro 0.28s cubic-bezier(.4,0,.2,1) both;
 }
 
-// Compare two version strings (e.g., "1.2.3" vs "1.3.0")
-// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
-function compareVersions(v1, v2) {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-  
-  const maxLen = Math.max(parts1.length, parts2.length);
-  
-  for (let i = 0; i < maxLen; i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
-    
-    if (p1 < p2) return -1;
-    if (p1 > p2) return 1;
-  }
-  
-  return 0;
+#menuOptionsContainerProfiles {
+    width: auto;
+    margin-right: 10px;
 }
 
-
-// Function to monitor for menu changes and inject the option
-function startMenuObserver() {
-  // Watch document.body for menuContainer being added/changed
-  const bodyObserver = new MutationObserver(() => {
-    injectSettingsSidebarNav();
-    
-    if (typeof injectCustomOptionSection === 'function') {
-      try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
-    }
-
-    // Also enhance Downloads dialog with subtexts when it appears
-    try { injectDownloadSubtexts(); } catch (e) { /* ignore */ }
-    // Hide the first Divider in Downloads dialog
-    try { hideFirstDownloadsDivider(); } catch (e) { /* ignore */ }
-  });
-  
-  bodyObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['class']
-  });
-  
-  // Also run immediately
-  injectSettingsSidebarNav();
-  try { injectDownloadSubtexts(); } catch (_) {}
-  try { hideFirstDownloadsDivider(); } catch (_) {}
+/* When the menu actually scrolls, reserve gutter to prevent layout shift */
+.custom-dropdown-menu.has-scroll {
+  scrollbar-gutter: stable;
 }
 
-// Inject OptionSubtext-style descriptions under Downloads labels
-function injectDownloadSubtexts() {
-  try {
-    const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
-    if (!menus.length) return false;
-
-    let insertedAny = false;
-
-    // ID-based descriptions (preferred when IDs are stable)
-    const idMap = {
-      // Common expected IDs (will be skipped if not found)
-      'downloadMenuLabelGCFullBuild': 'Download a full Grasscutter build, including repo, jar, and resources',
-      'downloadMenuLabelGCFullQuest': 'Download a full Grasscutter build, including repo, jar, and resources',
-      'downloadMenuLabelGCDev': 'Download a full Grasscutter build, including repo, jar, and resources',
-      'downloadMenuLabelResources': 'These are also required to run a Grasscutter server',
-      'downloadMenuLabelMigoto': 'For importing models from GameBanana'
-    };
-
-    // Text-based fallbacks if IDs differ across versions
-    const textFallbacks = [
-      { match: /full\s*build|full\s*game/i, text: 'Full game package. Use for first-time installs or clean setup.' },
-      { match: /quest|story/i, text: 'Quest/story data to improve in‑game content availability.' },
-      { match: /dev|developer|preview|bleeding/i, text: 'Experimental build for testing; may contain bugs.' },
-      { match: /resource|voice|asset|cinematic/i, text: 'Extra resources (voices, videos) — optional but recommended.' },
-      { match: /migoto|3d\s*migoto/i, text: '3DMigoto tools and shaders for graphics modding.' }
-    ];
-
-    menus.forEach(menu => {
-      const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
-
-      // Try ID-based mapping first
-      Object.entries(idMap).forEach(([id, desc]) => {
-        const label = container.querySelector('#' + id) || document.getElementById(id);
-        if (label && !label.querySelector('.OptionSubtext')) {
-          const sub = document.createElement('div');
-          sub.className = 'OptionSubtext';
-          sub.textContent = desc;
-          label.appendChild(sub);
-          insertedAny = true;
-        }
-      });
-
-      // Then add fallbacks for generic Download labels based on their text
-      const possibleLabels = Array.from(container.querySelectorAll('.DownloadLabel, .OptionLabel'));
-      possibleLabels.forEach(lbl => {
-        // Skip if already enhanced
-        if (lbl.querySelector('.OptionSubtext')) return;
-        const txt = (lbl.textContent || '').trim();
-        if (!txt) return;
-        for (const rule of textFallbacks) {
-          if (rule.match.test(txt)) {
-            const sub = document.createElement('div');
-            sub.className = 'OptionSubtext';
-            sub.textContent = rule.text;
-            lbl.appendChild(sub);
-            insertedAny = true;
-            break;
-          }
-        }
-      });
-
-      if (insertedAny) {
-        try { container.setAttribute('data-subtext-enhanced', '1'); } catch (_) {}
-      }
-    });
-
-    // If nothing inserted (likely due to timing), retry shortly
-    if (!insertedAny) {
-      setTimeout(() => { try { injectDownloadSubtexts(); } catch (_) {} }, 200);
-    }
-
-    return insertedAny;
-  } catch (_) {
-    return false;
-  }
+/* Profiles dropdown menu: allow smaller minimum and a slightly larger maximum */
+.custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-menu {
+  min-width: 0;     /* allow narrow menus when items are short */
+  max-width: 420px; /* permit longer names to expand a bit more */
+  max-height: 241px; 
 }
-
-// Hide only the first Divider in the Downloads dialog
-function hideFirstDownloadsDivider() {
-  try {
-    const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
-    if (!menus.length) return false;
-    let changed = false;
-    menus.forEach(menu => {
-      if (menu.getAttribute('data-first-divider-hidden') === '1') return;
-      const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
-      const dividers = container ? container.querySelectorAll('.Divider') : [];
-      if (dividers && dividers.length > 0) {
-        const first = dividers[0];
-        first.style.display = 'none';
-        try { menu.setAttribute('data-first-divider-hidden', '1'); } catch (_) {}
-        changed = true;
-      }
-    });
-    if (!changed) setTimeout(() => { try { hideFirstDownloadsDivider(); } catch (_) {} }, 200);
-    return changed;
-  } catch (_) {
-    return false;
-  }
-}
-
-// Start immediately and on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startMenuObserver);
-} else {
-  startMenuObserver();
-}
-
-(function changeSettingsIconSrc() {
-  function updateIcon() {
-    const btn = document.getElementById('settingsBtn');
-    if (!btn) return;
-    const img = btn.querySelector('img');
-    if (!img) return;
-    // Only update if not already set
-    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png') {
-      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/main/assets/Settings.png';
-      img.style.height = '190%';
-      img.style.filter = 'invert(100%) brightness(100%)';
-      console.log('[SettingsBtn] Icon src changed!');
-    }
-  }
-  updateIcon();
-  // Watch for DOM changes (in case the button is re-rendered)
-  const observer = new MutationObserver(updateIcon);
-  observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
-})();
-
-(function changeMinimizeIconSrc() {
-  function updateIcon() {
-    const btn = document.getElementById('minBtn');
-    if (!btn) return;
-    const img = btn.querySelector('img');
-    if (!img) return;
-    // Only update if not already set
-    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Minimize.png') {
-      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Minimize.png';
-      img.style.height = '300%';
-      img.style.filter = 'invert(100%) brightness(100%)';
-      console.log('[MinBtn] Icon src changed!');
-    }
-  }
-  updateIcon();
-  // Watch for DOM changes (in case the button is re-rendered)
-  const observer = new MutationObserver(updateIcon);
-  observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
-})();
-
-(function changeCloseIconSrc() {
-  function updateIcon() {
-    const btn = document.getElementById('closeBtn');
-    if (!btn) return;
-    const img = btn.querySelector('img');
-    if (!img) return;
-    // Only update if not already set
-    if (img.src !== 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Close.png') {
-      img.src = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/assets/Close.png';
-      img.style.height = '300%';
-      img.style.filter = 'invert(100%) brightness(100%)';
-      console.log('[CloseBtn] Icon src changed!');
-    }
-  }
-  updateIcon();
-  // Watch for DOM changes (in case the button is re-rendered)
-  const observer = new MutationObserver(updateIcon);
-  observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
-})();
-
-(function createHoYoPlaySelector() {
-  // Track per-side validation; before a side completes, keep its circles visible optimistically
-  try { window.__hoyoplayValidatedLeft = false; window.__hoyoplayValidatedRight = false; } catch (_) {}
-  // Create full-width shadow background
-  const shadowBg = document.createElement('div');
-  shadowBg.id = 'hoyoplay-shadow-bg';
-  shadowBg.style.position = 'fixed';
-  shadowBg.style.top = '0';
-  shadowBg.style.left = '0';
-  shadowBg.style.width = '100vw';
-  shadowBg.style.height = '64px';
-  shadowBg.style.zIndex = '9998';
-  shadowBg.style.background = 'linear-gradient(0deg,rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.69) 100%)';
-  shadowBg.style.pointerEvents = 'none';
-  shadowBg.style.opacity = '0';
-  shadowBg.style.transition = 'opacity 0.25s cubic-bezier(.4,0,.2,1)';
-
-  document.body.appendChild(shadowBg);
-
-  // Create dialog/menu backdrop to darken background when menus/dialogs are open
-  const dialogBackdrop = document.createElement('div');
-  dialogBackdrop.id = 'menu-dialog-backdrop';
-  Object.assign(dialogBackdrop.style, {
-    position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-    background: 'transparent',
-    zIndex: '9999', // below dialogs (10000+), above app content
-    pointerEvents: 'none', // container doesn't block, panels do
-    opacity: '0',
-    transition: 'opacity 0.18s cubic-bezier(.4,0,.2,1)',
-    display: 'none'
-  });
-  document.body.appendChild(dialogBackdrop);
-
-  // Backdrop blocking panels (leave a top-center hole for window drag)
-  let panelTop = null, panelBottom = null, panelLeft = null, panelRight = null, holeVeil = null;
-  function ensureBackdropPanels() {
-    if (panelTop) return;
-    const make = () => {
-      const d = document.createElement('div');
-      Object.assign(d.style, {
-        position: 'fixed',
-        background: 'rgba(0,0,0,0.45)',
-        pointerEvents: 'auto',
-        top: '0', left: '0', width: '0', height: '0'
-      });
-      return d;
-    };
-    panelTop = make();
-    panelTop.className = 'backdrop-panel panel-top';
-    panelBottom = make();
-    panelBottom.className = 'backdrop-panel panel-bottom';
-    // Round only the bottom panel's bottom corners as requested
-    panelBottom.style.borderBottomLeftRadius = '8px';
-    panelBottom.style.borderBottomRightRadius = '8px';
-    panelLeft = make();
-    panelLeft.className = 'backdrop-panel panel-left';
-  // Round top-left outer corner on the left (blue) panel
-  panelLeft.style.borderTopLeftRadius = '8px';
-    panelRight = make();
-    panelRight.className = 'backdrop-panel panel-right';
-  // Round top-right outer corner on the right (yellow) panel
-  panelRight.style.borderTopRightRadius = '8px';
-    // Non-blocking veil to visually darken the draggable hole area
-    holeVeil = document.createElement('div');
-    Object.assign(holeVeil.style, {
-      position: 'fixed',
-      background: 'rgba(0,0,0,0.45)',
-      pointerEvents: 'none', // do not block drag interactions underneath
-      top: '0', left: '0', width: '0', height: '0'
-    });
-    holeVeil.className = 'backdrop-panel hole-veil';
-    dialogBackdrop.appendChild(panelTop);
-    dialogBackdrop.appendChild(panelBottom);
-    dialogBackdrop.appendChild(panelLeft);
-    dialogBackdrop.appendChild(panelRight);
-    // Append veil last so it renders above blocking panels for uniform look
-    dialogBackdrop.appendChild(holeVeil);
-  }
-
-  function layoutBackdropPanels() {
-    try {
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const bar = document.getElementById('topBarContainer');
-      const btns = document.getElementById('topBarButtonContainer');
-      const barRect = bar ? bar.getBoundingClientRect() : { top: 0, left: 0, width: vw, height: 48, right: vw };
-      const btnRect = btns ? btns.getBoundingClientRect() : null;
-      // Define a hole centered on the top bar, but not overlapping the buttons
-      const holeHeight = Math.max(36, Math.min(64, barRect.height));
-      const centerX = vw / 2;
-      // Wider and left-biased hole: make left side larger than right
-      let holeWidth = Math.min(720, Math.max(320, vw * 0.58));
-  const leftBias = 0.70; // 70% of width extends to the left of center
-      let holeLeft = centerX - holeWidth * leftBias;
-      let holeRight = centerX + holeWidth * (1 - leftBias);
-      const safety = 4;
-      if (btnRect) {
-        // Ensure the hole doesn't overlap the right buttons; expand to reach them if short
-        const maxRight = Math.max(0, btnRect.left - safety);
-        if (holeRight < maxRight) {
-          holeRight = maxRight; // allow more width on the right up to buttons
-        } else if (holeRight > maxRight) {
-          const overlap = holeRight - maxRight;
-          holeRight -= overlap;
-          holeLeft -= overlap; // shift left to avoid overlap
-        }
-      }
-      // Clamp within viewport
-      holeLeft = Math.max(8, holeLeft);
-      holeRight = Math.min(vw - 8, holeRight);
-      // Enforce a larger minimum width, prefer expanding left if constrained
-      const minHoleWidth = 200;
-      if (holeRight - holeLeft < minHoleWidth) {
-        holeLeft = Math.max(8, holeRight - minHoleWidth);
-      }
-      const holeTop = Math.max(0, barRect.top);
-      const holeBottom = Math.min(vh, holeTop + holeHeight);
-
-      // Top panel: above the hole, full width
-      Object.assign(panelTop.style, {
-        top: '0px', left: '0px', width: vw + 'px', height: holeTop + 'px'
-      });
-      // Bottom panel: below the hole, full width
-      Object.assign(panelBottom.style, {
-        top: holeBottom + 'px', left: '0px', width: vw + 'px', height: Math.max(0, vh - holeBottom) + 'px'
-      });
-      // Left panel: from holeTop..holeBottom, left area
-      Object.assign(panelLeft.style, {
-        top: holeTop + 'px', left: '0px', width: Math.max(0, holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      // Right panel: from holeTop..holeBottom, right area
-      Object.assign(panelRight.style, {
-        top: holeTop + 'px', left: Math.max(0, holeRight) + 'px', width: Math.max(0, vw - holeRight) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-      // Veil over the hole: visually dim without blocking interactions
-      Object.assign(holeVeil.style, {
-        top: holeTop + 'px', left: Math.max(0, holeLeft) + 'px', width: Math.max(0, holeRight - holeLeft) + 'px', height: Math.max(0, holeBottom - holeTop) + 'px'
-      });
-    } catch (e) { /* ignore */ }
-  }
-
-  // Create selector container
-  const overlay = document.createElement('div');
-  overlay.id = 'hoyoplay-selector';
-  overlay.style.position = 'fixed';
-  overlay.style.top = '0px';
-  overlay.style.left = '50%';
-  overlay.style.transform = 'translateX(-50%)';
-  overlay.style.zIndex = '9999';
-  overlay.style.width = '80px'; // will be adjusted dynamically based on circle count
-  overlay.style.height = '28px';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'space-evenly';
-  overlay.style.pointerEvents = 'none';
-  overlay.style.transition = 'top 0.25s cubic-bezier(.4,0,.2,1), opacity 0.18s';
-  overlay.style.opacity = '0';
-
-  // Helper: adjust selector width based on visible circle count
-  function updateOverlayWidth() {
-    try {
-      const circles = overlay.querySelectorAll('.hoyoplay-circle');
-      let visible = 0;
-      circles.forEach(el => {
-        const cs = window.getComputedStyle(el);
-        if (cs.display !== 'none' && cs.visibility !== 'hidden') visible++;
-      });
-      // If 3 buttons: 100px, else (2 or fewer) keep current 80px sizing
-      overlay.style.width = visible >= 3 ? '100px' : '80px';
-    } catch (e) { /* ignore */ }
-  }
-
-  // Detect if Mods page is active (only Mods-related containers)
-  const isModsActive = () => {
-    const candidates = [
-      '.Mods',
-      '.mods',
-      '.Menu.ModMenu',
-      '.menu.modmenu',
-      '#menuContainer.ModMenu',
-      '#menuContainer.modmenu',
-      '.ModList',
-      '.modlist',
-      '.ModDownloadList',
-      '.moddownloadlist',
-      // Also detect when Mods are rendered inside menu container
-      '#menuContainer .Mods',
-      '#menuContainer .mods',
-      '#menuContainer .ModList',
-      '#menuContainer .modlist',
-      '#menuContainer .ModDownloadList',
-      '#menuContainer .moddownloadlist'
-    ];
-    for (const sel of candidates) {
-      const el = document.querySelector(sel);
-      if (!el) continue;
-      const cs = window.getComputedStyle(el);
-      const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
-      if (visible) return true;
-    }
-    return false;
-  };
-
-  // Detect if any menu/dialog from the options/secret menu is active
-  const isMenuDialogActive = () => {
-    const candidates = [
-      '#secretMenuContainer',
-      '#menuContainer',
-      '#menuContainer .Menu',
-      '#menuContainer .MenuTop',
-      '#menuContainer .MenuInner',
-      '#menuContainer .OptionSection',
-      '#menuContainer .Dialog',
-      '#menuContainer .Modal',
-      '#menuContainer .Popup'
-    ];
-    for (const sel of candidates) {
-      const el = document.querySelector(sel);
-      if (!el) continue;
-      const cs = window.getComputedStyle(el);
-      const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
-      if (visible) return true;
-    }
-    return false;
-  };
-
-  const isUiOverlayActive = () => isModsActive() || isMenuDialogActive();
-
-  // Early helper (hoisted) so early code can check video availability before arrays are initialized.
-  // Defaults to only circle 1 having video until the detector populates the global state.
-  function _selectedCircleHasVideo(idx) {
-    try {
-      const vid = window.__HOYO_VIDEO_AVAILABLE;
-      const ovl = window.__HOYO_OVERLAY_AVAILABLE;
-      if (Array.isArray(vid) && Array.isArray(ovl)) return !!(vid[idx] && ovl[idx]);
-      if (Array.isArray(vid)) return !!vid[idx];
-    } catch (_) {}
-    return idx === 0; // safe default: only first circle
-  }
-
-  // Keep Mods above selector and disable selector when Mods is active
-  function updateModsState() {
-    const modsActive = isModsActive();
-    const menuActive = isMenuDialogActive();
-    const active = modsActive || menuActive;
-    const modCandidates = Array.from(document.querySelectorAll(
-      '.Mods, .Menu.ModMenu, #menuContainer, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
-    ));
-    const menuEls = Array.from(document.querySelectorAll('#menuContainer, .Menu.ModMenu, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'));
-    const modListEls = Array.from(document.querySelectorAll('.ModList, .ModListInner, .Mods .ModList, .Mods .ModListInner'));
-    
-    // Update menuHeading text for ModMenu
-    if (modsActive) {
-      const modMenus = document.querySelectorAll('.Menu.ModMenu, #menuContainer.ModMenu');
-      modMenus.forEach(modMenu => {
-        const menuHeading = modMenu.querySelector('#menuHeading, .MenuHeading');
-        if (menuHeading && !menuHeading.hasAttribute('data-modmenu-heading-set')) {
-          menuHeading.textContent = 'Please Select Mods to Download';
-          menuHeading.setAttribute('data-modmenu-heading-set', '1');
-        }
-      });
-    }
-    
-    if (active) {
-      // Hide selector and shadow entirely, and hide video control too
-      overlay.style.display = 'none';
-      shadowBg.style.display = 'none';
-      
-      // Check if ModMenu dialog is active
-      const modMenuActive = document.querySelector('.Menu.ModMenu, #menuContainer.ModMenu');
-      const isModMenuDialog = modMenuActive && window.getComputedStyle(modMenuActive).display !== 'none';
-      
-      // Ensure backdrop mounts under the Mods container when ModMenu dialog is shown
-      if (isModMenuDialog) {
-        const modsRoot = modMenuActive.closest('.Mods, .mods');
-        if (modsRoot && dialogBackdrop.parentNode !== modsRoot) {
-          modsRoot.appendChild(dialogBackdrop);
-        }
-      } else if (dialogBackdrop.parentNode !== document.body) {
-        document.body.appendChild(dialogBackdrop);
-      }
-
-      // Show darkening backdrop for menus/dialogs and ModMenu, but not regular Mods page
-      if ((menuActive && !modsActive) || isModMenuDialog) {
-        ensureBackdropPanels();
-        layoutBackdropPanels();
-        dialogBackdrop.style.display = 'block';
-        // Render backdrop between Mod lists and Mod dialog when active
-        if (isModMenuDialog) {
-          dialogBackdrop.style.zIndex = '10010';
-        } else {
-          dialogBackdrop.style.zIndex = '9999';
-        }
-        requestAnimationFrame(() => { dialogBackdrop.style.opacity = '1'; });
-      } else {
-        dialogBackdrop.style.opacity = '0';
-        setTimeout(() => { if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none'; }, 200);
-      }
-      // Pause/hide video overlay only for Mods. Keep playing when menus/dialogs are open.
-      if (modsActive) {
-        try { showVideoOverlay(false, { hideControl: true }); } catch (e) {}
-        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          hoyoVideoControl.style.display = 'none';
-        }
-      } else {
-        // Menu/dialog open: keep video playing and control visible if current circle has video
-        if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-          // Don't show control if built-in mode is active
-          if (isUsingBuiltin()) {
-            hoyoVideoControl.style.display = 'none';
-          } else if (_selectedCircleHasVideo(selectedCircleIndex)) {
-            hoyoVideoControl.style.display = 'block';
-            // Render under the dark backdrop (backdrop=9996), but visible through it
-            hoyoVideoControl.style.zIndex = '9995';
-          } else {
-            hoyoVideoControl.style.display = 'none';
-          }
-        }
-      }
-      // Ensure Mods pane(s) are on top of everything
-      modCandidates.forEach(el => {
-        if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-        el.style.zIndex = '10000';
-        try { el.setAttribute('data-mod-z-boosted', 'true'); } catch (_) {}
-      });
-      // When a menu is active inside Mods, raise the menu above any ModList
-      if (menuActive) {
-        menuEls.forEach(el => {
-          if (!el) return;
-          const cs = window.getComputedStyle(el);
-          if (cs.position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '10020';
-          try { el.setAttribute('data-menu-z-boosted', 'true'); } catch (_) {}
-        });
-        // Nudge mod lists below the menu
-        modListEls.forEach(el => {
-          if (!el) return;
-          const cs = window.getComputedStyle(el);
-          if (cs.position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '10005';
-          try { el.setAttribute('data-modlist-z-boosted', 'true'); } catch (_) {}
-        });
-      }
-
-      // Special handling when ModMenu dialog is open but not counted as menuActive
-      if (!menuActive && isModMenuDialog) {
-        const modMenuEls = Array.from(document.querySelectorAll('.Menu.ModMenu, #menuContainer.ModMenu'));
-        modMenuEls.forEach(el => {
-          if (!el) return;
-          const cs = window.getComputedStyle(el);
-          if (cs.position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '10020';
-          try { el.setAttribute('data-modmenu-z-boosted', 'true'); } catch (_) {}
-        });
-        modListEls.forEach(el => {
-          if (!el) return;
-          const cs = window.getComputedStyle(el);
-          if (cs.position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '10005';
-          try { el.setAttribute('data-modlist-z-boosted', 'true'); } catch (_) {}
-        });
-      }
-
-      // Ensure ModDownloadList is above ModList but without backdrop (Mods context)
-      const modDownloadEls = Array.from(document.querySelectorAll('.ModDownloadList'));
-      modDownloadEls.forEach(el => {
-        const cs = window.getComputedStyle(el);
-        if (cs.position === 'static') el.style.position = 'relative';
-        el.style.zIndex = '10012';
-        el.style.pointerEvents = 'auto';
-        try { el.setAttribute('data-mod-z-boosted', 'true'); } catch (_) {}
-      });
-    } else {
-      if (dialogBackdrop.parentNode !== document.body) {
-        document.body.appendChild(dialogBackdrop);
-      }
-      // Restore selector visibility and control based on current selection
-      overlay.style.display = 'flex';
-      shadowBg.style.display = 'block';
-      // Hide backdrop
-      dialogBackdrop.style.opacity = '0';
-      // After transition, hide display to avoid intercepting clicks
-      setTimeout(() => {
-        if (dialogBackdrop.style.opacity === '0') dialogBackdrop.style.display = 'none';
-      }, 200);
-      if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-        // Don't show control if built-in mode is active
-        if (isUsingBuiltin()) {
-          hoyoVideoControl.style.display = 'none';
-        } else if (_selectedCircleHasVideo(selectedCircleIndex)) {
-          hoyoVideoControl.style.display = 'block';
-        } else {
-          hoyoVideoControl.style.display = 'none';
-        }
-      }
-      // Optionally reset Mods z-index we set
-      modCandidates.forEach(el => {
-        if (!el) return;
-        if (el.getAttribute && el.getAttribute('data-mod-z-boosted') === 'true') {
-          el.style.zIndex = '';
-          if (el.style.position === 'relative') el.style.position = '';
-          try { el.removeAttribute('data-mod-z-boosted'); } catch (_) {}
-        }
-      });
-      // Clear any elevated menu/list stacking set above
-      menuEls.forEach(el => {
-        if (!el) return;
-        if (el.getAttribute && el.getAttribute('data-menu-z-boosted') === 'true') {
-          el.style.zIndex = '';
-          if (el.style.position === 'relative') el.style.position = '';
-          try { el.removeAttribute('data-menu-z-boosted'); } catch (_) {}
-        }
-        if (el.getAttribute && el.getAttribute('data-modmenu-z-boosted') === 'true') {
-          el.style.zIndex = '';
-          if (el.style.position === 'relative') el.style.position = '';
-          try { el.removeAttribute('data-modmenu-z-boosted'); } catch (_) {}
-        }
-      });
-      modListEls.forEach(el => {
-        if (!el) return;
-        if (el.getAttribute && el.getAttribute('data-modlist-z-boosted') === 'true') {
-          el.style.zIndex = '';
-          if (el.style.position === 'relative') el.style.position = '';
-          try { el.removeAttribute('data-modlist-z-boosted'); } catch (_) {}
-        }
-      });
-      const modDownloadEls = Array.from(document.querySelectorAll('.ModDownloadList'));
-      modDownloadEls.forEach(el => {
-        if (!el) return;
-        if (el.getAttribute && el.getAttribute('data-mod-z-boosted') === 'true') {
-          el.style.zIndex = '';
-          if (el.style.position === 'relative') el.style.position = '';
-          try { el.removeAttribute('data-mod-z-boosted'); } catch (_) {}
-        }
-      });
-    }
-
-  // Update tab navigation disables according to current page state
-  try { updateTabStops({ modsActive, menuActive }); } catch (e) {}
-  }
-
-  // Helper to create a circle
-  function makeCircle(id) {
-    const c = document.createElement('div');
-    c.className = 'hoyoplay-circle';
-    c.id = id;
-    c.style.width = '12px';
-    c.style.height = '12px';
-    c.style.borderRadius = '50%';
-    c.style.position = 'relative';
-    c.style.pointerEvents = 'auto';
-    c.style.cursor = 'pointer';
-    c.style.transition = 'box-shadow 0.18s cubic-bezier(.4,0,.2,1), background 0.18s cubic-bezier(.4,0,.2,1)';
-    // Base subtle appearance so hover white-translucent stands out
-    c.style.background = 'rgba(255,255,255,0.12)';
-    // Accessibility: allow keyboard focus and announce purpose
-    c.setAttribute('tabindex', '0');
-    c.setAttribute('role', 'button');
-    c.setAttribute('aria-label', id === 'hoyoplay-left' ? 'Left background (video)' : id === 'hoyoplay-mid' ? 'Middle background' : 'Right background');
-    return c;
-  }
-
-  // Track which circle is currently selected (0=left,1=mid,2=right)
-  let selectedCircleIndex = 0;
-
-  // Create three circles (left, middle, right) to support up to 3 backgrounds per side
-  const leftCircle = makeCircle('hoyoplay-left');
-  const midCircle = makeCircle('hoyoplay-mid');
-  const rightCircle = makeCircle('hoyoplay-right');
-
-  // Example background keys (lookups will use cache + prefetch)
-  const leftBgKey = 'left-default';
-  const rightBgKey = 'right-default';
-
-  // Static image fallbacks so circles remain functional even if cache is empty or probes are flaky
-  const HOYO_IMG_BASE = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
-  // Local fallbacks that ship with the theme (work offline)
-  const HOYO_LOCAL_IMAGE_SRCS = [
-    'background/bg.png',         // left
-    'background/HSR_Phainon.png',// mid
-    'background/gi_arct.png'     // right
-  ];
-  // Remote fallbacks used when online
-  const HOYO_REMOTE_IMAGE_SRCS = [
-    HOYO_IMG_BASE + 'image1.webp', // left
-    HOYO_IMG_BASE + 'image2.webp', // mid
-    HOYO_IMG_BASE + 'image3.webp'  // right
-  ];
-
-  // Helper to get nth cached URL for a key (graceful fallback to first available)
-  function getCachedUrlByIndex(key, idx) {
-    const list = getCachedBackgrounds(key);
-    if (list && list.length) return list[idx] || list[0] || null;
-    // Cache empty: provide deterministic static fallbacks by position mapping
-    const offline = (typeof navigator !== 'undefined' && navigator && navigator.onLine === false);
-    const local = HOYO_LOCAL_IMAGE_SRCS;
-    const remote = HOYO_REMOTE_IMAGE_SRCS;
-    const pickByKey = (arr) => {
-      if (key === leftBgKey && idx === 0) return arr[0];
-      if (key === rightBgKey && idx === 0) return arr[1];
-      if (key === rightBgKey && idx === 1) return arr[2];
-      return arr[idx] || arr[0] || null;
-    };
-    // Prefer local images offline; otherwise prefer remote
-    return offline ? pickByKey(local) : pickByKey(remote);
-  }
-
-  // By default, select the center/right-most (index 1 if present)
-  function updateCircles(selectedIndex) {
-    selectedCircleIndex = selectedIndex;
-    // selectedIndex: 0=left,1=mid,2=right
-    const circles = [leftCircle, midCircle, rightCircle];
-  const col = (window.__HOYO_CIRCLE_COLORS && window.__HOYO_CIRCLE_COLORS[selectedIndex]) || '#ffffff';
-    circles.forEach((c, i) => {
-      if (i === selectedIndex) {
-        c.classList.add('selected');
-        c.style.background = 'rgba(255,255,255,0.95)';
-      } else {
-        c.classList.remove('selected');
-        c.style.background = 'rgba(180, 180, 180, 0.59)';
-      }
-    });
-    // Style the Version Highlights button when middle/right is selected
-    try {
-      const btn = document.getElementById('customNewsButton');
-      if (btn) {
-        if (selectedIndex === 1 || selectedIndex === 2 || selectedIndex === 0) {
-          // Only change text color and border color per request, using per-circle color
-          btn.style.color = col;
-          btn.style.borderColor = col;
-        } else {
-          // revert to default - clear inline overrides so CSS can control it
-          btn.style.color = '';
-          btn.style.borderColor = '';
-        }
-      }
-    } catch (e) { /* ignore */ }
-
-    // Ensure play/pause control reflects selected circle immediately
-    try { refreshControlForSelection(); } catch (_) {}
-  }
-  // Default to the left (video+image1) as selected
-  updateCircles(0);
-
-  // Add circles to overlay (left -> mid -> right)
-  overlay.appendChild(leftCircle);
-  overlay.appendChild(midCircle);
-  overlay.appendChild(rightCircle);
-  document.body.appendChild(overlay);
-  // Set width according to circle count (3 => 100px, else 80px)
-  updateOverlayWidth();
-
-  // Load per-circle colors via 1x1 PNG swatches (CSP-safe: image fetch only)
-  (function loadCircleColors(){
-    try {
-      const base = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
-      const urls = [base+'color1.png', base+'color2.png', base+'color3.png'];
-      const loadImg = (src) => new Promise((resolve) => {
-        try {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve({ ok: true, img });
-          img.onerror = () => resolve({ ok: false });
-          img.src = src + '?t=' + Date.now();
-        } catch (_) { resolve({ ok: false }); }
-      });
-      Promise.all(urls.map(loadImg)).then(results => {
-        const map = {};
-        for (let i = 0; i < 3; i++) {
-          let hex = '#ffffff';
-          const r = results[i];
-          if (r && r.ok && r.img) {
-            try {
-              const canvas = document.createElement('canvas');
-              canvas.width = 1; canvas.height = 1;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(r.img, 0, 0, 1, 1);
-              const data = ctx.getImageData(0,0,1,1).data;
-              const toHex = (v) => v.toString(16).padStart(2,'0').toUpperCase();
-              hex = '#' + toHex(data[0]) + toHex(data[1]) + toHex(data[2]);
-            } catch (_) {
-              // canvas taint or other error; keep white
-              hex = '#ffffff';
-            }
-          }
-          map[i] = hex;
-        }
-        window.__HOYO_CIRCLE_COLORS = map;
-        try { updateCircles(selectedCircleIndex); } catch (_) {}
-      }).catch(() => {
-        try { window.__HOYO_CIRCLE_COLORS = {0:'#ffffff',1:'#ffffff',2:'#ffffff'}; updateCircles(selectedCircleIndex); } catch(_) {}
-      });
-    } catch(_) {
-      try { window.__HOYO_CIRCLE_COLORS = {0:'#ffffff',1:'#ffffff',2:'#ffffff'}; updateCircles(selectedCircleIndex); } catch(_) {}
-    }
-  })();
-
-  // Offline switching guards: avoid switching to circles with no cached assets when offline
-  const isOffline = () => {
-    try { return (typeof navigator !== 'undefined' && navigator && navigator.onLine === false); } catch (_) { return false; }
-  };
-  function canSwitchToIndexOffline(idx) {
-    if (!isOffline()) return true;
-    try {
-      const leftList = getCachedBackgrounds(leftBgKey) || [];
-      const rightList = getCachedBackgrounds(rightBgKey) || [];
-      if (idx === 0) return leftList.length >= 1;      // left uses index 0
-      if (idx === 1) return rightList.length >= 1;     // mid uses right index 0
-      if (idx === 2) return rightList.length >= 2;     // right uses right index 1
-    } catch (_) {}
-    return false;
-  }
-  // Ensure we have a non-transparent background on pure-offline cold start
-  function ensureOfflineDefaultBackground() {
-    if (!isOffline()) return;
-    try {
-      const leftList = getCachedBackgrounds(leftBgKey) || [];
-      const rightList = getCachedBackgrounds(rightBgKey) || [];
-      if (leftList.length === 0 && rightList.length === 0) {
-        const url = (HOYO_LOCAL_IMAGE_SRCS && HOYO_LOCAL_IMAGE_SRCS[0]) || null;
-        if (url) setCustomBackground(url);
-      }
-    } catch (_) {}
-  }
-
-  // Hide circles when their corresponding cached background is missing.
-  // This allows the selector to gracefully adapt if GitHub Action didn't produce image files.
-  function updateCircleVisibility() {
-    try {
-      const leftList = getCachedBackgrounds(leftBgKey) || [];
-      const rightList = getCachedBackgrounds(rightBgKey) || [];
-  const leftDone = !!(window.__hoyoplayValidatedLeft);
-  const rightDone = !!(window.__hoyoplayValidatedRight);
-      // Video availability: show a circle if it has either an image OR a video
-      const hasVideoAsset = (idx) => {
-        try {
-          const arr = window.__HOYO_VIDEO_AVAILABLE;
-          if (Array.isArray(arr)) return !!arr[idx];
-        } catch (_) {}
-        return false; // do not assume video exists here to avoid false positives
-      };
-      const hasStaticImage = (idx) => {
-        try { return !!HOYO_IMAGE_SRCS[idx]; } catch (_) { return false; }
-      };
-  // On slow networks or when cache isn't populated yet, avoid hiding circles prematurely per-side.
-      const hasLeft = leftDone ? ((leftList.length >= 1) || hasVideoAsset(0) || hasStaticImage(0)) : true;      // left uses index 0
-      const hasMid = rightDone ? ((rightList.length >= 1) || hasVideoAsset(1) || hasStaticImage(1)) : true;     // mid uses right index 0
-      const hasRight = rightDone ? ((rightList.length >= 2) || hasVideoAsset(2) || hasStaticImage(2)) : true;   // right uses right index 1
-
-      leftCircle.style.display = hasLeft ? 'block' : 'none';
-      midCircle.style.display = hasMid ? 'block' : 'none';
-      rightCircle.style.display = hasRight ? 'block' : 'none';
-
-      // Recalc overlay width when visibility changes
-      updateOverlayWidth();
-
-      // If the currently selected circle is hidden, pick a visible one (left > mid > right)
-      const visible = [hasLeft, hasMid, hasRight];
-      if (!visible[selectedCircleIndex]) {
-        let newIndex = 0;
-        if (hasLeft) newIndex = 0;
-        else if (hasMid) newIndex = 1;
-        else if (hasRight) newIndex = 2;
-        // If none visible, keep selection but nothing will show
-        if (visible[newIndex]) updateCircles(newIndex);
-      }
-
-      // Ensure video control visibility follows video availability for the selected circle
-      try { refreshControlForSelection(); } catch (e) { /* ignore */ }
-    } catch (e) { /* ignore */ }
-  }
-
-  // Optional: actively probe URLs to handle 404/redirects
-  async function validateCircleUrls() {
-    const rightList = getCachedBackgrounds(rightBgKey) || [];
-    const leftList = getCachedBackgrounds(leftBgKey) || [];
-    // Helper that resolves to boolean load success
-    function probe(url) {
-      return new Promise(res => {
-        if (!url) return res(false);
-        const img = new Image();
-        let done = false;
-        const t = setTimeout(() => { if (!done) { done = true; res(false); } }, 4000);
-        img.onload = () => { if (!done) { done = true; clearTimeout(t); res(true); } };
-        img.onerror = () => { if (!done) { done = true; clearTimeout(t); res(false); } };
-        img.src = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
-      });
-    }
-
-    const midUrl = rightList[0];
-    const rightUrl = rightList[1];
-    // Warm up/cache probe results but do not mutate cache on transient failures
-    await Promise.all([probe(midUrl), probe(rightUrl)]);
-
-    // Mark left side validated only if it had cache entries; we don't probe left URL here.
-    const hadLeft = Array.isArray(leftList) && leftList.length > 0;
-    if (hadLeft) { try { window.__hoyoplayValidatedLeft = true; } catch (_) {} }
-    // Mark right side validated only if it had cache entries to validate (we probed them above)
-    const hadRight = Array.isArray(rightList) && rightList.length > 0;
-    if (hadRight) { try { window.__hoyoplayValidatedRight = true; } catch (_) {} }
-    updateCircleVisibility();
-  }
-
-  // Kick initial visibility and then validate URLs one time at startup
-  // On first load, do not auto-hide circles purely based on empty cache; validation will correct later
-  updateCircleVisibility();
-  try {
-    if (!window.__hoyoplayValidated) {
-      window.__hoyoplayValidated = true;
-      validateCircleUrls().catch(() => {});
-    }
-  } catch (e) {}
-  try { window._hoyoplayValidateCircles = validateCircleUrls; } catch (e) {}
-
-  // Expose a hook so refresh routines can trigger visibility recalculation
-  try { window._hoyoplayUpdateCircles = updateCircleVisibility; } catch (e) {}
-
-  // --- Video overlay + control (for any circle that has video) ---
-  let hoyoVideoOverlay = null;
-  let hoyoVideoA = null;
-  let hoyoVideoB = null;
-  let hoyoVideoActive = 'A'; // 'A' or 'B'
-  let hoyoVideoControl = null;
-  let hoyoVideoPlaying = false;
-  // Control fade handling
-  let hoyoControlFadeTimer = null;
-  const HOYO_CONTROL_FADE_MS = 220;
-  // Track user intent per circle: only auto-play a circle if user pressed play on that circle.
-  let circleAutoPlay = [false, false, false];
-  let currentPlayingIndex = -1; // -1 when nothing is playing
-  // Base path and per-circle media candidates
-  const HOYO_BG_BASE = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
-  const HOYO_VIDEO_SRCS = [
-    HOYO_BG_BASE + 'video1.webm',
-    HOYO_BG_BASE + 'video2.webm',
-    HOYO_BG_BASE + 'video3.webm'
-  ];
-  const HOYO_OVERLAY_SRCS = [
-    HOYO_BG_BASE + 'overlay1.webp',
-    HOYO_BG_BASE + 'overlay2.webp',
-    HOYO_BG_BASE + 'overlay3.webp'
-  ];
-  // Detected availability (we'll probe on startup); default to false/offline-safe
-  let HOYO_VIDEO_AVAILABLE = [false, false, false];
-  let HOYO_OVERLAY_AVAILABLE = [false, false, false];
-  try { window.__HOYO_OVERLAY_AVAILABLE = HOYO_OVERLAY_AVAILABLE; } catch (_) {}
-  // Track per-circle whether we've already played the intro slide animation this session
-  let HOYO_CONTROL_INTRO_PLAYED = [false, false, false];
-  // Foreground images (dual A/B) shown on top of video for smooth crossfade
-  let hoyoOverlayA = null;
-  let hoyoOverlayB = null;
-  let hoyoOverlayActive = 'A'; // 'A' or 'B'
-  const pickOverlayForIndex = (idx) => (HOYO_OVERLAY_AVAILABLE[idx] ? HOYO_OVERLAY_SRCS[idx] : HOYO_OVERLAY_SRCS[0]);
-
-  // Helpers to fetch/probe media availability once
-  function detectAvailableMedia() {
-    try {
-      // Overlays: probe images (respect offline cache; don't bust cache when offline)
-      HOYO_OVERLAY_SRCS.forEach((url, i) => {
-        try {
-          const img = new Image();
-          img.onload = () => { HOYO_OVERLAY_AVAILABLE[i] = true; try { refreshControlForSelection(); } catch (_) {} };
-          img.onerror = () => { HOYO_OVERLAY_AVAILABLE[i] = false; try { refreshControlForSelection(); } catch (_) {} };
-          const online = !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false);
-          img.src = online ? (url + (url.includes('?') ? '&' : '?') + 't=' + Date.now()) : url;
-        } catch (_) {}
-      });
-      // Videos: probe via video metadata
-      HOYO_VIDEO_SRCS.forEach((url, i) => {
-        try {
-          const v = document.createElement('video');
-          let settled = false;
-          const done = (ok) => { if (!settled) { settled = true; HOYO_VIDEO_AVAILABLE[i] = !!ok; } };
-          v.preload = 'metadata';
-          v.onloadedmetadata = () => { done(true); try { refreshControlForSelection(); } catch (_) {} };
-          v.onerror = () => { done(false); try { refreshControlForSelection(); } catch (_) {} };
-          // Tiny seek trick to force some browsers to fetch metadata
-          v.src = url + (url.includes('#') ? '' : '#t=0.1');
-          setTimeout(() => done(false), 5000);
-        } catch (_) {}
-      });
-    } catch (_) {}
-  }
-  try { window.__HOYO_VIDEO_AVAILABLE = HOYO_VIDEO_AVAILABLE; } catch (_) {}
-  const hasPlayableAtIndex = (idx) => !!(HOYO_VIDEO_AVAILABLE[idx] && HOYO_OVERLAY_AVAILABLE[idx]);
-  const hasVideoAssetAtIndex = (idx) => !!HOYO_VIDEO_AVAILABLE[idx];
-  const hasOverlayAssetAtIndex = (idx) => !!HOYO_OVERLAY_AVAILABLE[idx];
-
-  function refreshControlForSelection() {
-    try {
-      if (!hoyoVideoControl) return;
-      // Hide control entirely when built-in background mode is active
-      if (isUsingBuiltin()) {
-        hoyoVideoControl.style.display = 'none';
-        return;
-      }
-      const idx = selectedCircleIndex | 0;
-      if (hasVideoAssetAtIndex(idx)) {
-        // Show control; enable only when overlay is also ready
-        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-
-        // If this circle has not yet shown the intro animation this session,
-        // trigger the slide-in + fade once when control first becomes available.
-        if (!HOYO_CONTROL_INTRO_PLAYED[idx]) {
-          HOYO_CONTROL_INTRO_PLAYED[idx] = true;
-          hoyoVideoControl.style.display = 'block';
-          hoyoVideoControl.style.opacity = '0';
-          hoyoVideoControl.style.pointerEvents = 'auto';
-          // Small async boundary so layout is ready before animating
-          setTimeout(() => {
-            try {
-              if (isUsingBuiltin()) {
-                hoyoVideoControl.style.display = 'none';
-                return;
-              }
-              // Only animate if we're still on the same circle with video
-              if ((selectedCircleIndex | 0) === idx && hasVideoAssetAtIndex(idx)) {
-                hoyoVideoControl.classList.add('intro-animate');
-              }
-            } catch (_) {}
-          }, 30);
-        } else {
-          // Intro already played for this circle; just show normally
-          hoyoVideoControl.classList.remove('intro-animate');
-          hoyoVideoControl.style.display = 'block';
-          requestAnimationFrame(() => {
-            const playable = hasPlayableAtIndex(idx);
-            hoyoVideoControl.style.opacity = playable ? '1' : '0.5';
-            hoyoVideoControl.style.pointerEvents = playable ? 'auto' : 'none';
-          });
-        }
-      } else {
-        // Hide with fade
-        hoyoVideoControl.style.opacity = '0';
-        hoyoVideoControl.style.pointerEvents = 'none';
-        if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-        hoyoControlFadeTimer = setTimeout(() => {
-          hoyoVideoControl.style.display = 'none';
-          hoyoControlFadeTimer = null;
-        }, HOYO_CONTROL_FADE_MS);
-      }
-    } catch (_) {}
-  }
-
-  function ensureVideoElements() {
-    if (hoyoVideoOverlay) return;
-    const app = document.querySelector('.App') || document.body;
-
-    hoyoVideoOverlay = document.createElement('div');
-    hoyoVideoOverlay.id = 'hoyoplay-video-overlay';
-    Object.assign(hoyoVideoOverlay.style, {
-      position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-      width: '100%', height: '100%', zIndex: '0', pointerEvents: 'none', overflow: 'hidden',
-      opacity: '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
-    });
-
-    function makeVideo(id, initialSrc, visible) {
-      const v = document.createElement('video');
-      v.id = id;
-      if (initialSrc) v.src = initialSrc;
-      v.muted = true;
-      v.loop = true;
-      v.preload = 'auto';
-      try { v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); } catch (e) {}
-      try { v.crossOrigin = 'anonymous'; } catch (e) {}
-      Object.assign(v.style, {
-        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-        width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none',
-        opacity: visible ? '1' : '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
-      });
-      return v;
-    }
-    hoyoVideoA = makeVideo('hoyoplay-video-a', HOYO_VIDEO_SRCS[0], true);
-    hoyoVideoB = makeVideo('hoyoplay-video-b', '', false);
-    hoyoVideoOverlay.appendChild(hoyoVideoA);
-    hoyoVideoOverlay.appendChild(hoyoVideoB);
-
-    // Add foreground images above the video (dual A/B for crossfade)
-    try {
-      if (typeof prefetchImage === 'function') {
-        HOYO_OVERLAY_SRCS.forEach(src => prefetchImage(src));
-      }
-    } catch (e) {}
-    function makeOverlayImg(id, initialSrc, visible) {
-      const img = document.createElement('img');
-      img.id = id;
-      if (initialSrc) img.src = initialSrc;
-      Object.assign(img.style, {
-        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-        width: '100%', height: '100%', objectFit: 'cover',
-        pointerEvents: 'none', userSelect: 'none',
-        opacity: visible ? '1' : '0', transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)'
-      });
-      return img;
-    }
-    hoyoOverlayA = makeOverlayImg('hoyoplay-overlay-a', pickOverlayForIndex(0), true);
-    hoyoOverlayB = makeOverlayImg('hoyoplay-overlay-b', '', false);
-    // Append after videos to ensure they paint above
-    hoyoVideoOverlay.appendChild(hoyoOverlayA);
-    hoyoVideoOverlay.appendChild(hoyoOverlayB);
-
-  if (app.firstChild) app.insertBefore(hoyoVideoOverlay, app.firstChild); else app.appendChild(hoyoVideoOverlay);
-  // Ensure the app is a positioning context for absolute children
-  try {
-    const cs = window.getComputedStyle(app);
-    if (cs.position === 'static') app.style.position = 'relative';
-  } catch (e) { /* ignore */ }
-
-    // Elevate key UI so it stays above the overlay (including BottomSection/footer)
-    try {
-      // Base elevation for common UI
-      const baseSelectors = [
-        '#title', '#settingsBtn', '#minBtn', '#closeBtn', '#serverLaunch', '#officialPlay',
-        '.TopButton', '.Menu', '#leftBar'
-      ];
-      baseSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-          if (!el.style.zIndex || isNaN(parseInt(el.style.zIndex, 10))) el.style.zIndex = '2';
-        });
-      });
-
-      // Ensure News stack above Bottom for interactions
-      const newsSelectors = ['.NewsSection', '#newsContainer', '#newsTabsContainer', '#newsContent', '#customNewsButton'];
-      newsSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '3';
-        });
-      });
-
-      // Push Bottom/footer lower so it won't block News
-      const bottomSelectors = ['.BottomSection', '#BottomSection', '#bottomSection', '.Footer', '#footer'];
-      bottomSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-          if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-          el.style.zIndex = '1';
-        });
-      });
-
-      // Prepare Mods containers with higher stacking (reinforced when active)
-      document.querySelectorAll('.Mods, .Menu.ModMenu, #menuContainer.ModMenu').forEach(el => {
-        if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-        el.style.zIndex = '1000';
-      });
-    } catch (e) { /* ignore */ }
-
-    // Control button placed near Version Highlights button
-    hoyoVideoControl = document.createElement('button');
-    hoyoVideoControl.id = 'hoyoplay-video-control';
-    // Use class-based styling defined in CSS
-    hoyoVideoControl.className = 'hoyoplay-video-control hidden';
-    // Ensure smooth fade for show/hide
-    Object.assign(hoyoVideoControl.style, {
-      transition: 'opacity 0.22s cubic-bezier(.4,0,.2,1)',
-      opacity: '0'
-    });
-  // inner icon element using Segoe Fluent glyphs (play/pause)
-  const icon = document.createElement('span');
-  icon.className = 'hp-icon';
-  // Play glyph: \uF5B0, Pause glyph: \uF8AE (Segoe Fluent / MDL2 glyphs)
-  icon.textContent = '\uF5B0';
-  hoyoVideoControl.appendChild(icon);
-  // Append control under the app root so absolute positioning is relative to it
-  app.appendChild(hoyoVideoControl);
-
-    function positionControl() {
-      const appEl = document.querySelector('.App') || document.body;
-      const ref = document.getElementById('customNewsButton');
-      const appRect = appEl.getBoundingClientRect();
-      if (ref) {
-        const r = ref.getBoundingClientRect();
-        // Keep vertical centering with the button, but fix left to requested value
-        const topPx = (r.top - appRect.top) + (r.height - 40) / 2;
-        const leftPx = 255.662;
-        hoyoVideoControl.style.top = topPx + 'px';
-        hoyoVideoControl.style.left = leftPx + 'px';
-        hoyoVideoControl.style.right = '';
-      } else {
-        // Fallback: pin to top-right inside the app
-        hoyoVideoControl.style.top = '12px';
-        hoyoVideoControl.style.right = '12px';
-        hoyoVideoControl.style.left = '';
-      }
-    }
-    positionControl();
-    window.addEventListener('resize', positionControl);
-
-    const getActiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
-    const getInactiveVideo = () => (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
-    hoyoVideoControl.addEventListener('click', () => {
-      const idx = selectedCircleIndex | 0;
-      if (!hasPlayableAtIndex(idx)) {
-        // Ignore clicks for circles that don't have the bundled media
-        return;
-      }
-      const nextSrc = HOYO_VIDEO_SRCS[idx];
-      const active = getActiveVideo();
-      const inactive = getInactiveVideo();
-      if (!active || !inactive) return;
-
-      if (hoyoVideoPlaying && currentPlayingIndex === idx) {
-        // Pause current circle
-        try { active.pause(); } catch (e) {}
-        try { active.currentTime = 0; } catch (e) {}
-        hoyoVideoPlaying = false;
-        circleAutoPlay[idx] = false;
-        currentPlayingIndex = -1;
-        try {
-          // Use the selected circle's fallback image
-          const url = (
-            idx === 0 ? (getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0)) :
-            idx === 1 ? (getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0)) :
-                         (getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0))
-          );
-          if (url) setCustomBackground(url);
-        } catch (e) {}
-        // Hide overlay but keep control visible
-        try { showVideoOverlay(false, { hideControl: false }); } catch (e) {}
-        const ic = hoyoVideoControl?.querySelector('.hp-icon');
-        if (ic) ic.textContent = '\uF5B0';
-        // Keep both videos invisible while idle
-        try { active.style.opacity = '0'; } catch (_) {}
-        try { inactive.style.opacity = '0'; } catch (_) {}
-      } else {
-        // Play for selected circle with correct source and smooth swap if needed
-        circleAutoPlay[idx] = true;
-        currentPlayingIndex = idx;
-        try { showVideoOverlay(true); } catch (e) {}
-        // Ensure overlay image matches target circle on manual play
-        try {
-          const hasVid = hasPlayableAtIndex(idx);
-          const targetHasOverlay = hasVid && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx];
-          if (hoyoOverlayA && hoyoOverlayB) {
-            if (targetHasOverlay) {
-              const targetSrc = pickOverlayForIndex(idx);
-              const activeImg = (hoyoOverlayActive === 'A' ? hoyoOverlayA : hoyoOverlayB);
-              const inactiveImg = (hoyoOverlayActive === 'A' ? hoyoOverlayB : hoyoOverlayA);
-              const currentSrc = activeImg?.getAttribute('src') || '';
-              if (currentSrc !== targetSrc) {
-                let swapped = false;
-                const doSwap = () => {
-                  if (swapped) return; swapped = true;
-                  inactiveImg.style.opacity = '1';
-                  activeImg.style.opacity = '0';
-                  hoyoOverlayActive = (hoyoOverlayActive === 'A' ? 'B' : 'A');
-                };
-                inactiveImg.onload = doSwap;
-                inactiveImg.onerror = doSwap;
-                inactiveImg.src = targetSrc;
-              } else {
-                activeImg.style.opacity = '1';
-                inactiveImg.style.opacity = '0';
-              }
-            } else {
-              // No overlay for this circle
-              hoyoOverlayA.style.opacity = '0';
-              hoyoOverlayB.style.opacity = '0';
-            }
-          }
-        } catch (_) {}
-        const startPlayOn = (vidToPlay) => {
-          try { vidToPlay.currentTime = 0; } catch (_) {}
-          try { vidToPlay.play().catch(() => {}); } catch (_) {}
-          hoyoVideoPlaying = true;
-          const ic = hoyoVideoControl?.querySelector('.hp-icon');
-          if (ic) ic.textContent = '\uF8AE';
-        };
-        if (active.src !== nextSrc) {
-          // Prepare on inactive, then crossfade and flip active pointer
-          try { active.pause(); } catch (_) {}
-          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
-          let started = false;
-          const once = () => {
-            if (started) return; started = true;
-            inactive.style.opacity = '1';
-            active.style.opacity = '0';
-            hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
-            startPlayOn(inactive);
-          };
-          try { inactive.onloadeddata = once; inactive.oncanplay = once; } catch (_) {}
-          setTimeout(once, 350);
-        } else {
-          // Same source: just ensure visibility and play
-          active.style.opacity = '1';
-          inactive.style.opacity = '0';
-          startPlayOn(active);
-        }
-      }
-    });
-  }
-
-  // Apply media (video/overlay) for the given circle index (dual-video crossfade)
-  function applyMediaForIndex(idx) {
-    try { ensureVideoElements(); } catch (_) {}
-    if (!hoyoVideoOverlay || !hoyoVideoA || !hoyoVideoB) return;
-  const hasVid = hasPlayableAtIndex(idx);
-    const shouldPlay = hasVid && !!circleAutoPlay[idx];
-    // Overlay: crossfade between images only when target circle has video AND an overlay asset
-    try {
-      const targetHasOverlay = hasVid && Array.isArray(HOYO_OVERLAY_AVAILABLE) && HOYO_OVERLAY_AVAILABLE[idx];
-      if (hoyoOverlayA && hoyoOverlayB) {
-        if (targetHasOverlay) {
-          const targetSrc = pickOverlayForIndex(idx);
-          const activeImg = (hoyoOverlayActive === 'A' ? hoyoOverlayA : hoyoOverlayB);
-          const inactiveImg = (hoyoOverlayActive === 'A' ? hoyoOverlayB : hoyoOverlayA);
-          const currentSrc = activeImg?.getAttribute('src') || '';
-          if (currentSrc !== targetSrc) {
-            // Preload on inactive, then crossfade
-            let swapped = false;
-            const doSwap = () => {
-              if (swapped) return; swapped = true;
-              inactiveImg.style.opacity = '1';
-              activeImg.style.opacity = '0';
-              hoyoOverlayActive = (hoyoOverlayActive === 'A' ? 'B' : 'A');
-            };
-            inactiveImg.onload = doSwap;
-            inactiveImg.onerror = doSwap; // fall back to instant swap
-            inactiveImg.src = targetSrc;
-          } else {
-            // Ensure active visible when already correct
-            activeImg.style.opacity = '1';
-            inactiveImg.style.opacity = '0';
-          }
-        } else {
-          // Target has no overlay: ensure both are hidden to avoid showing stale overlay
-          hoyoOverlayA.style.opacity = '0';
-          hoyoOverlayB.style.opacity = '0';
-        }
-      }
-    } catch (_) {}
-  if (hasVid) {
-      const nextSrc = HOYO_VIDEO_SRCS[idx];
-      const active = (hoyoVideoActive === 'A' ? hoyoVideoA : hoyoVideoB);
-      const inactive = (hoyoVideoActive === 'A' ? hoyoVideoB : hoyoVideoA);
-      const changeSrc = active.src !== nextSrc;
-      if (shouldPlay) {
-        // Keep overlay visible to mask source swap flicker
-  try { showVideoOverlay(true); } catch (_) {}
-        const startPlayOn = (vidToPlay) => {
-          try { vidToPlay.play().catch(() => {}); } catch (_) {}
-          hoyoVideoPlaying = true;
-          currentPlayingIndex = idx;
-          const ic = hoyoVideoControl?.querySelector('.hp-icon');
-          if (ic) ic.textContent = '\uF8AE';
-        };
-        if (changeSrc) {
-          // Preload on inactive video, then crossfade
-          try { active.pause(); } catch (_) {}
-          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
-          let started = false;
-          const once = () => {
-            if (started) return; started = true;
-            inactive.style.opacity = '1';
-            active.style.opacity = '0';
-            // Swap active handle
-            hoyoVideoActive = (hoyoVideoActive === 'A' ? 'B' : 'A');
-            try { startPlayOn(inactive); } catch (_) {}
-          };
-          try { inactive.onloadeddata = once; inactive.oncanplay = once; } catch (_) {}
-          setTimeout(once, 350);
-        } else {
-          // Same source, ensure the active video is visible and playing
-          active.style.opacity = '1';
-          inactive.style.opacity = '0';
-          startPlayOn(active);
-        }
-      } else {
-        // Not supposed to play: ensure paused and keep control visible
-        const wasPlaying = hoyoVideoPlaying;
-        try { hoyoVideoA.pause(); } catch (_) {}
-        try { hoyoVideoA.currentTime = 0; } catch (_) {}
-        try { hoyoVideoB.pause(); } catch (_) {}
-        try { hoyoVideoB.currentTime = 0; } catch (_) {}
-        hoyoVideoPlaying = false;
-        if (currentPlayingIndex === idx) currentPlayingIndex = -1;
-        // Defer hiding the video overlay by a tick if we were playing, so the BG crossfade can appear first
-        const hideFn = () => { try { showVideoOverlay(false, { hideControl: false }); } catch (_) {} };
-        if (wasPlaying) {
-          requestAnimationFrame(() => requestAnimationFrame(hideFn));
-        } else {
-          hideFn();
-        }
-        const ic = hoyoVideoControl?.querySelector('.hp-icon');
-        if (ic) ic.textContent = '\uF5B0';
-        // Prepare the correct source without auto-start; do NOT swap active pointer or show paused frame
-        if (changeSrc) {
-          try { inactive.src = nextSrc; if (typeof inactive.load === 'function') inactive.load(); } catch (_) {}
-        }
-        // Keep both videos hidden while idle so overlay never shows a paused frame
-        try { active.style.opacity = '0'; } catch (_) {}
-        try { inactive.style.opacity = '0'; } catch (_) {}
-      }
-    } else {
-      // No video for this circle: hide overlay and control
-      const wasPlaying = hoyoVideoPlaying;
-      const hideFn = () => { try { showVideoOverlay(false, { hideControl: true }); } catch (_) {} };
-      if (wasPlaying) {
-        requestAnimationFrame(() => requestAnimationFrame(hideFn));
-      } else {
-        hideFn();
-      }
-      if (currentPlayingIndex !== -1) {
-        try { hoyoVideoA.pause(); } catch (_) {}
-        try { hoyoVideoA.currentTime = 0; } catch (_) {}
-        try { hoyoVideoB.pause(); } catch (_) {}
-        try { hoyoVideoB.currentTime = 0; } catch (_) {}
-        hoyoVideoPlaying = false;
-        currentPlayingIndex = -1;
-      }
-      // Ensure no paused frame is visible
-      try { (hoyoVideoA || {}).style.opacity = '0'; } catch (_) {}
-      try { (hoyoVideoB || {}).style.opacity = '0'; } catch (_) {}
-    }
-  }
-
-  function showVideoOverlay(show, opts = {}) {
-    if (!hoyoVideoOverlay || !hoyoVideoControl) ensureVideoElements();
-    if (!hoyoVideoOverlay) return;
-    const hideControl = !!opts.hideControl;
-    // Helper: reflect playing state on the document for CSS hooks
-    const setPlayingClass = (on) => {
-      try { document.body.classList.toggle('hoyoplay-video-playing', !!on); } catch (_) {}
-    };
-    if (show) {
-      hoyoVideoOverlay.style.opacity = '1';
-      if (hoyoVideoControl) {
-        // Use refined control refresher: show when video exists; enable when overlay is also ready
-        refreshControlForSelection();
-      }
-      // Do not force overlay image visibility here; applyMediaForIndex controls it per target
-      setPlayingClass(true);
-    } else {
-      const vA = hoyoVideoA, vB = hoyoVideoB;
-      if (vA) { try { vA.pause(); } catch (e) {} try { vA.currentTime = 0; } catch (e) {} }
-      if (vB) { try { vB.pause(); } catch (e) {} try { vB.currentTime = 0; } catch (e) {} }
-      hoyoVideoPlaying = false;
-      if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
-      // Hide both overlay images when not showing
-      try { if (hoyoOverlayA) hoyoOverlayA.style.opacity = '0'; } catch (_) {}
-      try { if (hoyoOverlayB) hoyoOverlayB.style.opacity = '0'; } catch (_) {}
-      setPlayingClass(false);
-      if (hoyoVideoControl) {
-        if (hideControl) {
-          // Fade out, then set display none after transition
-          if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-          hoyoVideoControl.style.opacity = '0';
-          hoyoVideoControl.style.pointerEvents = 'none';
-          hoyoControlFadeTimer = setTimeout(() => {
-            hoyoVideoControl.style.display = 'none';
-            hoyoControlFadeTimer = null;
-          }, HOYO_CONTROL_FADE_MS);
-        } else {
-          // Keep control visible (paused state)
-          if (hoyoControlFadeTimer) { clearTimeout(hoyoControlFadeTimer); hoyoControlFadeTimer = null; }
-          // Don't show control if built-in mode is active
-          if (!isUsingBuiltin()) {
-            hoyoVideoControl.style.display = 'block';
-            requestAnimationFrame(() => { hoyoVideoControl.style.opacity = '1'; hoyoVideoControl.style.pointerEvents = 'auto'; });
-          }
-        }
-        // Ensure the icon shows the Play glyph instead of plain text
-        const ic = hoyoVideoControl.querySelector('.hp-icon');
-        if (ic) {
-          ic.textContent = '\uF5B0'; // Play glyph
-          ic.classList.remove('pause');
-          ic.classList.add('play');
-        }
-      }
-    }
-  }
-
-  // Prepare video UI for default-left selection: show control (paused), hide overlay with fade
-  try {
-    ensureVideoElements();
-    detectAvailableMedia();
-    if (hoyoVideoControl) {
-      hoyoVideoControl.classList.remove('hidden');
-      const ic = hoyoVideoControl.querySelector('.hp-icon');
-      if (ic) { ic.classList.remove('pause'); ic.classList.add('play'); }
-      // On startup, just defer to refreshControlForSelection so that
-      // per-circle intro animation rules are applied consistently.
-      try { refreshControlForSelection(); } catch (_) {}
-    }
-    if (hoyoVideoOverlay) hoyoVideoOverlay.style.opacity = '0';
-    hoyoVideoPlaying = false;
-  } catch (e) {}
-
-// Selection logic + background change on hover
-// Helper to check persisted built-in mode
-function isUsingBuiltin() {
-  try { return localStorage.getItem('useBuiltinBackground') === '1'; } catch (_) { return false; }
-}
-
-// Map circle hover to index 0/1/2 (left/mid/right). Try left key first, then right as fallback.
-leftCircle.addEventListener('mouseenter', () => {
-  if (isUsingBuiltin()) return; // respect persisted built-in mode
-  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
-  if (!canSwitchToIndexOffline(0)) return; // offline with no cache for left -> do not switch
-  updateCircles(0);
-  const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for left circle
-  applyMediaForIndex(0);
-});
-midCircle.addEventListener('mouseenter', () => {
-  if (isUsingBuiltin()) return; // respect persisted built-in mode
-  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
-  if (!canSwitchToIndexOffline(1)) return; // offline with no cache for mid -> do not switch
-  updateCircles(1);
-  // Middle circle should use image2 (right key index 0)
-  const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for mid circle
-  applyMediaForIndex(1);
-});
-rightCircle.addEventListener('mouseenter', () => {
-  if (isUsingBuiltin()) return; // respect persisted built-in mode
-  if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
-  if (!canSwitchToIndexOffline(2)) return; // offline with no cache for right -> do not switch
-  updateCircles(2);
-  // Right circle should use image3 (right key index 1)
-  const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for right circle
-  applyMediaForIndex(2);
-});
-
-  // Show/hide overlay and shadow on mouse movement near top center
-  let isVisible = false;
-  document.addEventListener('mousemove', function(e) {
-    if (isUiOverlayActive() || isUsingBuiltin()) {
-      // Force hide when Mods is open or built-in background mode is enabled
-      overlay.style.top = '0px';
-      overlay.style.opacity = '0';
-      shadowBg.style.opacity = '0';
-      isVisible = false;
-      return;
-    }
-    const y = e.clientY;
-    const x = e.clientX;
-    const winW = window.innerWidth;
-    // Only show if mouse is near top (e.g. < 80px) and near center (within 60px of center)
-    if (y < 80 && Math.abs(x - winW/2) < 60) {
-      if (!isVisible) {
-        overlay.style.top = '30px';
-        overlay.style.opacity = '1';
-        shadowBg.style.opacity = '1';
-        isVisible = true;
-      }
-    } else {
-      if (isVisible) {
-        overlay.style.top = '0px';
-        overlay.style.opacity = '0';
-        shadowBg.style.opacity = '0';
-        isVisible = false;
-      }
-    }
-  });
-
-  // --- Built-in background mode helpers -------------------------------
-  // Dynamically set Version Highlights button contrast (black/white)
-  // based on background brightness under the button. Only active in built-in mode.
-  function updateVersionHighlightsContrastForBuiltIn() {
-    try {
-      if (!isUsingBuiltin()) return;
-      const btn = document.getElementById('customNewsButton');
-      if (!btn) return;
-      const app = document.querySelector('.App') || document.body;
-      const cs = window.getComputedStyle(app);
-      const bgImg = (cs.backgroundImage || '').toString();
-      const m = bgImg.match(/url\(["']?(.*?)["']?\)/i);
-      const src = m && m[1];
-      if (!src) return;
-
-      const img = new Image();
-      try { img.crossOrigin = 'anonymous'; } catch (_) {}
-      img.onload = () => {
-        try {
-          const iw = img.naturalWidth || img.width;
-          const ih = img.naturalHeight || img.height;
-          if (!iw || !ih) return;
-          const appRect = app.getBoundingClientRect();
-          const W = Math.max(1, appRect.width);
-          const H = Math.max(1, appRect.height);
-          // cover + center mapping
-          const scale = Math.max(W / iw, H / ih);
-          const dispW = iw * scale;
-          const dispH = ih * scale;
-          const offX = (W - dispW) / 2;
-          const offY = (H - dispH) / 2;
-          const r = btn.getBoundingClientRect();
-          const cx = (r.left - appRect.left) + r.width / 2;
-          const cy = (r.top - appRect.top) + r.height / 2;
-          // Map to image coords
-          const ix = (cx - offX) / scale;
-          const iy = (cy - offY) / scale;
-          const sampleW = Math.max(4, Math.floor(40 / scale));
-          const sampleH = Math.max(4, Math.floor(22 / scale));
-          const sx = Math.max(0, Math.min(iw - sampleW, Math.floor(ix - sampleW / 2)));
-          const sy = Math.max(0, Math.min(ih - sampleH, Math.floor(iy - sampleH / 2)));
-
-          const canvas = document.createElement('canvas');
-          canvas.width = sampleW; canvas.height = sampleH;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, sx, sy, sampleW, sampleH, 0, 0, sampleW, sampleH);
-          const data = ctx.getImageData(0, 0, sampleW, sampleH).data;
-          let sum = 0, n = 0;
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i], g = data[i + 1], b = data[i + 2];
-            // relative luminance approximation
-            sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            n++;
-          }
-          const lum = n ? (sum / n) : 255;
-          const color = lum >= 160 ? '#000' : '#fff';
-          btn.style.color = color;
-          btn.style.borderColor = color;
-          // Subtle shadow in opposite color for readability
-          btn.style.textShadow = color === '#000' ? '0 1px 2px rgba(255,255,255,0.35)' : '0 1px 2px rgba(0,0,0,0.45)';
-        } catch (_) {
-          // Fallback: prefer white
-          const btn = document.getElementById('customNewsButton');
-          if (btn) { btn.style.color = '#fff'; btn.style.borderColor = '#fff'; btn.style.textShadow = '0 1px 2px rgba(0,0,0,0.45)'; }
-        }
-      };
-      img.onerror = () => {
-        const b = document.getElementById('customNewsButton');
-        if (b) { b.style.color = '#fff'; b.style.borderColor = '#fff'; b.style.textShadow = '0 1px 2px rgba(0,0,0,0.45)'; }
-      };
-      // Avoid double-quoted urls with escapes
-      img.src = src;
-    } catch (_) { /* ignore */ }
-  }
-  // Recompute contrast on resize in built-in mode
-  window.addEventListener('resize', () => { try { if (isUsingBuiltin()) updateVersionHighlightsContrastForBuiltIn(); } catch (_) {} });
-  function setUseBuiltInBackground(enabled) {
-    try {
-      localStorage.setItem('useBuiltinBackground', enabled ? '1' : '0');
-    } catch (_) {}
-    // Update global runtime flag so other code (including setCustomBackground) honors the mode immediately
-    try { window.__USE_BUILTIN_BG = !!enabled; } catch (_) {}
-    // Disable/enable circle interactions
-    try {
-      const circles = [leftCircle, midCircle, rightCircle];
-      if (enabled) {
-        circles.forEach(c => { c.style.pointerEvents = 'none'; c.setAttribute('aria-disabled', 'true'); c.setAttribute('tabindex','-1'); });
-        // Hide video control when entering built-in mode
-        try {
-          if (typeof hoyoVideoControl !== 'undefined' && hoyoVideoControl) {
-            hoyoVideoControl.style.display = 'none';
-          }
-        } catch (_) {}
-        // Apply built-in theme background (use setCustomBackground for fade)
-        try { setCustomBackground('background/bg.png'); } catch (_) {
-          try { setCustomBackground('/background/bg.png'); } catch (__) { /* ignore */ }
-        }
-        // Ensure vignette is present and visible
-        setTimeout(() => {
-          let appElement = document.querySelector('.App') || document.body;
-          let vignette = document.getElementById('vignetteCorners');
-          if (!vignette) {
-            vignette = document.createElement('div');
-            vignette.id = 'vignetteCorners';
-            appElement.appendChild(vignette);
-          }
-          vignette.style.display = '';
-          vignette.style.opacity = '1';
-          // Update Version Highlights contrast after BG applies
-          try { updateVersionHighlightsContrastForBuiltIn(); } catch (_) {}
-        }, 180);
-      } else {
-        circles.forEach(c => { c.style.pointerEvents = 'auto'; c.removeAttribute('aria-disabled'); c.removeAttribute('tabindex'); });
-        // Show video control when leaving built-in mode (if video available for current circle)
-        try { refreshControlForSelection(); } catch (_) {}
-        // Clear any contrast overrides when leaving built-in mode
-        try {
-          const btn = document.getElementById('customNewsButton');
-          if (btn) { btn.style.color = ''; btn.style.borderColor = ''; btn.style.textShadow = ''; }
-        } catch (_) {}
-        // Restore currently-selected Hoyoplay background for the active circle
-        try {
-          updateCircles(selectedCircleIndex);
-          // Re-apply cached URL for current selection
-          let url = null;
-          if (selectedCircleIndex === 0) url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
-          else if (selectedCircleIndex === 1) url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-          else url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-          if (url) setCustomBackground(url);
-        } catch (e) { /* ignore */ }
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  // Apply persisted mode at startup if set
-  try {
-    const persisted = localStorage.getItem('useBuiltinBackground');
-    if (persisted === '1') {
-      // Try to apply now; if circles are not yet created, poll until they exist
-      const applyIfReady = () => {
-        const left = document.getElementById('hoyoplay-left');
-        if (left || (typeof leftCircle !== 'undefined' && leftCircle)) {
-          try { setUseBuiltInBackground(true); console.log('[Theme] Applied persisted built-in background mode at startup'); } catch (e) { console.warn('[Theme] Failed applying built-in mode', e); }
-          return true;
-        }
-        return false;
-      };
-      if (!applyIfReady()) {
-        let attempts = 0;
-        const poll = setInterval(() => {
-          attempts++;
-          if (applyIfReady() || attempts > 20) {
-            clearInterval(poll);
-            if (attempts > 20) console.warn('[Theme] Failed to apply persisted built-in mode: circles not found');
-          }
-        }, 200);
-      }
-    }
-  } catch (_) {}
-
-  // Watch for Mods appearing/disappearing (throttled)
-  let __modsScheduled = null;
-  const scheduleModsUpdate = () => {
-    if (__modsScheduled) return;
-    __modsScheduled = requestAnimationFrame(() => {
-      __modsScheduled = null;
-      try { updateModsState(); } catch (_) {}
-    });
-  };
-  const modsObserver = new MutationObserver(() => scheduleModsUpdate());
-  modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-  // Initial state
-  updateModsState();
-  // Ensure non-transparent background on offline cold start
-  ensureOfflineDefaultBackground();
-
-  // Re-layout backdrop panels on resize; only when visible
-  window.addEventListener('resize', () => {
-    try {
-      if (dialogBackdrop && dialogBackdrop.style.display !== 'none') {
-        layoutBackdropPanels();
-      }
-    } catch (e) {}
-  });
-
-  // --- Tab navigation management -----------------------------------------
-  function setTabDisabled(el, disabled) {
-    if (!el) return;
-    try {
-      if (disabled) {
-        if (!el.hasAttribute('data-prev-tabindex')) {
-          el.setAttribute('data-prev-tabindex', el.getAttribute('tabindex') ?? '');
-        }
-        el.setAttribute('tabindex', '-1');
-      } else {
-        if (el.hasAttribute('data-prev-tabindex')) {
-          const prev = el.getAttribute('data-prev-tabindex');
-          if (prev === '' || prev === null) {
-            el.removeAttribute('tabindex');
-          } else {
-            el.setAttribute('tabindex', prev);
-          }
-          el.removeAttribute('data-prev-tabindex');
-        } else if (el.getAttribute('tabindex') === '-1') {
-          // If we set it earlier but no prev recorded, just remove
-          el.removeAttribute('tabindex');
-        }
-      }
-    } catch (_) {}
-  }
-
-  function getFocusableDescendants(root) {
-    if (!root) return [];
-    const selector = [
-      'a[href]',
-      'area[href]',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      'iframe',
-      'summary',
-      // Elements explicitly tabbable
-      '[tabindex]:not([tabindex="-1"])',
-      // Contenteditable regions
-      '[contenteditable]',
-      '[contenteditable="true"]',
-      // Common ARIA interactive roles (we’ll force tabindex off even if missing)
-      '[role="button"]', '[role="link"]', '[role="checkbox"]', '[role="radio"]', '[role="switch"]',
-      '[role="tab"]', '[role="menuitem"]', '[role="option"]', '[role="combobox"]',
-      '[role="textbox"]', '[role="searchbox"]'
-    ].join(',');
-    return Array.from(root.querySelectorAll(selector));
-  }
-
-  function setGroupTabDisabled(root, disabled) {
-    const nodes = Array.isArray(root) ? root : [root];
-    nodes.forEach(r => {
-      if (!r) return;
-      setTabDisabled(r, disabled);
-      getFocusableDescendants(r).forEach(el => setTabDisabled(el, disabled));
-    });
-  }
-
-  function updateTabStops(state = {}) {
-    // Re-evaluate flags defensively in case caller is stale
-    const { modsActive: modsActiveArg = undefined, menuActive: menuActiveArg = undefined } = state;
-    const modsActive = typeof modsActiveArg === 'boolean' ? modsActiveArg : isModsActive();
-    const menuActive = typeof menuActiveArg === 'boolean' ? menuActiveArg : isMenuDialogActive();
-    // Main page: always disable these from tab order
-    try {
-      const newsBtn = document.getElementById('customNewsButton');
-      const videoBtn = document.getElementById('hoyoplay-video-control');
-  if (newsBtn) setTabDisabled(newsBtn, true);
-  if (videoBtn) setTabDisabled(videoBtn, true);
-
-  // Also disable main page IP/Port inputs from tab order
-  const ip = document.getElementById('ip');
-  const port = document.getElementById('port');
-  if (ip) setTabDisabled(ip, true);
-  if (port) setTabDisabled(port, true);
-
-      // Disable News content regardless of DOM variant/casing
-      const newsRoots = Array.from(document.querySelectorAll([
-        '#newsContent',
-        '.NewsContent',
-        '.newsContent',
-        '#newsContainer',
-        '.NewsSection'
-      ].join(',')));
-      if (newsRoots.length) {
-        setGroupTabDisabled(newsRoots, true);
-        // Also force-disable typical table nodes inside News to avoid tbody/tr/td being tabbable
-        newsRoots.forEach(root => {
-          const tableNodes = root.querySelectorAll('table, tbody, thead, tfoot, tr, th, td');
-          tableNodes.forEach(node => setTabDisabled(node, true));
-        });
-      }
-    } catch (_) {}
-
-    // Mods page: when active, disable search and mod list from tab nav; restore when not
-    try {
-      // Identify likely Mods roots (for scoping) and target areas (search + lists)
-  const modsRoots = Array.from(document.querySelectorAll('.Mods, .mods, .Menu.ModMenu, .menu.modmenu, #menuContainer.ModMenu, #menuContainer.modmenu, #menuContainer .Mods, #menuContainer .mods'));
-      // Helper: check containment within any Mods root
-      const withinAnyRoot = (el) => {
-        if (!el) return false;
-        if (!modsRoots.length) return true; // fallback: if we couldn't find a root, allow global match
-        return modsRoots.some(r => r.contains(el));
-      };
-
-      // Search fields can vary; cover common patterns
-      const searchCandidates = Array.from(document.querySelectorAll([
-        'input[type="search"]',
-        'input[type="text"]',
-        '.TextInput',
-        '.SearchInput',
-        '[role="searchbox"]',
-        'input[placeholder*="search" i]'
-      ].join(','))).filter(withinAnyRoot);
-
-      // Mod list containers (cover a few variants)
-      const listCandidates = Array.from(document.querySelectorAll(
-        '.ModList, .modlist, .ModListInner, .modlistinner, .ModDownloadList, #ModList, .Mods .List, .ModsList'
-      )).filter(withinAnyRoot);
-
-      const targets = [...searchCandidates, ...listCandidates];
-      if (targets.length) setGroupTabDisabled(targets, !!modsActive);
-      // When leaving Mods, restore any items we disabled
-      if (!modsActive && targets.length) targets.forEach(t => setGroupTabDisabled(t, false));
-    } catch (_) {}
-
-    // Dialogs: when Downloads menu is open, disable tabbing inside its content area
-    try {
-      const downloadsMenus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
-      if (downloadsMenus.length) {
-        downloadsMenus.forEach(menu => {
-          const content = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner');
-          if (!content) return;
-          setGroupTabDisabled(content, !!menuActive);
-          // On close, restore
-          if (!menuActive) setGroupTabDisabled(content, false);
-        });
-      }
-    } catch (_) {}
-  }
-
-  // Apply tab stop rules initially as well
-  try { updateTabStops({ modsActive: isModsActive() }); } catch (e) {}
-
-  // Re-apply tab disabling for IP/Port and News when DOM changes dynamically
-  try {
-    const reapplyTabDisables = () => {
-      try { updateTabStops({}); } catch (_) {}
-    };
-    const tabObserver = new MutationObserver(reapplyTabDisables);
-    tabObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-  } catch (_) {}
-})();
-
-// Fast cross-fade state for wallpaper-only transitions
-let __BG_FADE_STATE = { overlay: null, timer: null, current: null, duration: 180 };
-
-function setCustomBackground(url) {
-  try {
-    // If built-in background mode is active, ignore any attempts to set a different background
-    if (window.__USE_BUILTIN_BG) {
-      const s = window.__BUILTIN_BG_SUFFIX || 'background/bg.png';
-      try {
-        if (url && !(String(url).endsWith(s) || String(url).includes(s))) {
-          console.log('[Theme] Built-in mode active — ignoring setCustomBackground(', url, ')');
-          return;
-        }
-      } catch (_) {}
-    }
-  } catch (_) {}
-  try {
-    const appElement = document.querySelector('.App') || document.body;
-    if (!appElement || !url) return;
-    if (__BG_FADE_STATE.current && __BG_FADE_STATE.current === url) return;
-
-    // Create overlay lazily
-    if (!__BG_FADE_STATE.overlay) {
-      const ov = document.createElement('div');
-      ov.id = 'bg-fade-overlay';
-      Object.assign(ov.style, {
-        position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-        width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none',
-        backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover',
-        opacity: '0', transition: 'opacity 0.36s cubic-bezier(.4,0,.2,1)', zIndex: '0'
-      });
-      // Ensure app is positioning context
-      const cs = window.getComputedStyle(appElement);
-      if (cs.position === 'static') appElement.style.position = 'relative';
-      // Insert as first child to sit under UI with positive z-index
-      if (appElement.firstChild) appElement.insertBefore(ov, appElement.firstChild); else appElement.appendChild(ov);
-      __BG_FADE_STATE.overlay = ov;
-      // Ensure vignette layer exists above overlay but below UI
-      if (!document.getElementById('vignetteCorners')) {
-        const vc = document.createElement('div');
-        vc.id = 'vignetteCorners';
-        appElement.appendChild(vc); // appended after overlay so higher in DOM order
-      }
-    }
-
-    const fadeOverlay = __BG_FADE_STATE.overlay;
-
-    // Preload next image
-    const img = new Image();
-    const apply = () => {
-      // Cancel any running timer
-      if (__BG_FADE_STATE.timer) {
-        clearTimeout(__BG_FADE_STATE.timer);
-        __BG_FADE_STATE.timer = null;
-      }
-      fadeOverlay.style.backgroundImage = `url("${url}")`;
-      // Fade overlay in quickly
-      requestAnimationFrame(() => { fadeOverlay.style.opacity = '1'; });
-      __BG_FADE_STATE.timer = setTimeout(() => {
-        appElement.style.background = `url("${url}") center/cover no-repeat fixed`;
-        fadeOverlay.style.opacity = '0';
-        __BG_FADE_STATE.current = url;
-        __BG_FADE_STATE.timer = null;
-      }, __BG_FADE_STATE.duration);
-    };
-    img.onload = apply;
-    img.onerror = apply;
-    img.src = url;
-  } catch (_) { /* ignore */ }
-}
-
-// Make it available globally for console testing
-window.setCustomBackground = setCustomBackground;
-
-// --- HoYoPlay background cache & prefetch helpers ----------------------
-
-function setCachedBackgrounds(key, urls) {
-  const payload = { ts: Date.now(), urls };
-  try { localStorage.setItem(`hoyoplay-cache-${key}`, JSON.stringify(payload)); } catch (e) { console.warn('Failed to set hoyoplay cache', e); }
-}
-
-function getCachedBackgrounds(key) {
-  try {
-    const raw = localStorage.getItem(`hoyoplay-cache-${key}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed.ts || !parsed.urls) return null;
-    if (Date.now() - parsed.ts > HOYO_CACHE_TTL) return null;
-    return parsed.urls;
-  } catch (e) { console.warn('Failed to read hoyoplay cache', e); return null; }
-}
-
-function getCachedBackgroundUrl(key) {
-  const list = getCachedBackgrounds(key);
-  if (!list || !list.length) return null;
-  return list[0];
-}
-
-function prefetchImage(url) {
-  try {
-    const i = new Image();
-    i.src = url;
-  } catch (e) { /* ignore */ }
-}
-
-// Minimal fetcher that tries to load an array of example backgrounds
-// (Replace with real API fetch via a proxy if you can run one).
-async function refreshHoYoPlayCache(key, exampleUrls) {
-  if (!key || !exampleUrls || !exampleUrls.length) return null;
-  // Try to validate reachable URL by preloading first reachable
-  const reachable = [];
-  for (const u of exampleUrls) {
-    // Simple attempt: create Image and wait for load/error with timeout
-    const p = new Promise((res) => {
-      const img = new Image();
-      let done = false;
-      const t = setTimeout(() => { if (!done) { done = true; res(null); } }, 3000);
-      img.onload = () => { if (!done) { done = true; clearTimeout(t); res(u); } };
-      img.onerror = () => { if (!done) { done = true; clearTimeout(t); res(null); } };
-      img.src = u;
-    });
-    const ok = await p;
-    if (ok) reachable.push(ok);
-  }
-
-  if (reachable.length) {
-    setCachedBackgrounds(key, reachable);
-    // Prefetch first two
-    prefetchImage(reachable[0]);
-    if (reachable[1]) prefetchImage(reachable[1]);
-    return reachable;
-  }
-  return null;
-}
-
-// Console helper to refresh caches for selector usage
-window.hoyoplayRefresh = async function() {
-  console.log('[hoyoplayRefresh] Using GitHub-hosted placeholder mapping: Left=image1, Mid=image2, Right=image3');
-
-  // Mapping:
-  // - Left key (index 0): image1 (used with video overlay)
-  // - Right key (index 0): image2 (middle circle)
-  // - Right key (index 1): image3 (right circle)
-  const leftExamples = [
-    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image1.webp'
-  ];
-  const rightExamples = [
-    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image2.webp',
-    'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/image3.webp'
-  ];
-
-  const l = await refreshHoYoPlayCache('left-default', leftExamples);
-  const r = await refreshHoYoPlayCache('right-default', rightExamples);
-  console.log('[hoyoplayRefresh] fallback-only done', { left: !!l, right: !!r });
-  try { if (window && typeof window._hoyoplayUpdateCircles === 'function') window._hoyoplayUpdateCircles(); } catch (e) {}
-  return { left: l, right: r };
-};
-
-
-// Ensure the cache is populated on launcher/theme startup
-function _runHoyoplayRefreshOnStartup() {
-  try {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        window.hoyoplayRefresh().catch(()=>{});
-      });
-    } else {
-      // DOM already ready
-      window.hoyoplayRefresh().catch(()=>{});
-    }
-  } catch (e) { /* ignore */ }
-}
-
-_runHoyoplayRefreshOnStartup();
-
-
-// Also check periodically in case menu is recreated
-//setInterval(injectCustomOptionSection, 1000);
-
-// Auto-apply cached background after refresh (prefer left-default image1, then right)
-async function _applyCachedBackgroundOnStartup() {
-  try {
-    const res = await window.hoyoplayRefresh();
-    // res.left/res.right are arrays returned by refreshHoYoPlayCache
-    const left = res && res.left && res.left[0];
-    const right = res && res.right && res.right[0];
-    const toApply = left || right;
-    if (toApply) {
-      // small delay to ensure .App exists
-      setTimeout(() => {
-        try { window.setCustomBackground(toApply); } catch (e) {}
-        try {
-          // keep control visible on startup in left-selected state
-          if (typeof ensureVideoElements === 'function') ensureVideoElements();
-          if (typeof updateCircles === 'function') updateCircles(0);
-          try { if (window && typeof window._hoyoplayUpdateCircles === 'function') window._hoyoplayUpdateCircles(); } catch (e) {}
-          if (typeof showVideoOverlay === 'function' && window) {
-            // hide overlay but show control
-            const btn = document.getElementById('hoyoplay-video-control');
-            if (btn) btn.style.display = 'block';
-            const ov = document.getElementById('hoyoplay-video-overlay');
-            if (ov) ov.style.opacity = '0';
-          }
-        } catch (e) {}
-      }, 180);
-    }
-  } catch (e) { /* ignore */ }
-}
-
-_applyCachedBackgroundOnStartup();
-
-// --- Custom Dropdown Hijacker ---
-(function hijackNativeDropdowns() {
-  const hijackedSelects = new WeakSet();
-  
-  // Close all open custom dropdowns except the one provided
-  function closeAllDropdowns(exceptWrapper) {
-    try {
-      const openWrappers = document.querySelectorAll('.custom-dropdown-wrapper.open');
-      openWrappers.forEach(w => {
-        if (w !== exceptWrapper) {
-          const m = w.querySelector('.custom-dropdown-menu');
-          if (m) {
-            m.classList.remove('opening', 'closing');
-            m.style.display = 'none';
-          }
-          w.classList.remove('open');
-        }
-      });
-    } catch (_) {}
-  }
-  
-  function createCustomDropdown(nativeSelect) {
-    if (hijackedSelects.has(nativeSelect)) return;
-    hijackedSelects.add(nativeSelect);
-    
-    // Create wrapper
-    const wrapper = document.createElement('div');
-    wrapper.className = 'custom-dropdown-wrapper';
-    // If this select belongs to the Profiles option, force the menu to open upwards
-    // and mark it so we can show a leading icon in the trigger.
-    let isProfilesDropdown = false;
-    try {
-      const parentId = nativeSelect.parentNode && nativeSelect.parentNode.id;
-      if (nativeSelect.id === 'menuOptionsSelectMenuProfiles' || parentId === 'menuOptionsSelectProfiles') {
-        wrapper.classList.add('open-up');
-        wrapper.classList.add('custom-dropdown-profiles');
-        isProfilesDropdown = true;
-      }
-    } catch (_) {}
-    
-    // Create trigger button
-    const trigger = document.createElement('button');
-    trigger.className = 'custom-dropdown-trigger';
-    trigger.type = 'button';
-    
-    const triggerText = document.createElement('span');
-    triggerText.className = 'custom-dropdown-text';
-
-    // Optional leading icon (used for Profiles dropdown only)
-    let triggerIcon = null;
-    if (isProfilesDropdown) {
-      triggerIcon = document.createElement('span');
-      triggerIcon.className = 'custom-dropdown-leading-icon';
-      // Use Segoe Fluent glyph \uE8AB ("Switch" icon)
-      triggerIcon.textContent = '\uE8AB';
-      trigger.appendChild(triggerIcon);
-    }
-    
-    const triggerArrow = document.createElement('span');
-    triggerArrow.className = 'custom-dropdown-arrow';
-    triggerArrow.textContent = '▼';
-    
-  trigger.appendChild(triggerText);
-    trigger.appendChild(triggerArrow);
-    
-    // Create dropdown menu
-    const menu = document.createElement('div');
-    menu.className = 'custom-dropdown-menu';
-    menu.style.display = 'none';
-    
-    // Text measurement helpers for pixel-accurate truncation
-    const __measureCanvas = document.createElement('canvas');
-    const __measureCtx = __measureCanvas.getContext('2d');
-    function getFontShorthand(el) {
-      const cs = window.getComputedStyle(el);
-      // Prefer full shorthand if available; else build a safe string
-      return cs.font || [cs.fontStyle, cs.fontVariant, cs.fontWeight, cs.fontSize, cs.fontFamily].join(' ');
-    }
-    function measureTextPx(text, font) {
-      if (!__measureCtx) return text.length * 8; // fallback
-      __measureCtx.font = font;
-      return __measureCtx.measureText(text).width;
-    }
-    function truncateToWidth(text, maxPx, font) {
-      const raw = String(text ?? '');
-      const ellipsis = '...';
-      const ellipsisW = measureTextPx(ellipsis, font);
-      if (measureTextPx(raw, font) <= maxPx) return raw;
-      const codepoints = Array.from(raw);
-      let low = 0, high = codepoints.length; // binary search for best fit
-      while (low < high) {
-        const mid = Math.floor((low + high + 1) / 2);
-        const sliceW = measureTextPx(codepoints.slice(0, mid).join(''), font) + ellipsisW;
-        if (sliceW <= maxPx) low = mid; else high = mid - 1;
-      }
-      return codepoints.slice(0, Math.max(0, low)).join('') + ellipsis;
-    }
-
-    // Helper: format Profiles trigger text by pixel width (about 10ch of current font)
-    // This avoids uneven visual width from variable character sizes across locales.
-    function formatProfilesText(text) {
-      try {
-        const raw = String(text ?? '');
-        if (!isProfilesDropdown) return raw;
-        // Base the target width on current font's "0" width times 10 (10ch)
-        const font = getFontShorthand(triggerText);
-        const chWidth = Math.max(1, measureTextPx('0', font));
-        const maxPx = chWidth * 10; // visual width equivalent to ~10 monospace characters
-        return truncateToWidth(raw, maxPx, font);
-      } catch (_) {
-        return text;
-      }
-    }
-
-    // Populate options
-    function updateOptions() {
-      menu.innerHTML = '';
-      const options = Array.from(nativeSelect.options);
-      
-      options.forEach((opt, index) => {
-        const item = document.createElement('div');
-        item.className = 'custom-dropdown-item';
-        // Build label + optional subtext (for Profiles default item)
-        const label = document.createElement('div');
-        label.className = 'custom-dropdown-label';
-        label.textContent = opt.text;
-        item.appendChild(label);
-        if (isProfilesDropdown && index === 0) {
-          const sub = document.createElement('div');
-          sub.className = 'custom-dropdown-subtext';
-          sub.textContent = 'Built-in cultivation profile';
-          item.appendChild(sub);
-        }
-        item.dataset.value = opt.value;
-        item.dataset.index = index;
-        // Make focusable for keyboard navigation
-        item.setAttribute('tabindex', '-1');
-        
-        if (opt.selected) {
-          item.classList.add('selected');
-          const display = formatProfilesText(opt.text);
-          triggerText.textContent = display;
-        }
-        
-        if (opt.disabled) {
-          item.classList.add('disabled');
-        } else {
-          item.addEventListener('click', () => {
-            // Update native select
-            nativeSelect.selectedIndex = index;
-            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Update UI
-            menu.querySelectorAll('.custom-dropdown-item').forEach(i => i.classList.remove('selected'));
-            item.classList.add('selected');
-            const display = formatProfilesText(opt.text);
-            triggerText.textContent = display;
-            
-            // Close menu
-            closeMenu();
-          });
-        }
-        
-        menu.appendChild(item);
-      });
-    }
-    
-    function openMenu() {
-      // Avoid re-running open logic if already open (prevents scroll resets on hover spam)
-      if (wrapper.classList.contains('open') && menu.style.display !== 'none') return;
-      // Ensure only one dropdown can be open at a time
-      closeAllDropdowns(wrapper);
-      
-      // Position menu relative to trigger (right-aligned) and lock width early to avoid late reflow/shift
-      const rect = trigger.getBoundingClientRect();
-      const wrapperRect = wrapper.getBoundingClientRect();
-      // Default gap between trigger and menu
-      const gap = 8;
-      
-      // Compute and lock final width BEFORE showing the menu to prevent horizontal "jumps"
-      // Measure with the menu fully rendered (including scrollbar) but invisible
-      (function lockMenuWidthBySelected() {
-        // Preserve current scroll position during measurement to avoid jumps
-        const prevScrollTop = menu.scrollTop;
-        // Temporarily show menu invisibly with full layout to measure accurately
-        const origVis = menu.style.visibility;
-        const origDisplay = menu.style.display;
-        const origOpacity = menu.style.opacity;
-        
-        menu.style.visibility = 'hidden';
-        menu.style.display = 'block';
-        menu.style.opacity = '0';
-        
-        // Force a reflow to ensure scrollbar is rendered if needed
-        void menu.offsetHeight;
-        
-        // Now measure the actual rendered width including scrollbar gutter
-        const contentWidth = Math.ceil(menu.offsetWidth);
-        
-        // Restore original state
-        menu.style.display = origDisplay;
-        menu.style.visibility = origVis;
-        menu.style.opacity = origOpacity;
-        // Restore previous scroll position
-        try { menu.scrollTop = prevScrollTop; } catch(_) {}
-        
-        // Clamp to reasonable bounds
-        const minW = Math.ceil(rect.width);
-        const maxW = isProfilesDropdown ? 420 : 300;
-        const finalW = Math.max(minW, Math.min(contentWidth, maxW));
-        
-        menu.style.width = finalW + 'px';
-        menu.style.minWidth = finalW + 'px';
-      })();
-      
-      // Now show and animate the menu with width already locked
-      menu.style.display = 'block';
-      menu.classList.remove('closing');
-      menu.classList.add('opening');
-      wrapper.classList.add('open');
-      trigger.setAttribute('aria-expanded', 'true');
-
-      // If wrapper has open-up class, position menu above the trigger
-      if (wrapper.classList.contains('open-up')) {
-        // ensure menu has layout so offsetHeight is measurable
-        const menuHeight = menu.offsetHeight || (menu.getBoundingClientRect().height || 0);
-        // place menu so its bottom is gap px above trigger.top
-        menu.style.top = (rect.top - wrapperRect.top - menuHeight - gap) + 'px';
-        // scale from bottom for open animation
-        menu.style.transformOrigin = 'bottom center';
-      } else {
-        // position below
-        menu.style.top = (rect.bottom - wrapperRect.top) + 'px';
-        menu.style.transformOrigin = 'top center';
-      }
-  // minWidth already set to finalW above
-
-      // Toggle a class to reserve scrollbar gutter only if we actually scroll
-      try {
-        if (menu.scrollHeight > menu.clientHeight) {
-          menu.classList.add('has-scroll');
-        } else {
-          menu.classList.remove('has-scroll');
-        }
-      } catch(_) {}
-
-      // Do not auto-scroll or recenter on open (requested behavior)
-      
-      // After open animation, attempt a single recenter to the selected item if needed
-      try {
-        const items = menu.querySelectorAll('.custom-dropdown-item');
-        if (items && items.length > 4 && wrapper.getAttribute('data-recenter-done') !== '1') {
-          const ANIM_MS = 180; // sync with CSS
-          setTimeout(() => {
-            if (!wrapper.classList.contains('open') || menu.style.display === 'none') return;
-            const sel = menu.querySelector('.custom-dropdown-item.selected');
-            if (!sel) return;
-            const top = sel.offsetTop;
-            const bottom = top + sel.offsetHeight;
-            const viewTop = menu.scrollTop;
-            const viewBottom = viewTop + menu.clientHeight;
-            const outOfView = top < viewTop || bottom > viewBottom;
-            if (outOfView) {
-              const centerTarget = top - Math.max(0, (menu.clientHeight - sel.offsetHeight) / 2);
-              const maxScroll = Math.max(0, menu.scrollHeight - menu.clientHeight);
-              const target = Math.max(0, Math.min(centerTarget, maxScroll));
-              menu.scrollTo({ top: target, behavior: 'smooth' });
-            }
-            try { wrapper.setAttribute('data-recenter-done', '1'); } catch(_) {}
-          }, ANIM_MS);
-        }
-      } catch(_) {}
-      
-      // Remove opening class after animation
-      setTimeout(() => {
-        menu.classList.remove('opening');
-      }, 180);
-    }
-    
-    function closeMenu() {
-      menu.classList.remove('opening');
-      menu.classList.add('closing');
-      wrapper.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-      // Reset per-open recenter guard
-      try { wrapper.removeAttribute('data-recenter-done'); } catch(_) {}
-      
-      // Hide after animation completes
-      setTimeout(() => {
-        menu.style.display = 'none';
-        menu.classList.remove('closing');
-      }, 150);
-    }
-    
-    function toggleMenu() {
-      if (menu.style.display === 'none') {
-        openMenu();
-      } else {
-        closeMenu();
-      }
-    }
-    
-    // Event listeners
-    // Click still toggles the menu for all dropdowns
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeAllDropdowns(wrapper);
-      toggleMenu();
-    });
-
-    // For the Profiles dropdown, also open on hover (mouseenter) and keep it
-    // open while the pointer is over the trigger or menu. When the pointer
-    // leaves the wrapper entirely, close it.
-    if (wrapper.classList.contains('custom-dropdown-profiles')) {
-      let hoverCloseTimeout = null;
-      let hoverOpenTimeout = null;
-
-      const scheduleCloseOnLeave = () => {
-        // small delay to allow moving between trigger and menu without flicker
-        hoverCloseTimeout = setTimeout(() => {
-          closeMenu();
-        }, 120);
-      };
-
-      const cancelScheduledClose = () => {
-        if (hoverCloseTimeout) {
-          clearTimeout(hoverCloseTimeout);
-          hoverCloseTimeout = null;
-        }
-      };
-
-      const scheduleOpenOnHover = () => {
-        if (hoverOpenTimeout) return; // already scheduled
-        hoverOpenTimeout = setTimeout(() => {
-          // Only open on hover if it's currently closed
-          if (menu.style.display === 'none') {
-            openMenu();
-          }
-          hoverOpenTimeout = null;
-        }, 130); // 0.13s delay before opening on hover
-      };
-
-      const cancelScheduledOpen = () => {
-        if (hoverOpenTimeout) {
-          clearTimeout(hoverOpenTimeout);
-          hoverOpenTimeout = null;
-        }
-      };
-
-      wrapper.addEventListener('mouseenter', () => {
-        cancelScheduledClose();
-        scheduleOpenOnHover();
-      });
-
-      wrapper.addEventListener('mouseleave', () => {
-        cancelScheduledOpen();
-        scheduleCloseOnLeave();
-      });
-    }
-    
-    // Close on outside click
-    document.addEventListener('click', (e) => {
-      if (!wrapper.contains(e.target)) {
-        closeMenu();
-      }
-    });
-    
-    // Close on ESC
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && wrapper.classList.contains('open')) {
-        closeMenu();
-        trigger.focus();
-      }
-    });
-    
-    // Keyboard navigation
-    trigger.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openMenu();
-        menu.querySelector('.custom-dropdown-item:not(.disabled)')?.focus();
-      }
-    });
-    
-    menu.addEventListener('keydown', (e) => {
-      const items = Array.from(menu.querySelectorAll('.custom-dropdown-item:not(.disabled)'));
-      const current = document.activeElement;
-      const currentIndex = items.indexOf(current);
-      
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const next = items[currentIndex + 1] || items[0];
-        next?.focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prev = items[currentIndex - 1] || items[items.length - 1];
-        prev?.focus();
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        current?.click();
-      }
-    });
-    
-    // Make menu items focusable
-    menu.addEventListener('mouseover', (e) => {
-      if (e.target.classList.contains('custom-dropdown-item') && !e.target.classList.contains('disabled')) {
-        e.target.setAttribute('tabindex', '0');
-        // If user moves the mouse over a focused item, remove focus so hover style wins
-        if (document.activeElement === e.target) {
-          e.target.blur();
-        }
-      }
-    });
-    
-    // Watch for native select changes
-    const observer = new MutationObserver(() => {
-      updateOptions();
-    });
-    observer.observe(nativeSelect, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
-    
-    nativeSelect.addEventListener('change', () => {
-      const selected = nativeSelect.options[nativeSelect.selectedIndex];
-      if (selected) {
-        const display = formatProfilesText(selected.text);
-        triggerText.textContent = display;
-        menu.querySelectorAll('.custom-dropdown-item').forEach((item, index) => {
-          item.classList.toggle('selected', index === nativeSelect.selectedIndex);
-        });
-      }
-    });
-    
-    // Build structure
-    wrapper.appendChild(trigger);
-    wrapper.appendChild(menu);
-    
-    // Replace native select
-    nativeSelect.style.display = 'none';
-    nativeSelect.parentNode.insertBefore(wrapper, nativeSelect);
-    
-    // Initialize
-    updateOptions();
-    
-    // Accessibility
-    trigger.setAttribute('role', 'combobox');
-    trigger.setAttribute('aria-haspopup', 'listbox');
-    trigger.setAttribute('aria-expanded', 'false');
-    menu.setAttribute('role', 'listbox');
-  }
-  
-  function hijackSelects() {
-    // Find all select elements that should be hijacked
-    const selects = document.querySelectorAll('select:not([data-no-hijack])');
-    selects.forEach(select => {
-      // Only hijack if not already done and visible
-      if (!hijackedSelects.has(select) && window.getComputedStyle(select).display !== 'none') {
-        createCustomDropdown(select);
-      }
-    });
-  }
-  
-  // Initial hijack
-  hijackSelects();
-  
-  // Watch for new selects being added
-  const observer = new MutationObserver(() => {
-    hijackSelects();
-  });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-  
-  // Also check periodically for dynamically added selects
-  setInterval(hijackSelects, 1000);
-})();
-
-// Add clear button functionality to search inputs
-(function setupSearchClearButton() {
-  function addClearButton() {
-    const searchWrappers = document.querySelectorAll('.ModPagesPage .TextInputWrapper');
-    
-    searchWrappers.forEach(wrapper => {
-      if (wrapper.hasAttribute('data-clear-added')) return;
-      
-      const input = wrapper.querySelector('.TextInput');
-      if (!input) return;
-
-      input.setAttribute('autocorrect', 'off');
-      input.setAttribute('autocapitalize', 'none');
-      input.setAttribute('spellcheck', 'false');
-      
-      const clearBtn = document.createElement('button');
-      clearBtn.className = 'clear-search';
-      clearBtn.innerHTML = '&#xE711;'; // Cancel/Close icon
-      clearBtn.type = 'button';
-      clearBtn.setAttribute('aria-label', 'Clear search');
-      
-      wrapper.appendChild(clearBtn);
-      wrapper.setAttribute('data-clear-added', '1');
-      
-      // Show/hide clear button based on input value
-      const updateClearButton = () => {
-        if (input.value.trim().length > 0) {
-          clearBtn.classList.add('visible');
-        } else {
-          clearBtn.classList.remove('visible');
-        }
-      };
-      
-      // Clear input when button is clicked
-      clearBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        input.value = '';
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        clearBtn.classList.remove('visible');
-        input.focus();
-      });
-      
-      // Update button visibility on input
-      input.addEventListener('input', updateClearButton);
-      input.addEventListener('change', updateClearButton);
-      
-      // Initial check
-      updateClearButton();
-    });
-  }
-  
-  // Run on load
-  addClearButton();
-  
-  // Watch for search inputs being added
-  const observer = new MutationObserver(() => {
-    addClearButton();
-  });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-})();
