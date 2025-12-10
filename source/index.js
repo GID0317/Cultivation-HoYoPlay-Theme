@@ -4760,3 +4760,70 @@ _applyCachedBackgroundOnStartup();
   // Also check periodically for dynamically added selects
   setInterval(hijackSelects, 1000);
 })();
+
+// Add clear button functionality to search inputs
+(function setupSearchClearButton() {
+  function addClearButton() {
+    const searchWrappers = document.querySelectorAll('.ModPagesPage .TextInputWrapper');
+    
+    searchWrappers.forEach(wrapper => {
+      if (wrapper.hasAttribute('data-clear-added')) return;
+      
+      const input = wrapper.querySelector('.TextInput');
+      if (!input) return;
+
+      input.setAttribute('autocorrect', 'off');
+      input.setAttribute('autocapitalize', 'none');
+      input.setAttribute('spellcheck', 'false');
+      
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'clear-search';
+      clearBtn.innerHTML = '&#xE711;'; // Cancel/Close icon
+      clearBtn.type = 'button';
+      clearBtn.setAttribute('aria-label', 'Clear search');
+      
+      wrapper.appendChild(clearBtn);
+      wrapper.setAttribute('data-clear-added', '1');
+      
+      // Show/hide clear button based on input value
+      const updateClearButton = () => {
+        if (input.value.trim().length > 0) {
+          clearBtn.classList.add('visible');
+        } else {
+          clearBtn.classList.remove('visible');
+        }
+      };
+      
+      // Clear input when button is clicked
+      clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        clearBtn.classList.remove('visible');
+        input.focus();
+      });
+      
+      // Update button visibility on input
+      input.addEventListener('input', updateClearButton);
+      input.addEventListener('change', updateClearButton);
+      
+      // Initial check
+      updateClearButton();
+    });
+  }
+  
+  // Run on load
+  addClearButton();
+  
+  // Watch for search inputs being added
+  const observer = new MutationObserver(() => {
+    addClearButton();
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+})();
