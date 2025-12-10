@@ -1880,8 +1880,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 }
 
 .OptionSection .BigButton,
-.DownloadMenuSection .BigButton,
-.ModDownloadItem .BigButton {
+.DownloadMenuSection .BigButton {
   /* size & layout */
   display: inline-flex !important;
   align-items: center !important;
@@ -1897,6 +1896,28 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   border-radius: 6px !important;        /* gentle rounding */
   color: #FFFFFF !important;            /* white text */
   font-size: 0.9rem !important;
+  font-weight: normal !important;         
+  
+  /* cursor & transition */
+  transition: background 0.1s;
+}
+
+.ModDownloadItem .BigButton {
+  /* size & layout */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2.5px !important;
+  max-height: 0px !important;
+  min-height: 0px;
+  padding: 13.5px 9.5px !important;
+  
+  /* colors & borders */
+  background: #292C30;       /* default dark bg */
+  border: 2px solid #56585c !important; /* subtle gray border */
+  border-radius: 6px !important;        /* gentle rounding */
+  color: #FFFFFF !important;            /* white text */
+  font-size: 12px !important;
   font-weight: normal !important;         
   
   /* cursor & transition */
