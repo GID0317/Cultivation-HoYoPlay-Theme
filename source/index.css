@@ -2174,6 +2174,18 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
     color: #CAD2CE !important;
 }
 
+/* Keep theme styling when browser autofills TextInput fields */
+.TextInput:-webkit-autofill,
+.TextInput:-webkit-autofill:hover,
+.TextInput:-webkit-autofill:focus {
+  background-color: #292C30 !important;
+  -webkit-text-fill-color: #CAD2CE !important;
+  color: #CAD2CE !important;
+  caret-color: #CAD2CE;
+  border-bottom: 1px solid #ffd326 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 input#profile_name {
   border-radius: 0px !important;
 }
