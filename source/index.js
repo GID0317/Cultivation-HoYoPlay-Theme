@@ -4827,3 +4827,46 @@ _applyCachedBackgroundOnStartup();
     subtree: true
   });
 })();
+
+// Disable typing helpers (autocorrect/autocapitalize/spellcheck) but keep saved-info/autofill
+(function disableTypingHelpersForTextInputs() {
+  function applyToTextInput(el) {
+    if (!el || !(el instanceof HTMLElement)) return;
+
+    // Only touch real form controls
+    const isInput = el.tagName === 'INPUT';
+    const isTextArea = el.tagName === 'TEXTAREA';
+    if (!isInput && !isTextArea) return;
+
+    // Don't disable autocomplete; that would block saved-info/autofill.
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'none');
+    el.setAttribute('spellcheck', 'false');
+  }
+
+  function applyAll() {
+    const inputs = document.querySelectorAll('input.TextInput, textarea.TextInput');
+    inputs.forEach(applyToTextInput);
+  }
+
+  applyAll();
+
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type !== 'childList') continue;
+      m.addedNodes.forEach(node => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.matches && (node.matches('input.TextInput, textarea.TextInput'))) {
+          applyToTextInput(node);
+        }
+        if (node.querySelectorAll) {
+          node.querySelectorAll('input.TextInput, textarea.TextInput').forEach(applyToTextInput);
+        }
+      });
+    }
+  });
+
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
