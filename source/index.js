@@ -1214,7 +1214,7 @@ function showSecretMenu() {
   fetch('index.json')
     .then(response => response.json())
     .then(themeData => {
-      const themeVersion = themeData.version || '9.0.0';
+      const themeVersion = themeData.version || '9.1.0';
       
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
@@ -1332,7 +1332,7 @@ function showSecretMenu() {
     })
     .catch(() => {
       // Fallback if fetch fails
-      const themeVersion = '9.0.0';
+      const themeVersion = '9.1.0';
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
       const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
@@ -1920,7 +1920,7 @@ function injectSettingsSidebarNav() {
   const versionEl = document.getElementById('version');
   const versionText = versionEl ? versionEl.textContent.trim() : 'v1.0.0';
   // Current theme version (from index.json)
-  const THEME_VERSION = '9.0.0';
+  const THEME_VERSION = '9.1.0';
   
   aboutPage.style.display = 'none';
   aboutPage.innerHTML = `
