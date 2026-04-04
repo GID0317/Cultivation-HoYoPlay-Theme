@@ -1353,12 +1353,12 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 #settings-about-page .OptionSection {
   background: #292c30 !important;
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   padding: 12px 16px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 1px !important;
+  margin-bottom: 0 !important;
   width: 90%;
 }
 
@@ -1727,10 +1727,22 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   height: 14px !important;
   background: #fff !important;
   border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
+  font-size: 8px !important;
+  line-height: 1 !important;
+  color: transparent !important;
   transition: transform 0.2s, background 0.2s !important;
 }
 .Checkbox input:checked + label .CheckboxDisplay::after {
+  content: '\F78C' !important;
+  color: #2E3136 !important;
   transform: translateX(14px) !important;
+  font-weight: 900 !important;
+  font-size: 9px !important;
+  text-shadow: 0.35px 0 currentColor, -0.35px 0 currentColor;
 }
 
 .CheckboxDisplay img {
@@ -1744,30 +1756,62 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   margin: 16px 0 !important;
 }
 
-/* 2) Style each option section as its own “card” */
-#menuContent .OptionSection,
-#menuContent .DownloadMenuSection,
-#menuContent .ModDownloadItem {
+/* Unified grouped rows for settings/download/mod dialogs */
+#menuContent > .OptionSection,
+#menuContent > .DownloadMenuSection,
+#menuContent > .ModDownloadItem,
+#advanced-options-page > .OptionSection,
+#menuContent .ModDownloadList > .ModDownloadItem {
   background: #292c30 !important;
-  border-radius: 6px !important;
   padding: 12px 16px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   transition: background 0.2s !important;
   width: 90%;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
 }
 
-#menuContent .OptionSection,
-#menuContent .DownloadMenuSection,
-#menuContent .ModDownloadItem {
-  background: #292c30 !important;
+#advanced-options-page > .OptionSection:only-child {
   border-radius: 6px !important;
-  padding: 12px 16px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  transition: background 0.2s !important;
+}
+
+/* Group visuals are class-driven for better scroll performance */
+#menuContent .grouped-row-separator,
+#settings-about-page .grouped-row-separator,
+#menuContainer.ExtrasMenu .MenuInner .grouped-row-separator {
+  position: relative;
+}
+
+#menuContent .grouped-row-separator::before,
+#settings-about-page .grouped-row-separator::before,
+#menuContainer.ExtrasMenu .MenuInner .grouped-row-separator::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 15px;
+  right: 15px;
+  height: 1px;
+  background: #36383c;
+  pointer-events: none;
+}
+
+#menuContent .grouped-row-start,
+#menuContent .ModDownloadList > .grouped-row-start,
+#settings-about-page .grouped-row-start,
+#menuContainer.ExtrasMenu .MenuInner .grouped-row-start {
+  border-top-left-radius: 6px !important;
+  border-top-right-radius: 6px !important;
+}
+
+#menuContent .grouped-row-end,
+#menuContent .ModDownloadList > .grouped-row-end,
+#settings-about-page .grouped-row-end,
+#menuContainer.ExtrasMenu .MenuInner .grouped-row-end {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
 }
 
 /* Adjust specificity to ensure custom dropdown styles override #menuContent select */
@@ -1800,9 +1844,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
 }
 
-#menuContent #menuOptionsSelectThemes select:has(:active),
 #menuContent #menuOptionsSelectThemes select:active,
-#menuContent #menuOptionsSelectMenuLang:has(:active),
 #menuContent #menuOptionsSelectMenuLang:active {
   background: #3a3d40 !important; 
   color: #dfdfdf !important;           /* slightly darker */   /* stronger edge */
@@ -2298,18 +2340,24 @@ input#profile_name {
 #menuContainer.ExtrasMenu .ExtraItemLabel {
   color: #FDFDFD;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 0;
 }
 
 #menuContainer.ExtrasMenu .ExtraItem {
   background: #292c30 !important;
-  border-radius: 6px !important;
   padding: 12px 16px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   transition: background 0.2s !important;
   width: 90%;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
+}
+
+#menuContainer.ExtrasMenu .ExtrasMenuContent > .ExtraItem:only-child {
+  border-radius: 6px !important;
 }
 
 #menuContainer.ExtrasMenu .MenuInner {
@@ -2328,7 +2376,7 @@ input#profile_name {
 }
 
 .ModDownloadItem {
-  margin-bottom: 1px !important;
+  margin-bottom: 0px !important;
   margin-top: 0px;
 }
 
@@ -2576,11 +2624,14 @@ input#profile_name {
   gap: 8px;
   margin-top: 55px;
   background: transparent;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .ModPagesPage {
   left: 82%;
     margin-top: 60px;
+    z-index: 0;
 }
 
 .ModImage .ModImageInner {
@@ -2595,6 +2646,7 @@ input#profile_name {
 
 .ModPages .ModPagesTitle {
   color: #82838a;
+  pointer-events: auto;
 }
 
 .ModPages .ModPagesTitle:hover {
@@ -2983,6 +3035,22 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
     padding-right: 20px !important;
 }
 
+/* Secret menu rows: no separator lines between version rows */
+#secretMenuContainer #menuContent > .OptionSection.grouped-row-separator::before {
+  display: none;
+}
+
+/* Secret menu grouped corners (FooterOptions stays separate) */
+#secretMenuContainer #menuContent > .OptionSection:not(.FooterOptions).grouped-row-start {
+  border-top-left-radius: 6px !important;
+  border-top-right-radius: 6px !important;
+}
+
+#secretMenuContainer #menuContent > .OptionSection:not(.FooterOptions).grouped-row-end {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+}
+
 /* Inherit menu styles; no overrides needed for these selectors */
 
 #secretMenuContainer .FooterOptions {
@@ -3055,8 +3123,9 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
   padding: 8px !important;
   min-width: auto !important;
   width: auto !important;
+  max-width: 5px !important;
   transition: opacity 0.1s !important;
-  margin-left: 2px;
+  margin-left: 8px;
 }
 #profileConfigContainer #saveProfile.BigButton:hover,
 #profileConfigContainer .BigButton#saveProfile:hover,
