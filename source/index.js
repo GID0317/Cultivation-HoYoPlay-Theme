@@ -1175,7 +1175,7 @@ document.addEventListener('keydown', function(event) {
   }
 });
 
-// Easter egg: Secret menu when clicking leftBar image 5 times
+// Easter egg: Secret menu when clicking leftBar image 10 times
 let leftBarClickCount = 0;
 let leftBarClickTimer = null;
 
@@ -1196,7 +1196,7 @@ function handleLeftBarImageClick() {
   }, 2000);
   
   // Check if we reached 5 clicks
-  if (leftBarClickCount >= 5) {
+  if (leftBarClickCount >= 10) {
     console.log('5 clicks reached! Opening secret menu'); // Debug log
     leftBarClickCount = 0; // Reset counter
     showSecretMenu();
@@ -1595,7 +1595,7 @@ function showAdvancedDialog() {
       </div>
     </div>
     <div class="MenuInner" id="menuContent">
-      <div id="advanced-client-log-page">
+      <div id="advanced-options-page">
         <div class="OptionSection">
           <div class="OptionLabel">
             Built-In Backgrounds
@@ -1603,8 +1603,8 @@ function showAdvancedDialog() {
           </div>
           <div class="OptionValue">
             <div class="Checkbox">
-              <input type="checkbox" id="advancedUploadLogToggle">
-              <label for="advancedUploadLogToggle">
+              <input type="checkbox" id="advancedBuiltinBackgroundToggle">
+              <label for="advancedBuiltinBackgroundToggle">
                 <div class="CheckboxDisplay"></div>
               </label>
             </div>
@@ -1620,7 +1620,7 @@ function showAdvancedDialog() {
 
   // Event listeners
   const closeBtn = advancedDialog.querySelector('#menuButtonCloseContainer');
-  const uploadToggle = advancedDialog.querySelector('#advancedUploadLogToggle');
+  const builtinBackgroundToggle = advancedDialog.querySelector('#advancedBuiltinBackgroundToggle');
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -1631,18 +1631,18 @@ function showAdvancedDialog() {
     });
   }
 
-  if (uploadToggle) {
+  if (builtinBackgroundToggle) {
     // Initialize checkbox from persisted state
     try {
       if (localStorage.getItem('useBuiltinBackground') === null) {
         localStorage.setItem('useBuiltinBackground', '0');
       }
-      uploadToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
+      builtinBackgroundToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
     } catch (_) {}
 
-    uploadToggle.addEventListener('change', () => {
+    builtinBackgroundToggle.addEventListener('change', () => {
       try {
-        localStorage.setItem('useBuiltinBackground', uploadToggle.checked ? '1' : '0');
+        localStorage.setItem('useBuiltinBackground', builtinBackgroundToggle.checked ? '1' : '0');
       } catch (_) {}
       // Show a banner notification (will auto-hide)
       try {
@@ -2173,13 +2173,13 @@ function compareVersions(v1, v2) {
   return 0;
 }
 
-
 // Function to monitor for menu changes and inject the option
 function startMenuObserver() {
-  // Watch document.body for menuContainer being added/changed
-  const bodyObserver = new MutationObserver(() => {
+  let menuEnhanceScheduled = null;
+
+  const runMenuEnhancers = () => {
     injectSettingsSidebarNav();
-    
+
     if (typeof injectCustomOptionSection === 'function') {
       try { injectCustomOptionSection(); } catch (e) { console.warn('injectCustomOptionSection failed', e); }
     }
@@ -2188,6 +2188,40 @@ function startMenuObserver() {
     try { injectDownloadSubtexts(); } catch (e) { /* ignore */ }
     // Hide the first Divider in Downloads dialog
     try { hideFirstDownloadsDivider(); } catch (e) { /* ignore */ }
+  };
+
+  const scheduleMenuEnhancers = () => {
+    if (menuEnhanceScheduled) return;
+    menuEnhanceScheduled = requestAnimationFrame(() => {
+      menuEnhanceScheduled = null;
+      runMenuEnhancers();
+    });
+  };
+
+  const isMenuRootNode = (node) => {
+    if (!node || node.nodeType !== 1) return false;
+    if (node.id === 'menuContainer' || node.id === 'secretMenuContainer') return true;
+    return !!(node.classList && (node.classList.contains('Menu') || node.classList.contains('Options') || node.classList.contains('Downloads')));
+  };
+
+  // Watch document.body for menu roots being added/changed
+  const bodyObserver = new MutationObserver((mutations) => {
+    let relevant = false;
+    for (const m of mutations) {
+      if (isMenuRootNode(m.target)) {
+        relevant = true;
+        break;
+      }
+      if (m.type !== 'childList') continue;
+      for (const n of m.addedNodes || []) {
+        if (isMenuRootNode(n)) {
+          relevant = true;
+          break;
+        }
+      }
+      if (relevant) break;
+    }
+    if (relevant) scheduleMenuEnhancers();
   });
   
   bodyObserver.observe(document.body, {
@@ -2198,18 +2232,34 @@ function startMenuObserver() {
   });
   
   // Also run immediately
-  injectSettingsSidebarNav();
-  try { injectDownloadSubtexts(); } catch (_) {}
-  try { hideFirstDownloadsDivider(); } catch (_) {}
+  runMenuEnhancers();
 }
 
 // Inject OptionSubtext-style descriptions under Downloads labels
+let __downloadSubtextRetryTimer = null;
+let __downloadSubtextRetryCount = 0;
+const __DOWNLOADS_ENHANCE_MAX_RETRIES = 10;
+
+function scheduleDownloadSubtextRetry() {
+  if (__downloadSubtextRetryTimer) return;
+  if (__downloadSubtextRetryCount >= __DOWNLOADS_ENHANCE_MAX_RETRIES) return;
+  __downloadSubtextRetryCount++;
+  __downloadSubtextRetryTimer = setTimeout(() => {
+    __downloadSubtextRetryTimer = null;
+    try { injectDownloadSubtexts(); } catch (_) {}
+  }, 220);
+}
+
 function injectDownloadSubtexts() {
   try {
     const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
-    if (!menus.length) return false;
+    if (!menus.length) {
+      __downloadSubtextRetryCount = 0;
+      return false;
+    }
 
     let insertedAny = false;
+    let alreadyEnhanced = false;
 
     // ID-based descriptions (preferred when IDs are stable)
     const idMap = {
@@ -2232,6 +2282,15 @@ function injectDownloadSubtexts() {
 
     menus.forEach(menu => {
       const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
+      if (!container) return;
+
+      // Skip if this menu is already enhanced.
+      if (container.getAttribute('data-subtext-enhanced') === '1') {
+        alreadyEnhanced = true;
+        return;
+      }
+
+      let insertedInThisContainer = false;
 
       // Try ID-based mapping first
       Object.entries(idMap).forEach(([id, desc]) => {
@@ -2242,6 +2301,7 @@ function injectDownloadSubtexts() {
           sub.textContent = desc;
           label.appendChild(sub);
           insertedAny = true;
+          insertedInThisContainer = true;
         }
       });
 
@@ -2259,35 +2319,57 @@ function injectDownloadSubtexts() {
             sub.textContent = rule.text;
             lbl.appendChild(sub);
             insertedAny = true;
+            insertedInThisContainer = true;
             break;
           }
         }
       });
 
-      if (insertedAny) {
+      if (insertedInThisContainer || container.querySelector('.OptionSubtext')) {
         try { container.setAttribute('data-subtext-enhanced', '1'); } catch (_) {}
+        alreadyEnhanced = true;
       }
     });
 
-    // If nothing inserted (likely due to timing), retry shortly
-    if (!insertedAny) {
-      setTimeout(() => { try { injectDownloadSubtexts(); } catch (_) {} }, 200);
+    // Retry only while menu exists but content is not ready yet.
+    if (!insertedAny && !alreadyEnhanced) {
+      scheduleDownloadSubtextRetry();
+    } else {
+      __downloadSubtextRetryCount = 0;
     }
 
-    return insertedAny;
+    return insertedAny || alreadyEnhanced;
   } catch (_) {
     return false;
   }
 }
 
 // Hide only the first Divider in the Downloads dialog
+let __hideDividerRetryTimer = null;
+let __hideDividerRetryCount = 0;
+
+function scheduleHideDividerRetry() {
+  if (__hideDividerRetryTimer) return;
+  if (__hideDividerRetryCount >= __DOWNLOADS_ENHANCE_MAX_RETRIES) return;
+  __hideDividerRetryCount++;
+  __hideDividerRetryTimer = setTimeout(() => {
+    __hideDividerRetryTimer = null;
+    try { hideFirstDownloadsDivider(); } catch (_) {}
+  }, 220);
+}
+
 function hideFirstDownloadsDivider() {
   try {
     const menus = Array.from(document.querySelectorAll('#menuContainer.Menu.Downloads, .Menu.Downloads#menuContainer, .Menu.Downloads'));
-    if (!menus.length) return false;
+    if (!menus.length) {
+      __hideDividerRetryCount = 0;
+      return false;
+    }
     let changed = false;
+    let allHandled = true;
     menus.forEach(menu => {
       if (menu.getAttribute('data-first-divider-hidden') === '1') return;
+      allHandled = false;
       const container = menu.querySelector('#menuContent') || menu.querySelector('.MenuInner') || menu;
       const dividers = container ? container.querySelectorAll('.Divider') : [];
       if (dividers && dividers.length > 0) {
@@ -2297,8 +2379,14 @@ function hideFirstDownloadsDivider() {
         changed = true;
       }
     });
-    if (!changed) setTimeout(() => { try { hideFirstDownloadsDivider(); } catch (_) {} }, 200);
-    return changed;
+
+    if (!changed && !allHandled) {
+      scheduleHideDividerRetry();
+    } else {
+      __hideDividerRetryCount = 0;
+    }
+
+    return changed || allHandled;
   } catch (_) {
     return false;
   }
@@ -2329,7 +2417,6 @@ if (document.readyState === 'loading') {
   // Watch for DOM changes (in case the button is re-rendered)
   const observer = new MutationObserver(updateIcon);
   observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
 })();
 
 (function changeMinimizeIconSrc() {
@@ -2350,7 +2437,6 @@ if (document.readyState === 'loading') {
   // Watch for DOM changes (in case the button is re-rendered)
   const observer = new MutationObserver(updateIcon);
   observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
 })();
 
 (function changeCloseIconSrc() {
@@ -2371,7 +2457,6 @@ if (document.readyState === 'loading') {
   // Watch for DOM changes (in case the button is re-rendered)
   const observer = new MutationObserver(updateIcon);
   observer.observe(document.body, { childList: true, subtree: true });
-  setInterval(updateIcon, 2000); // Backup periodic check
 })();
 
 (function createHoYoPlaySelector() {
@@ -2613,10 +2698,77 @@ if (document.readyState === 'loading') {
     return idx === 0; // safe default: only first circle
   }
 
+  // Assign lightweight grouping classes to contiguous menu rows.
+  function applyGroupedRowsForDirectChildren(container, rowSelector) {
+    if (!container) return;
+    const children = Array.from(container.children || []);
+    if (!children.length) return;
+
+    children.forEach(el => {
+      el.classList.remove('grouped-row-start', 'grouped-row-end', 'grouped-row-separator');
+    });
+
+    const rowEls = children.filter(el => el.matches && el.matches(rowSelector));
+
+    const visible = children.filter(el => {
+      if (!(el && el.matches)) return false;
+      return el.getClientRects().length > 0;
+    });
+
+    for (let i = 0; i < visible.length; i++) {
+      const el = visible[i];
+      if (!el.matches(rowSelector)) continue;
+      const prev = visible[i - 1];
+      const next = visible[i + 1];
+      const prevIsRow = !!(prev && prev.matches && prev.matches(rowSelector));
+      const nextIsRow = !!(next && next.matches && next.matches(rowSelector));
+
+      el.classList.toggle('grouped-row-start', !prevIsRow);
+      el.classList.toggle('grouped-row-end', !nextIsRow);
+      el.classList.toggle('grouped-row-separator', prevIsRow);
+    }
+  }
+
+  function refreshGroupedRows() {
+    const menuContents = document.querySelectorAll('#menuContent');
+    menuContents.forEach(container => {
+      applyGroupedRowsForDirectChildren(container, '.OptionSection:not(.FooterOptions), .DownloadMenuSection, .ModDownloadItem');
+      container.querySelectorAll('.ModDownloadList').forEach(list => {
+        applyGroupedRowsForDirectChildren(list, '.ModDownloadItem');
+      });
+      container.querySelectorAll('#advanced-options-page').forEach(page => {
+        applyGroupedRowsForDirectChildren(page, '.OptionSection');
+      });
+    });
+
+    const aboutPages = document.querySelectorAll('#settings-about-page');
+    aboutPages.forEach(container => {
+      applyGroupedRowsForDirectChildren(container, '.OptionSection:not(#aboutAppInfo)');
+    });
+
+    const extrasMenus = document.querySelectorAll('#menuContainer.ExtrasMenu .MenuInner');
+    extrasMenus.forEach(container => {
+      applyGroupedRowsForDirectChildren(container, '.ExtraItem');
+      container.querySelectorAll('.ExtrasMenuContent').forEach(group => {
+        applyGroupedRowsForDirectChildren(group, '.ExtraItem');
+      });
+    });
+  }
+
+  let lastModsActive = null;
+  let lastMenuActive = null;
+
   // Keep Mods above selector and disable selector when Mods is active
-  function updateModsState() {
+  function updateModsState(force = false) {
     const modsActive = isModsActive();
     const menuActive = isMenuDialogActive();
+
+    if (!force && lastModsActive === modsActive && lastMenuActive === menuActive) {
+      return;
+    }
+    lastModsActive = modsActive;
+    lastMenuActive = menuActive;
+
     const active = modsActive || menuActive;
     const modCandidates = Array.from(document.querySelectorAll(
       '.Mods, .Menu.ModMenu, #menuContainer, #menuContainer.ModMenu, .ModList, .ModDownloadList, #secretMenuContainer, #menuContainer .Menu, #menuContainer .MenuTop, #menuContainer .MenuInner'
@@ -3893,19 +4045,94 @@ rightCircle.addEventListener('mouseenter', () => {
     }
   } catch (_) {}
 
-  // Watch for Mods appearing/disappearing (throttled)
-  let __modsScheduled = null;
-  const scheduleModsUpdate = () => {
-    if (__modsScheduled) return;
-    __modsScheduled = requestAnimationFrame(() => {
-      __modsScheduled = null;
-      try { updateModsState(); } catch (_) {}
-    });
+  // Watch for Mods/menu changes (filtered + throttled)
+  let modsScheduled = null;
+  let modsForceUpdate = false;
+  let modsNeedGroupedRefresh = false;
+
+  const modsStateSelector = '#menuContainer, #secretMenuContainer, .Menu.ModMenu, #menuContainer.ModMenu, .Mods, .mods, .ModList, .ModDownloadList, .MenuInner';
+  const groupedRowsSelector = '#menuContent, #settings-about-page, #advanced-options-page, .ModDownloadList, .ExtrasMenuContent, .OptionSection, .DownloadMenuSection, .ModDownloadItem, .ExtraItem';
+
+  const classifyModsMutations = (mutations) => {
+    let needsUpdate = false;
+    let needsGroupRefresh = false;
+    let forceUpdate = false;
+
+    const inspect = (node, fromChildList) => {
+      if (!node || node.nodeType !== 1) return;
+      if (node.matches(modsStateSelector) || node.closest(modsStateSelector)) {
+        needsUpdate = true;
+        if (fromChildList) forceUpdate = true;
+      }
+      if (node.matches(groupedRowsSelector) || node.closest(groupedRowsSelector)) {
+        needsGroupRefresh = true;
+      }
+      if (!needsGroupRefresh && fromChildList && node.querySelector) {
+        try {
+          if (node.querySelector(groupedRowsSelector)) {
+            needsGroupRefresh = true;
+          }
+        } catch (_) {}
+      }
+    };
+
+    const inspectAttributeTarget = (node) => {
+      if (!node || node.nodeType !== 1) return;
+      // Attribute churn is noisy; only react when roots/rows themselves changed.
+      if (node.matches(modsStateSelector)) {
+        needsUpdate = true;
+      }
+      if (node.matches(groupedRowsSelector)) {
+        needsGroupRefresh = true;
+      }
+    };
+
+    for (const m of mutations) {
+      if (m.type === 'attributes') {
+        inspectAttributeTarget(m.target);
+        if (needsUpdate && needsGroupRefresh) break;
+        continue;
+      }
+
+      inspect(m.target, false);
+      if (m.type === 'childList') {
+        for (const n of m.addedNodes || []) inspect(n, true);
+        for (const n of m.removedNodes || []) inspect(n, true);
+      }
+      if (needsUpdate && needsGroupRefresh && forceUpdate) break;
+    }
+
+    return { needsUpdate, needsGroupRefresh, forceUpdate };
   };
-  const modsObserver = new MutationObserver(() => scheduleModsUpdate());
+
+  const scheduleModsUpdate = () => {
+    if (modsScheduled) return;
+    modsScheduled = setTimeout(() => {
+      modsScheduled = null;
+      requestAnimationFrame(() => {
+        const force = modsForceUpdate;
+        const refreshGroups = modsNeedGroupedRefresh;
+        modsForceUpdate = false;
+        modsNeedGroupedRefresh = false;
+        try { updateModsState(force); } catch (_) {}
+        if (refreshGroups) {
+          try { refreshGroupedRows(); } catch (_) {}
+        }
+      });
+    }, 80);
+  };
+
+  const modsObserver = new MutationObserver((mutations) => {
+    const scan = classifyModsMutations(mutations);
+    if (!scan.needsUpdate && !scan.needsGroupRefresh) return;
+    if (scan.forceUpdate) modsForceUpdate = true;
+    if (scan.needsGroupRefresh) modsNeedGroupedRefresh = true;
+    scheduleModsUpdate();
+  });
   modsObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
   // Initial state
-  updateModsState();
+  updateModsState(true);
+  try { refreshGroupedRows(); } catch (_) {}
   // Ensure non-transparent background on offline cold start
   ensureOfflineDefaultBackground();
 
@@ -4065,11 +4292,42 @@ rightCircle.addEventListener('mouseenter', () => {
 
   // Re-apply tab disabling for IP/Port and News when DOM changes dynamically
   try {
-    const reapplyTabDisables = () => {
-      try { updateTabStops({}); } catch (_) {}
+    let tabScheduled = null;
+    const tabRelevantSelector = '#menuContainer, #secretMenuContainer, .Mods, .mods, .ModList, .ModDownloadList, #newsContent, #newsContainer, .NewsSection, #customNewsButton';
+
+    const scheduleTabStopsUpdate = () => {
+      if (tabScheduled) return;
+      tabScheduled = setTimeout(() => {
+        tabScheduled = null;
+        try { updateTabStops({}); } catch (_) {}
+      }, 120);
     };
-    const tabObserver = new MutationObserver(reapplyTabDisables);
-    tabObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+
+    const isTabRelevantNode = (node) => {
+      if (!node || node.nodeType !== 1) return false;
+      return node.matches(tabRelevantSelector) || !!node.closest(tabRelevantSelector);
+    };
+
+    const tabObserver = new MutationObserver((mutations) => {
+      let relevant = false;
+      for (const m of mutations) {
+        if (isTabRelevantNode(m.target)) {
+          relevant = true;
+          break;
+        }
+        if (m.type !== 'childList') continue;
+        for (const n of m.addedNodes || []) {
+          if (isTabRelevantNode(n)) { relevant = true; break; }
+        }
+        if (relevant) break;
+        for (const n of m.removedNodes || []) {
+          if (isTabRelevantNode(n)) { relevant = true; break; }
+        }
+        if (relevant) break;
+      }
+      if (relevant) scheduleTabStopsUpdate();
+    });
+    tabObserver.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
 })();
 
