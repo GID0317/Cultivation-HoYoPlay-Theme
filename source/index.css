@@ -1,7 +1,7 @@
-/* Keep install notifications above backdrop but below wallpaper selector */
+/* Keep install notifications above menu/dialog backdrops. */
 .GameInstallNotify,
 .GameInstallNotify.download-complete {
-  z-index: 9997 !important;
+  z-index: 12050 !important;
 }
 
 /* Force Extras and Server Launch icons to white only on hover/hold */
@@ -111,14 +111,23 @@
   background: #34373b !important;
 }
 
-/* Focus state for trigger button */
+/* Keyboard focus state for trigger button */
 .custom-dropdown-trigger:focus {
-  background: #3a3d40 !important;
+  outline: none;
+}
+
+.custom-dropdown-trigger:focus-visible {
+  background: #34373b !important;
 }
 
 /* Trigger button when dropdown is open */
 .custom-dropdown-wrapper.open .custom-dropdown-trigger {
   background: #3a3d40 !important;
+}
+
+/* Mouse focus should not keep the closed trigger looking open after a click toggle */
+.custom-dropdown-wrapper:not(.open):not(.custom-dropdown-profiles) .custom-dropdown-trigger:focus:not(:hover):not(:focus-visible) {
+  background: #292C30 !important;
 }
 
 /* Text content inside trigger button */
@@ -132,6 +141,10 @@
 /* Profiles trigger text should size to content, not stretch */
 .custom-dropdown-wrapper.custom-dropdown-profiles .custom-dropdown-text {
   flex: 0 0 auto;
+}
+
+.custom-dropdown-wrapper.custom-dropdown-profiles:not(.open) .custom-dropdown-trigger:focus:not(:hover):not(:focus-visible) {
+  background: rgb(0 0 0 / 38%) !important;
 }
 
 /* Arrow indicator (hidden to use native arrow) */
@@ -150,12 +163,13 @@
   /* Limit visible items to ~5; extra items scroll */
   max-height: 224px; /* ~5 items, keeps menu from growing too tall */
   overflow-y: auto; /* Enable scrolling for long lists */
+  overscroll-behavior: contain;
   /* Manage scrollbar gutter dynamically via a class to avoid extra right gap */
   scrollbar-gutter: auto; /* No reserved space by default */
   min-width: 200px; /* Minimum menu width */
   width: max-content; /* Expand to fit content */
   max-width: 300px; /* Maximum menu width */
-  padding: 6px;
+  padding: 6px 6px 0 6px;
   right: 0; /* Right-aligned to trigger */
   left: auto;
   /* Animation properties */
@@ -260,16 +274,16 @@
 .custom-dropdown-menu::-webkit-scrollbar-thumb {
   background: #393c42;
   border-radius: 3px;
-  transition: background-color 0.18s ease, background 0.18s ease;
+  transition: background-color 0.32s ease, background 0.32s ease;
 }
 
 /* Scrollbar thumb on hover */
 .custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
-  background: #4a4d52;
+  background: #484a50;
 }
 
 .custom-dropdown-menu::-webkit-scrollbar-thumb:active {
-  background: #57595d;
+  background: #57585c;
 }
 
 /* Individual dropdown option item */
@@ -771,10 +785,10 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   top: 32px;
   left: 0;
   right: 0;                 /* allow centering via margin:auto */
-  background-color: #1a1a1a;        /* dark background */
+  background-color: #0d0d0f;        /* dark background */
   color: #ffffff;                  /* white text */
   padding: 5px 20px;              /* spacing inside */
-  border-radius: 16px;             /* rounded corners */
+  border-radius: 12px;             /* rounded corners */
   display: flex;                   /* for alignment */
   align-items: center;            /* center vertically */
   justify-content: space-between; /* space between text and close icon */
@@ -1510,7 +1524,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 #menuContent {
   padding: 16px 24px !important;
   padding-left: 10px !important;
-  padding-right: 0px !important;
+  padding-right: 10px !important;
+  padding-bottom: 21px !important;
   max-height: calc(56.5vh - 64px) !important; /* header + bottom */
   overflow-y: auto !important;
   overflow-x: hidden !important;
@@ -1582,6 +1597,7 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   max-width: 100%;
   word-wrap: break-word;
 }
+
 /* Ensure OptionValue doesn't grow and stays right-aligned */
 .OptionValue {
   flex: 0 0 auto;
@@ -1873,11 +1889,13 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   transition: transform 0.2s ease-out;
 }
 
-/* Rotate chevron when dropdown is focused/opened */
+/* Rotate chevron when native dropdown is focused/opened */
 #menuContent #menuOptionsSelectThemes select:focus + #menuContent #menuOptionsSelectThemes::after,
-#menuContent #menuOptionsSelectThemes:focus-within::after,
+#menuContent #menuOptionsSelectThemes:not(.custom-dropdown-host):focus-within::after,
 #menuContent #menuOptionsSelectMenuLang:focus + #menuContent #menuOptionsSelectLang::after,
-#menuContent #menuOptionsSelectLang:focus-within::after {
+#menuContent #menuOptionsSelectLang:not(.custom-dropdown-host):focus-within::after,
+#menuContent #menuOptionsSelectThemes.custom-dropdown-open::after,
+#menuContent #menuOptionsSelectLang.custom-dropdown-open::after {
   transform: translateY(-50%) rotate(-180deg);
 }
 
@@ -2254,14 +2272,23 @@ input#profile_name {
 /* 2) Track (background) */
 ::-webkit-scrollbar-track {
   background: transparent; /* invisible track */
+}
+
+::-webkit-scrollbar-track-piece {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 /* 3) Thumb (the draggable handle) NOTE: The transition doesn't work still finding a way to fix it*/
 ::-webkit-scrollbar-thumb {
   background: #292d30;  /* subtle light on dark */
   border-radius: 4px;        /* gives a little padding */
-  transition: background-color 0.18s ease, background 0.18s ease;
+  transition: background-color 0.32s ease, background 0.32s ease;
 }
 
 /* 4) Thumb on hover */
@@ -2274,8 +2301,97 @@ input#profile_name {
 }
 
 /* 5) Corner when both scrollbars are visible */
-::-webkit-scrollbar-corner {
+::-webkit-scrollbar-corner,
+::-webkit-resizer {
   background: transparent;
+  display: none;
+}
+
+.hoyoplay-scroll-enhanced {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.hoyoplay-scroll-enhanced::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.hoyoplay-scrollbar-track {
+  position: absolute;
+  top: 0;
+  right: 5px;
+  width: 12px;
+  height: 100%;
+  z-index: 60;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 0.36s ease;
+  background: transparent;
+}
+
+.hoyoplay-scroll-enhanced.hoyoplay-scrollbar-fast-hide > .hoyoplay-scrollbar-track {
+  transition-duration: 0.12s;
+}
+
+.hoyoplay-scroll-enhanced.hoyoplay-scrollbar-visible > .hoyoplay-scrollbar-track,
+.hoyoplay-scrollbar-track:hover,
+.hoyoplay-scrollbar-track.dragging {
+  opacity: 1;
+}
+
+.hoyoplay-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6.5px;
+  min-height: 28px;
+  border-radius: 999px;
+  background: #292d30;
+  transition: background-color 0.32s ease, width 0.32s ease, right 0.32s ease;
+}
+
+.hoyoplay-scrollbar-track.dragging-instant .hoyoplay-scrollbar-thumb {
+  transition-duration: 0s;
+}
+
+.hoyoplay-scrollbar-track:hover .hoyoplay-scrollbar-thumb,
+.hoyoplay-scrollbar-track.dragging-over .hoyoplay-scrollbar-thumb {
+  right: 0;
+  width: 6.5px;
+  background: #3b3e42;
+}
+
+.hoyoplay-scrollbar-track.dragging.dragging-over .hoyoplay-scrollbar-thumb {
+  background: #494c50;
+}
+
+.hoyoplay-scrollbar-track.hidden {
+  display: none;
+}
+
+.custom-dropdown-menu.hoyoplay-scroll-enhanced.has-scroll {
+  scrollbar-gutter: auto;
+}
+
+.custom-dropdown-menu.hoyoplay-scroll-enhanced > .hoyoplay-scrollbar-track {
+  right: 2px;
+  width: 5px;
+}
+
+.custom-dropdown-menu.hoyoplay-scroll-enhanced > .hoyoplay-scrollbar-track .hoyoplay-scrollbar-thumb {
+  width: 4px;
+  background: #393c42;
+}
+
+.custom-dropdown-menu.hoyoplay-scroll-enhanced > .hoyoplay-scrollbar-track:hover:not(.dragging) .hoyoplay-scrollbar-thumb {
+  width: 4px;
+  background: #484a50;
+}
+
+.custom-dropdown-menu.hoyoplay-scroll-enhanced > .hoyoplay-scrollbar-track.dragging.dragging-over .hoyoplay-scrollbar-thumb {
+  width: 4px;
+  background: #57585c !important;
 }
 
 #menuContainer.Menu.Options{
@@ -2283,13 +2399,21 @@ input#profile_name {
 }
 
 #menuContainer.Menu.Downloads{
+  height: 450px !important;
   max-height: 450px !important;
+}
+
+#menuContainer.Menu.Downloads #menuContent {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 0 21px 0 !important;
 }
 
 #menuContainer.Menu.Downloads .Divider{
   opacity: 0%;
-  height: 0px;
-  height: 25px !important;
+  height: 0 !important;
+  margin: 0 !important;
 }
 
 #menuContainer.ExtrasMenu {
@@ -2952,8 +3076,8 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 
 .version-button-style {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.5);
   color: white;
+  border: 1px solid currentColor;
   font-size: 12px;
   padding: 12px 6px;
   border-radius: 8px;
@@ -3198,8 +3322,10 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
 .NotifShow {
     top: 84%;
     right: 30%;
-    z-index: 1000;
+    z-index: 12040 !important;
     transition: none !important;
+    background-color: #0d0d0f !important;
+    border-radius: 12px !important;
 }
 
 /* When ExtrasMenuButton exists, move notification more to the right */
@@ -3208,9 +3334,9 @@ body:has(#ExtrasMenuButton) .NotifShow {
 }
 
 .Notification {
-    background-color: transparent;
+    background-color: #0d0d0f;
     border: none;
-    border-radius: 4px;
+    border-radius: 12px;
     color: #ffff;
     font-weight: 600;
     text-shadow: #222 1px 0 10px;
@@ -3331,12 +3457,19 @@ body:has(#ExtrasMenuButton) .NotifShow {
 #restartDialog .FooterButton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
   font-weight: 650;
   font-size: 14px;
   border-radius: 7px;
-  padding: 8px 14px;
+  padding: 7px 12px;
   cursor: pointer;
   transition: all 0.16s ease;
+}
+
+#restartDialog .FooterButton span {
+  white-space: nowrap;
 }
 
 #restartDialog .FooterButton.tertiary {
@@ -3346,13 +3479,23 @@ body:has(#ExtrasMenuButton) .NotifShow {
   font-weight: 400 !important;
 }
 
+#restartDialog.confirm-mode .FooterButton.tertiary {
+  color: #b8bdc3;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+#restartDialog.confirm-mode .FooterButton.tertiary:hover {
+  color: #ffffff;
+}
+
 #restartDialog .FooterButton.primary {
   background: #FFDB29;
   color: #000;
   padding-right: 20px;
   padding-left: 20px;
   transition: background 0.1s;
-  width: 83px;
+  width: auto;
   height: 22px !important;
 }
 #restartDialog .FooterButton.primary:hover {
@@ -3371,7 +3514,7 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #E5E5E5;
   height: 22px;
   transition: background 0.1s;
-  width: 83px;
+  width: auto;
   height: 20px !important;
 }
 #restartDialog .FooterButton.secondary:hover {
@@ -3383,9 +3526,36 @@ body:has(#ExtrasMenuButton) .NotifShow {
   color: #fff;
 }
 
-/* Alert mode: auto-width button */
-#restartDialog.alert-mode .FooterButton.primary {
-  width: auto;
+/* Alert mode is also used for intercepted native/Tauri message boxes. */
+#restartDialog.alert-mode {
+  width: min(400px, calc(100vw - 48px)) !important;
+  max-width: 400px !important;
+  height: auto !important;
+  max-height: calc(100vh - 80px) !important;
+  overflow: hidden !important;
+}
+
+#restartDialog.alert-mode .MenuInner {
+  min-height: 0 !important;
+  max-height: calc(100vh - 150px) !important;
+  overflow-y: auto !important;
+  padding-bottom: 16px !important;
+}
+
+#restartDialog.alert-mode #restartDialogMessage {
+  max-width: none !important;
+  white-space: pre-line !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+#restartDialog.alert-mode .FooterOptions {
+  padding-top: 16px !important;
+  margin-top: 8px !important;
+}
+
+#restartDialog.confirm-mode .FooterOptions .OptionValue.ExtraLaunch {
+  justify-content: flex-end;
 }
 
 #hoyoplay-shadow-bg {

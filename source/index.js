@@ -42,6 +42,26 @@ try {
   window.__USE_BUILTIN_BG = (localStorage.getItem && localStorage.getItem('useBuiltinBackground') === '1');
 } catch (_) { window.__USE_BUILTIN_BG = false; }
 window.__BUILTIN_BG_SUFFIX = 'background/bg.png';
+const HOYO_ROTATE_STARTUP_KEY = 'hoyoplay-rotate-startup';
+const HOYO_VIDEO_AUTOPLAY_KEY = 'hoyoplay-video-autoplay-circles';
+
+function isBuiltInBackgroundEnabled() {
+  try {
+    return localStorage.getItem('useBuiltinBackground') === '1';
+  } catch (_) {
+    return !!window.__USE_BUILTIN_BG;
+  }
+}
+
+function isHoYoPlayStartupRotationEnabled() {
+  if (isBuiltInBackgroundEnabled()) return false;
+  try {
+    const stored = localStorage.getItem(HOYO_ROTATE_STARTUP_KEY);
+    return stored === null ? true : stored === '1';
+  } catch (_) {
+    return true;
+  }
+}
 
 // Observe for changes
 const playBtn = document.getElementById('officialPlay');
@@ -524,6 +544,8 @@ const enhancedProgressObserver = new MutationObserver(function(mutations) {
     updatePlayButtonState();
   }
 });
+let extrasProgressObserver = null;
+let extrasProgressObserverTarget = null;
 
 // Start observing both DownloadProgress and its children
 function startProgressObserver() {
@@ -558,9 +580,11 @@ function startProgressObserver() {
 
   // Watch for ExtrasMenuButton appearing/disappearing under serverLaunchContainer
   const serverLaunchContainer = document.getElementById('serverLaunchContainer') || document.getElementById('serverLaunch');
-  if (serverLaunchContainer) {
-    const extrasObserver = new MutationObserver(adjustDownloadProgressPosition);
-    extrasObserver.observe(serverLaunchContainer, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+  if (serverLaunchContainer && serverLaunchContainer !== extrasProgressObserverTarget) {
+    try { if (extrasProgressObserver) extrasProgressObserver.disconnect(); } catch (_) {}
+    extrasProgressObserverTarget = serverLaunchContainer;
+    extrasProgressObserver = new MutationObserver(adjustDownloadProgressPosition);
+    extrasProgressObserver.observe(serverLaunchContainer, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
   }
 }
 
@@ -776,6 +800,13 @@ function injectVersionHighlightsButton() {
 
   // Insert before news section
   newsSection.parentNode.insertBefore(button, newsSection);
+  setTimeout(() => {
+    try {
+      if (typeof window.__hoyoplayRefreshVersionButton === 'function') {
+        window.__hoyoplayRefreshVersionButton();
+      }
+    } catch (_) {}
+  }, 0);
 }
 
 // Wait for DOM
@@ -821,9 +852,51 @@ if (document.readyState === 'loading') {
 // Also check periodically in case elements are recreated
 setInterval(makeTextInputsWritable, 1000);
 
+let preservedGameInstallNotify = null;
+
+function replayGameInstallNotifyShowAnimation(notification) {
+  if (!notification) return;
+  notification.style.animation = 'none';
+  notification.style.opacity = '0';
+  notification.style.transform = 'translateY(-20px)';
+  void notification.offsetWidth;
+  notification.style.animation = 'notifySlideDown 0.3s ease forwards';
+}
+
+function preserveGameInstallNotify(notification) {
+  if (!notification) return;
+  if (notification.classList.contains('download-complete') || notification.classList.contains('hiding')) return;
+
+  const message = (notification.textContent || '').trim();
+  if (!message || message === 'Copied successfully' || message === 'Download and extraction complete. Enjoy the game!') return;
+
+  preservedGameInstallNotify = {
+    className: notification.className,
+    innerHTML: notification.innerHTML
+  };
+}
+
+function restorePreservedGameInstallNotify(notification) {
+  if (!preservedGameInstallNotify) return;
+
+  const target = notification || document.createElement('div');
+  target.className = preservedGameInstallNotify.className;
+  target.innerHTML = preservedGameInstallNotify.innerHTML;
+  target.style.display = 'flex';
+  target.classList.remove('hiding', 'download-complete');
+  replayGameInstallNotifyShowAnimation(target);
+
+  if (!target.parentNode) {
+    document.body.appendChild(target);
+  }
+
+  preservedGameInstallNotify = null;
+}
+
 // Function to show download complete notification
 function showDownloadCompleteNotification() {
   let notification = document.querySelector('.GameInstallNotify');
+  preserveGameInstallNotify(notification);
   
   if (!notification) {
     // Create notification if it doesn't exist
@@ -847,6 +920,7 @@ function showDownloadCompleteNotification() {
   // Show the notification
   notification.style.display = 'flex';
   notification.classList.remove('hiding');
+  replayGameInstallNotifyShowAnimation(notification);
   
   // Auto-hide after 5 seconds
   setTimeout(() => {
@@ -855,6 +929,7 @@ function showDownloadCompleteNotification() {
       notification.style.display = 'none';
       notification.classList.remove('hiding');
       notification.classList.remove('download-complete'); // Clean up the class
+      restorePreservedGameInstallNotify(notification);
     }, 300);
   }, 5000);
 }
@@ -862,6 +937,7 @@ function showDownloadCompleteNotification() {
 // Function to show copy success notification
 function showCopySuccessNotification() {
   let notification = document.querySelector('.GameInstallNotify');
+  preserveGameInstallNotify(notification);
   
   if (!notification) {
     // Create notification if it doesn't exist
@@ -884,6 +960,7 @@ function showCopySuccessNotification() {
   // Show the notification
   notification.style.display = 'flex';
   notification.classList.remove('hiding');
+  replayGameInstallNotifyShowAnimation(notification);
   
   // Auto-hide after 3 seconds (shorter than download complete)
   setTimeout(() => {
@@ -892,6 +969,7 @@ function showCopySuccessNotification() {
       notification.style.display = 'none';
       notification.classList.remove('hiding');
       notification.classList.remove('download-complete'); // Clean up the class
+      restorePreservedGameInstallNotify(notification);
     }, 300);
   }, 3000);
 }
@@ -899,6 +977,7 @@ function showCopySuccessNotification() {
 // Generic banner notification (reuses GameInstallNotify element)
 function showBanner(message, extraClass) {
   let notification = document.querySelector('.GameInstallNotify');
+  preserveGameInstallNotify(notification);
   if (!notification) {
     notification = document.createElement('div');
     notification.className = 'GameInstallNotify';
@@ -913,6 +992,7 @@ function showBanner(message, extraClass) {
 
   notification.style.display = 'flex';
   notification.classList.remove('hiding');
+  replayGameInstallNotifyShowAnimation(notification);
 
   // Auto-hide after 4 seconds
   setTimeout(() => {
@@ -921,6 +1001,7 @@ function showBanner(message, extraClass) {
       notification.style.display = 'none';
       notification.classList.remove('hiding');
       if (extraClass) notification.classList.remove(extraClass);
+      restorePreservedGameInstallNotify(notification);
     }, 300);
   }, 4000);
 }
@@ -1072,7 +1153,7 @@ function showRestartDialog(message, onRestart, alertMode) {
     </div>
     <div class="MenuInner" id="menuContent">
       <div class="OptionSection">
-        <div class="OptionLabel">${message}</div>
+        <div class="OptionLabel" id="restartDialogMessage"></div>
       </div>
       <div class="OptionSection FooterOptions">
         <div class="OptionLabel"></div>
@@ -1085,6 +1166,8 @@ function showRestartDialog(message, onRestart, alertMode) {
 
   // Insert dialog above backdrop
   document.body.appendChild(dlg);
+  const messageLabel = dlg.querySelector('#restartDialogMessage');
+  if (messageLabel) messageLabel.textContent = message == null ? '' : String(message);
   dlg.style.zIndex = '11000';
 
   // Wire buttons
@@ -1097,6 +1180,11 @@ function showRestartDialog(message, onRestart, alertMode) {
   if (later) later.addEventListener('click', removeDlg);
   if (closeBtn) closeBtn.addEventListener('click', removeDlg);
   if (now) now.addEventListener('click', () => {
+    if (alertMode) {
+      try { if (typeof onRestart === 'function') onRestart(); } catch (_) {}
+      removeDlg();
+      return;
+    }
     try { if (typeof onRestart === 'function') onRestart(); } catch (_) {}
     // fallback: reload
     try { location.reload(); } catch (_) {}
@@ -1115,6 +1203,381 @@ function showRestartDialog(message, onRestart, alertMode) {
     mousedownOnDialog = false;
   });
 }
+
+function showThemedChoiceDialog(message, options) {
+  options = options || {};
+  const title = options.title || 'Cultivation';
+  const okLabel = options.okLabel || 'Yes';
+  const cancelLabel = options.cancelLabel || 'No';
+  const neutralLabel = options.neutralLabel || '';
+
+  return new Promise((resolve) => {
+    let backdrop = document.getElementById('restart-dialog-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'restart-dialog-backdrop';
+      Object.assign(backdrop.style, {
+        position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+        background: 'transparent',
+        zIndex: '10999',
+        pointerEvents: 'none',
+        opacity: '1',
+        transition: 'opacity 0.2s',
+        display: 'block'
+      });
+      document.body.appendChild(backdrop);
+    } else {
+      backdrop.style.display = 'block';
+      backdrop.style.opacity = '1';
+    }
+
+    const existing = document.getElementById('restartDialog');
+    if (existing) existing.remove();
+
+    const dlg = document.createElement('div');
+    dlg.id = 'restartDialog';
+    dlg.className = 'Menu Dialog RestartDialog alert-mode confirm-mode';
+    dlg.innerHTML = `
+      <div class="MenuTop" id="menuContainerTop">
+        <div class="MenuHeading" id="menuHeading"></div>
+        <div class="MenuExit" id="menuButtonCloseContainer">
+          <img src="/static/media/close.f8111601cfc04c762c39a2b9324deae1.svg" class="MenuClose" id="menuButtonCloseIcon">
+        </div>
+      </div>
+      <div class="MenuInner" id="menuContent">
+        <div class="OptionSection">
+          <div class="OptionLabel" id="restartDialogMessage"></div>
+        </div>
+        <div class="OptionSection FooterOptions">
+          <div class="OptionLabel"></div>
+          <div class="OptionValue ExtraLaunch">
+            ${neutralLabel ? '<div class="FooterButton tertiary" id="restartNeutralBtn"><span></span></div>' : ''}
+            <div class="FooterButton secondary" id="restartLaterBtn"><span></span></div>
+            <div class="FooterButton primary" id="restartNowBtn"><span></span></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dlg);
+    dlg.style.zIndex = '11000';
+
+    const heading = dlg.querySelector('#menuHeading');
+    const messageLabel = dlg.querySelector('#restartDialogMessage');
+    const neutral = dlg.querySelector('#restartNeutralBtn');
+    const later = dlg.querySelector('#restartLaterBtn');
+    const now = dlg.querySelector('#restartNowBtn');
+    const closeBtn = dlg.querySelector('#menuButtonCloseContainer');
+
+    if (heading) heading.textContent = title;
+    if (messageLabel) messageLabel.textContent = message == null ? '' : String(message);
+    if (neutral) neutral.querySelector('span').textContent = neutralLabel;
+    if (later) later.querySelector('span').textContent = cancelLabel;
+    if (now) now.querySelector('span').textContent = okLabel;
+
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      try { dlg.remove(); if (backdrop) backdrop.remove(); } catch (_) {}
+      resolve(value);
+    };
+
+    if (neutral) neutral.addEventListener('click', () => finish(null));
+    if (later) later.addEventListener('click', () => finish(false));
+    if (closeBtn) closeBtn.addEventListener('click', () => finish(null));
+    if (now) now.addEventListener('click', () => finish(true));
+
+    let mousedownOnDialog = false;
+    dlg.addEventListener('mousedown', (e) => {
+      mousedownOnDialog = (e.target === dlg);
+    });
+    dlg.addEventListener('click', (e) => {
+      if (e.target === dlg && mousedownOnDialog) {
+        finish(null);
+      }
+      mousedownOnDialog = false;
+    });
+  });
+}
+
+function normalizeTauriDialogOptions(options, defaults) {
+  if (typeof options === 'string') {
+    return Object.assign({}, defaults, { title: options });
+  }
+  return Object.assign({}, defaults, options || {});
+}
+
+function getDialogInvokePayload(command, args) {
+  const commandText = String(command || '').toLowerCase();
+  const payload = args || {};
+
+  if (commandText.includes('dialog') && commandText.includes('ask')) {
+    return {
+      kind: 'ask',
+      message: payload.message,
+      options: payload.options
+    };
+  }
+
+  if (commandText.includes('dialog') && commandText.includes('confirm')) {
+    return {
+      kind: 'confirm',
+      message: payload.message,
+      options: payload.options
+    };
+  }
+
+  if (commandText.includes('dialog') && commandText.includes('message')) {
+    return {
+      kind: 'message',
+      message: payload.message,
+      options: payload.options
+    };
+  }
+
+  const tauriMessage = payload.message;
+  if (payload.__tauriModule === 'Dialog' && tauriMessage && typeof tauriMessage === 'object') {
+    const cmd = String(tauriMessage.cmd || '').toLowerCase();
+    if (cmd === 'ask' || cmd === 'confirm' || cmd === 'message') {
+      return {
+        kind: cmd,
+        message: tauriMessage.message,
+        options: tauriMessage.options
+      };
+    }
+  }
+
+  return null;
+}
+
+function handleDialogInvokePayload(payload) {
+  if (!payload) return null;
+
+  if (payload.kind === 'ask') {
+    const opts = normalizeTauriDialogOptions(payload.options, { okLabel: 'Yes', cancelLabel: 'No' });
+    return showThemedChoiceDialog(payload.message, opts);
+  }
+
+  if (payload.kind === 'confirm') {
+    const opts = normalizeTauriDialogOptions(payload.options, { okLabel: 'OK', cancelLabel: 'Cancel' });
+    return showThemedChoiceDialog(payload.message, opts);
+  }
+
+  if (payload.kind === 'message') {
+    return new Promise((resolve) => {
+      showRestartDialog(payload.message, resolve, true);
+    });
+  }
+
+  return null;
+}
+
+function patchTauriInvoke(target) {
+  if (!target || typeof target.invoke !== 'function' || target.__hoyoplayInvokePatched) return false;
+
+  const nativeInvoke = target.invoke.bind(target);
+  target.__hoyoplayNativeInvoke = nativeInvoke;
+  target.invoke = function themedInvoke(command, args) {
+    const handled = handleDialogInvokePayload(getDialogInvokePayload(command, args));
+    if (handled) return handled;
+    return nativeInvoke(command, args);
+  };
+  target.__hoyoplayInvokePatched = true;
+  return true;
+}
+
+function patchTauriDialogs() {
+  try {
+    const tauri = window.__TAURI__;
+    if (!tauri) return false;
+
+    let patched = false;
+    patched = patchTauriInvoke(tauri) || patched;
+    patched = patchTauriInvoke(tauri.tauri) || patched;
+    patched = patchTauriInvoke(tauri.core) || patched;
+
+    const dialog = tauri.dialog;
+    if (!dialog) return patched;
+    if (dialog.__hoyoplayPatched) return patched;
+
+    if (typeof dialog.ask === 'function') {
+      dialog.__hoyoplayNativeAsk = dialog.ask.bind(dialog);
+      dialog.ask = function themedAsk(message, options) {
+        const opts = normalizeTauriDialogOptions(options, { okLabel: 'Yes', cancelLabel: 'No' });
+        return showThemedChoiceDialog(message, opts);
+      };
+    }
+
+    if (typeof dialog.confirm === 'function') {
+      dialog.__hoyoplayNativeConfirm = dialog.confirm.bind(dialog);
+      dialog.confirm = function themedConfirm(message, options) {
+        const opts = normalizeTauriDialogOptions(options, { okLabel: 'OK', cancelLabel: 'Cancel' });
+        return showThemedChoiceDialog(message, opts);
+      };
+    }
+
+    if (typeof dialog.message === 'function') {
+      dialog.__hoyoplayNativeMessage = dialog.message.bind(dialog);
+      dialog.message = function themedMessage(message, options) {
+        const opts = normalizeTauriDialogOptions(options, { okLabel: 'OK' });
+        return new Promise((resolve) => {
+          showRestartDialog(message, resolve, true);
+        });
+      };
+    }
+
+    dialog.__hoyoplayPatched = true;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+(function setupCustomConfirmDialogs() {
+  const nativeConfirm = typeof window.confirm === 'function' ? window.confirm.bind(window) : null;
+  window.confirm = function customConfirm(message) {
+    if (nativeConfirm) return nativeConfirm(message);
+    return false;
+  };
+  window.__HOYO_NATIVE_CONFIRM = nativeConfirm;
+
+  patchTauriDialogs();
+  let attempts = 0;
+  const patchTimer = setInterval(() => {
+    attempts += 1;
+    if (patchTauriDialogs() || attempts >= 50) {
+      clearInterval(patchTimer);
+    }
+  }, 200);
+})();
+
+function getTauriInvoke() {
+  const tauri = window.__TAURI__;
+  if (tauri) {
+    if (typeof tauri.invoke === 'function') return tauri.invoke.bind(tauri);
+    if (tauri.tauri && typeof tauri.tauri.invoke === 'function') return tauri.tauri.invoke.bind(tauri.tauri);
+    if (tauri.core && typeof tauri.core.invoke === 'function') return tauri.core.invoke.bind(tauri.core);
+  }
+
+  if (typeof window.__TAURI_IPC__ === 'function') {
+    return function invokeViaTauriIpc(command, args) {
+      return new Promise((resolve, reject) => {
+        const callbackId = Date.now() + Math.random().toString(36).slice(2);
+        const errorId = Date.now() + Math.random().toString(36).slice(2);
+        const callbackName = '_' + callbackId;
+        const errorName = '_' + errorId;
+        const cleanup = () => {
+          try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+          try { delete window[errorName]; } catch (_) { window[errorName] = undefined; }
+        };
+
+        window[callbackName] = (response) => {
+          cleanup();
+          resolve(response);
+        };
+        window[errorName] = (error) => {
+          cleanup();
+          reject(error);
+        };
+
+        try {
+          window.__TAURI_IPC__(Object.assign({
+            cmd: command,
+            callback: callbackId,
+            error: errorId
+          }, args || {}));
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      });
+    };
+  }
+
+  return null;
+}
+
+function getOptionsGameInstallPath() {
+  const directInput = document.querySelector('#menuOptionsDirGamePath input, #menuOptionsDirGamePath .TextInput');
+  if (directInput && typeof directInput.value === 'string' && directInput.value.trim()) {
+    return directInput.value.trim();
+  }
+
+  const dirText = document.querySelector('#menuOptionsDirGamePath');
+  const text = (dirText && dirText.textContent ? dirText.textContent.trim() : '');
+  return text || '';
+}
+
+function getGameExecutableNameFromPath(gamePath) {
+  const normalized = String(gamePath || '').replace(/\\/g, '/');
+  const fileName = normalized.split('/').filter(Boolean).pop() || '';
+  return fileName || 'GenshinImpact.exe';
+}
+
+function getRegistryExecNameFromPath(gamePath) {
+  return getGameExecutableNameFromPath(gamePath)
+    .split('.exe')[0]
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2');
+}
+
+async function runThemedDeleteWebCacheFlow() {
+  const invoke = getTauriInvoke();
+  if (!invoke) {
+    alert('Unable to access Tauri commands for cache cleanup.');
+    return;
+  }
+
+  const clearLogin = await showThemedChoiceDialog(
+    'Choose which cache you want to clear.',
+    { title: 'Clear Cache', okLabel: 'Login Cache', cancelLabel: 'Web Cache' }
+  );
+  if (clearLogin === null) return;
+
+  const gamePath = getOptionsGameInstallPath();
+  if (clearLogin) {
+    await invoke('wipe_registry', {
+      execName: getRegistryExecNameFromPath(gamePath)
+    });
+    alert('Cleared login cache!');
+    return;
+  }
+
+  alert('Cultivation may freeze for a moment while this occurs!');
+
+  const pathArr = String(gamePath || '').replace(/\\/g, '/').split('/');
+  pathArr.pop();
+  const gameRoot = pathArr.join('/');
+  const cachePaths = [
+    gameRoot + '/GenshinImpact_Data/webCaches',
+    gameRoot + '/Yuanshen_Data/webCaches'
+  ];
+
+  for (const path of cachePaths) {
+    if (await invoke('dir_exists', { path })) {
+      await invoke('dir_delete', { path });
+    }
+  }
+}
+
+function interceptDeleteWebCacheButton() {
+  const button = document.getElementById('deleteWebcache');
+  if (!button || button.getAttribute('data-hoyoplay-cache-intercept') === '1') return;
+
+  button.setAttribute('data-hoyoplay-cache-intercept', '1');
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    runThemedDeleteWebCacheFlow().catch((error) => {
+      console.error('Failed to run themed cache cleanup', error);
+      alert('Failed to clear cache. Check the console for details.');
+    });
+  }, true);
+}
+
+interceptDeleteWebCacheButton();
+setInterval(interceptDeleteWebCacheButton, 1000);
 
 // Enhanced progress monitoring to detect completion
 function monitorDownloadCompletion() {
@@ -1155,9 +1618,6 @@ function monitorDownloadCompletion() {
 
 // Start monitoring
 monitorDownloadCompletion();
-
-// Also check periodically in case elements are recreated
-setInterval(makeTextInputsWritable, 1000);
 
 // Test function to trigger download complete notification
 function testDownloadCompleteNotification() {
@@ -1214,7 +1674,7 @@ function showSecretMenu() {
   fetch('index.json')
     .then(response => response.json())
     .then(themeData => {
-      const themeVersion = themeData.version || '9.1.0';
+      const themeVersion = themeData.version || '9.2.0';
       
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
@@ -1332,7 +1792,7 @@ function showSecretMenu() {
     })
     .catch(() => {
       // Fallback if fetch fails
-      const themeVersion = '9.1.0';
+      const themeVersion = '9.2.0';
       // Get the real application version from the #version element
       const appVersionElement = document.getElementById('version');
       const appVersion = appVersionElement ? appVersionElement.textContent.trim() : 'Unknown';
@@ -1596,7 +2056,7 @@ function showAdvancedDialog() {
     </div>
     <div class="MenuInner" id="menuContent">
       <div id="advanced-options-page">
-        <div class="OptionSection">
+        <div class="OptionSection" id="advancedBuiltinBackgroundSection">
           <div class="OptionLabel">
             Built-In Backgrounds
             <div class="OptionSubtext">After enabling this configuration, built-in background images will be used instead of using HoYoPlay backgrounds.</div>
@@ -1605,6 +2065,20 @@ function showAdvancedDialog() {
             <div class="Checkbox">
               <input type="checkbox" id="advancedBuiltinBackgroundToggle">
               <label for="advancedBuiltinBackgroundToggle">
+                <div class="CheckboxDisplay"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="OptionSection" id="advancedHoYoPlayRotateStartupSection">
+          <div class="OptionLabel">
+            Rotate HoYoPlay Background on Startup
+            <div class="OptionSubtext">After enabling this configuration, startup advances to the next available HoYoPlay background instead of reopening the last selected one.</div>
+          </div>
+          <div class="OptionValue">
+            <div class="Checkbox">
+              <input type="checkbox" id="advancedHoYoPlayRotateStartupToggle">
+              <label for="advancedHoYoPlayRotateStartupToggle">
                 <div class="CheckboxDisplay"></div>
               </label>
             </div>
@@ -1621,6 +2095,31 @@ function showAdvancedDialog() {
   // Event listeners
   const closeBtn = advancedDialog.querySelector('#menuButtonCloseContainer');
   const builtinBackgroundToggle = advancedDialog.querySelector('#advancedBuiltinBackgroundToggle');
+  const rotateStartupToggle = advancedDialog.querySelector('#advancedHoYoPlayRotateStartupToggle');
+
+  const getStoredRotateStartupPreference = () => {
+    try {
+      const stored = localStorage.getItem(HOYO_ROTATE_STARTUP_KEY);
+      return stored === null ? true : stored === '1';
+    } catch (_) {
+      return true;
+    }
+  };
+
+  const updateAdvancedBackgroundOptionState = () => {
+    if (!builtinBackgroundToggle || !rotateStartupToggle) return;
+    if (builtinBackgroundToggle.checked && rotateStartupToggle.checked) {
+      rotateStartupToggle.checked = false;
+    }
+  };
+
+  const showAdvancedRestartDialog = () => {
+    try {
+      showRestartDialog('Changed settings will only take effect after Cultivation is restarted.', () => {
+        try { location.reload(); } catch (_) {}
+      });
+    } catch (_) {}
+  };
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -1639,18 +2138,40 @@ function showAdvancedDialog() {
       }
       builtinBackgroundToggle.checked = (localStorage.getItem('useBuiltinBackground') === '1');
     } catch (_) {}
+    updateAdvancedBackgroundOptionState();
 
     builtinBackgroundToggle.addEventListener('change', () => {
       try {
         localStorage.setItem('useBuiltinBackground', builtinBackgroundToggle.checked ? '1' : '0');
+        if (builtinBackgroundToggle.checked && rotateStartupToggle) {
+          rotateStartupToggle.checked = false;
+          localStorage.setItem(HOYO_ROTATE_STARTUP_KEY, '0');
+        }
       } catch (_) {}
-      // Show a banner notification (will auto-hide)
-      try {
-        showRestartDialog('Changed settings will only take effect after Cultivation is restarted.', () => {
-          try { location.reload(); } catch (_) {}
-        });
-      } catch (_) {}
+      updateAdvancedBackgroundOptionState();
+      showAdvancedRestartDialog();
       console.log('Built-in background preference saved (applies on restart) — restart dialog shown');
+    });
+  }
+
+  if (rotateStartupToggle) {
+    try {
+      if (localStorage.getItem(HOYO_ROTATE_STARTUP_KEY) === null) {
+        localStorage.setItem(HOYO_ROTATE_STARTUP_KEY, '1');
+      }
+      rotateStartupToggle.checked = getStoredRotateStartupPreference();
+    } catch (_) {}
+    updateAdvancedBackgroundOptionState();
+
+    rotateStartupToggle.addEventListener('change', () => {
+      try {
+        if (rotateStartupToggle.checked && builtinBackgroundToggle && builtinBackgroundToggle.checked) {
+          builtinBackgroundToggle.checked = false;
+          localStorage.setItem('useBuiltinBackground', '0');
+        }
+        localStorage.setItem(HOYO_ROTATE_STARTUP_KEY, rotateStartupToggle.checked ? '1' : '0');
+      } catch (_) {}
+      showAdvancedRestartDialog();
     });
   }
 
@@ -1689,6 +2210,33 @@ setInterval(addLeftBarClickListener, 1000);
 let hijackedNotification = null;
 let originalNotificationContent = '';
 
+function rememberVisibleGameInstallNotify() {
+  document.querySelectorAll('.GameInstallNotify').forEach(el => {
+    const style = window.getComputedStyle(el);
+    const hasText = (el.textContent || '').trim().length > 0;
+    if (hasText && style.display !== 'none' && style.visibility !== 'hidden' && !el.classList.contains('hiding')) {
+      el.setAttribute('data-reshow-after-notifshow', '1');
+    }
+  });
+}
+
+function hasVisibleNotifShow() {
+  return Array.from(document.querySelectorAll('.Notification.NotifShow')).some(el => {
+    const style = window.getComputedStyle(el);
+    const hasText = (el.textContent || '').trim().length > 0;
+    return hasText && style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity || '1') > 0.05;
+  });
+}
+
+function reshowGameInstallNotifyAfterNotifShow() {
+  if (hasVisibleNotifShow()) return;
+  document.querySelectorAll('.GameInstallNotify[data-reshow-after-notifshow="1"]').forEach(el => {
+    el.style.display = 'flex';
+    el.classList.remove('hiding');
+    el.removeAttribute('data-reshow-after-notifshow');
+  });
+}
+
 // Function to hijack and preserve notification
 function hijackVersionNotification() {
   document.querySelectorAll('.Notification').forEach(el => {
@@ -1700,6 +2248,7 @@ function hijackVersionNotification() {
       // Check if this is a version notification
       if (messageContent.includes('Cultivation') && 
           (messageContent.includes('available') || messageContent.includes('version'))) {
+        rememberVisibleGameInstallNotify();
         
         // Store the original content if we haven't already
         if (!originalNotificationContent) {
@@ -1714,8 +2263,8 @@ function hijackVersionNotification() {
   el.classList.add('NotifShow');
   el.style.top = '84%';
   el.style.right = '30%';
-  // Keep below backdrop (9996) and selector (9999), but above app content
-  el.style.zIndex = '9990';
+  // Keep version/update notifications above menu and dialog backdrops.
+  el.style.zIndex = '12040';
         
         // Update the link to point to latest releases
         const versionLink = msgDiv.querySelector('a');
@@ -1753,8 +2302,8 @@ function restoreHijackedContent() {
   hijackedNotification.classList.add('NotifShow');
   hijackedNotification.style.top = '84%';
   hijackedNotification.style.right = '30%';
-  // Keep below backdrop (9996) and selector (9999), but above app content
-  hijackedNotification.style.zIndex = '9990';
+  // Keep version/update notifications above menu and dialog backdrops.
+  hijackedNotification.style.zIndex = '12040';
     }
   }
 }
@@ -1762,6 +2311,7 @@ function restoreHijackedContent() {
 // Enhanced monitoring with faster intervals
 setInterval(hijackVersionNotification, 100); // Check every 100ms for new notifications
 setInterval(restoreHijackedContent, 200);    // Restore content every 200ms if needed
+setInterval(reshowGameInstallNotifyAfterNotifShow, 200);
 
 // Also use mutation observer for immediate detection
 const notificationObserver = new MutationObserver((mutations) => {
@@ -1770,6 +2320,7 @@ const notificationObserver = new MutationObserver((mutations) => {
       hijackVersionNotification();
       // Small delay then check if we need to restore
       setTimeout(restoreHijackedContent, 50);
+      setTimeout(reshowGameInstallNotifyAfterNotifShow, 50);
     }
   });
 });
@@ -1920,7 +2471,7 @@ function injectSettingsSidebarNav() {
   const versionEl = document.getElementById('version');
   const versionText = versionEl ? versionEl.textContent.trim() : 'v1.0.0';
   // Current theme version (from index.json)
-  const THEME_VERSION = '9.1.0';
+  const THEME_VERSION = '9.2.0';
   
   aboutPage.style.display = 'none';
   aboutPage.innerHTML = `
@@ -2987,8 +3538,16 @@ if (document.readyState === 'loading') {
     return c;
   }
 
+  const HOYO_SELECTED_CIRCLE_KEY = 'hoyoplay-selected-circle-index';
+  function normalizeCircleIndex(value) {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 2 ? parsed : 0;
+  }
+
   // Track which circle is currently selected (0=left,1=mid,2=right)
-  let selectedCircleIndex = 0;
+  let selectedCircleIndex = (() => {
+    try { return normalizeCircleIndex(localStorage.getItem(HOYO_SELECTED_CIRCLE_KEY)); } catch (_) { return 0; }
+  })();
 
   // Create three circles (left, middle, right) to support up to 3 backgrounds per side
   const leftCircle = makeCircle('hoyoplay-left');
@@ -3032,9 +3591,18 @@ if (document.readyState === 'loading') {
     return offline ? pickByKey(local) : pickByKey(remote);
   }
 
+  function getHoYoPlayUrlForIndex(idx) {
+    if (idx === 0) return getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
+    if (idx === 1) return getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
+    return getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
+  }
+
   // By default, select the center/right-most (index 1 if present)
   function updateCircles(selectedIndex) {
+    selectedIndex = normalizeCircleIndex(selectedIndex);
     selectedCircleIndex = selectedIndex;
+    try { window.__HOYO_SELECTED_CIRCLE_INDEX = selectedIndex; } catch (_) {}
+    try { localStorage.setItem(HOYO_SELECTED_CIRCLE_KEY, String(selectedIndex)); } catch (_) {}
     // selectedIndex: 0=left,1=mid,2=right
     const circles = [leftCircle, midCircle, rightCircle];
   const col = (window.__HOYO_CIRCLE_COLORS && window.__HOYO_CIRCLE_COLORS[selectedIndex]) || '#ffffff';
@@ -3066,8 +3634,8 @@ if (document.readyState === 'loading') {
     // Ensure play/pause control reflects selected circle immediately
     try { refreshControlForSelection(); } catch (_) {}
   }
-  // Default to the left (video+image1) as selected
-  updateCircles(0);
+  // Default to the persisted selection if present, otherwise left (video+image1).
+  updateCircles(selectedCircleIndex);
 
   // Add circles to overlay (left -> mid -> right)
   overlay.appendChild(leftCircle);
@@ -3137,6 +3705,39 @@ if (document.readyState === 'loading') {
     } catch (_) {}
     return false;
   }
+
+  function getAvailableCircleIndexFromSaved() {
+    const saved = (() => {
+      try { return normalizeCircleIndex(localStorage.getItem(HOYO_SELECTED_CIRCLE_KEY)); } catch (_) { return selectedCircleIndex; }
+    })();
+    const order = isHoYoPlayStartupRotationEnabled()
+      ? [(saved + 1) % 3, (saved + 2) % 3, saved]
+      : [saved, (saved + 1) % 3, (saved + 2) % 3];
+    for (const idx of order) {
+      if (canSwitchToIndexOffline(idx) && getHoYoPlayUrlForIndex(idx)) return idx;
+    }
+    return 0;
+  }
+
+  function selectHoYoPlayCircle(idx, options) {
+    options = options || {};
+    idx = normalizeCircleIndex(idx);
+    updateCircles(idx);
+    const url = getHoYoPlayUrlForIndex(idx);
+    if (url) setCustomBackground(url);
+    if (options.applyMedia !== false) {
+      try { applyMediaForIndex(idx); } catch (_) {}
+    }
+    return url || null;
+  }
+
+  try {
+    window.__hoyoplayGetUrlForIndex = getHoYoPlayUrlForIndex;
+    window.__hoyoplayApplySavedSelection = function applySavedHoYoPlaySelection() {
+      return selectHoYoPlayCircle(getAvailableCircleIndexFromSaved());
+    };
+  } catch (_) {}
+
   // Ensure we have a non-transparent background on pure-offline cold start
   function ensureOfflineDefaultBackground() {
     if (!isOffline()) return;
@@ -3181,15 +3782,13 @@ if (document.readyState === 'loading') {
       // Recalc overlay width when visibility changes
       updateOverlayWidth();
 
-      // If the currently selected circle is hidden, pick a visible one (left > mid > right)
+      // If the currently selected circle is hidden, pick the next visible one from the saved/current index.
       const visible = [hasLeft, hasMid, hasRight];
       if (!visible[selectedCircleIndex]) {
-        let newIndex = 0;
-        if (hasLeft) newIndex = 0;
-        else if (hasMid) newIndex = 1;
-        else if (hasRight) newIndex = 2;
+        const order = [selectedCircleIndex, (selectedCircleIndex + 1) % 3, (selectedCircleIndex + 2) % 3];
+        const newIndex = order.find(idx => visible[idx]);
         // If none visible, keep selection but nothing will show
-        if (visible[newIndex]) updateCircles(newIndex);
+        if (newIndex !== undefined && visible[newIndex]) updateCircles(newIndex);
       }
 
       // Ensure video control visibility follows video availability for the selected circle
@@ -3253,7 +3852,19 @@ if (document.readyState === 'loading') {
   let hoyoControlFadeTimer = null;
   const HOYO_CONTROL_FADE_MS = 220;
   // Track user intent per circle: only auto-play a circle if user pressed play on that circle.
-  let circleAutoPlay = [false, false, false];
+  function loadCircleAutoPlayState() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HOYO_VIDEO_AUTOPLAY_KEY) || 'null');
+      if (Array.isArray(parsed)) return [!!parsed[0], !!parsed[1], !!parsed[2]];
+    } catch (_) {}
+    return [false, false, false];
+  }
+
+  function saveCircleAutoPlayState() {
+    try { localStorage.setItem(HOYO_VIDEO_AUTOPLAY_KEY, JSON.stringify(circleAutoPlay)); } catch (_) {}
+  }
+
+  let circleAutoPlay = loadCircleAutoPlayState();
   let currentPlayingIndex = -1; // -1 when nothing is playing
   // Base path and per-circle media candidates
   const HOYO_BG_BASE = 'https://raw.githubusercontent.com/GID0317/Cultivation-HoYoPlay-Theme/refs/heads/main/Background/';
@@ -3532,6 +4143,7 @@ if (document.readyState === 'loading') {
         try { active.currentTime = 0; } catch (e) {}
         hoyoVideoPlaying = false;
         circleAutoPlay[idx] = false;
+        saveCircleAutoPlayState();
         currentPlayingIndex = -1;
         try {
           // Use the selected circle's fallback image
@@ -3552,6 +4164,7 @@ if (document.readyState === 'loading') {
       } else {
         // Play for selected circle with correct source and smooth swap if needed
         circleAutoPlay[idx] = true;
+        saveCircleAutoPlayState();
         currentPlayingIndex = idx;
         try { showVideoOverlay(true); } catch (e) {}
         // Ensure overlay image matches target circle on manual play
@@ -3824,33 +4437,19 @@ leftCircle.addEventListener('mouseenter', () => {
   if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(0)) return; // offline with no cache for left -> do not switch
-  updateCircles(0);
-  const url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for left circle
-  applyMediaForIndex(0);
+  selectHoYoPlayCircle(0);
 });
 midCircle.addEventListener('mouseenter', () => {
   if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(1)) return; // offline with no cache for mid -> do not switch
-  updateCircles(1);
-  // Middle circle should use image2 (right key index 0)
-  const url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for mid circle
-  applyMediaForIndex(1);
+  selectHoYoPlayCircle(1);
 });
 rightCircle.addEventListener('mouseenter', () => {
   if (isUsingBuiltin()) return; // respect persisted built-in mode
   if (isUiOverlayActive()) return; // disabled when Mods/menu overlays are active
   if (!canSwitchToIndexOffline(2)) return; // offline with no cache for right -> do not switch
-  updateCircles(2);
-  // Right circle should use image3 (right key index 1)
-  const url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-  if (url) setCustomBackground(url);
-  // Apply media for right circle
-  applyMediaForIndex(2);
+  selectHoYoPlayCircle(2);
 });
 
   // Show/hide overlay and shadow on mouse movement near top center
@@ -3959,6 +4558,24 @@ rightCircle.addEventListener('mouseenter', () => {
       img.src = src;
     } catch (_) { /* ignore */ }
   }
+  try {
+    window.__hoyoplayRefreshVersionButton = function refreshVersionHighlightsButtonStyle() {
+      const btn = document.getElementById('customNewsButton');
+      if (!btn) return;
+      if (isUsingBuiltin()) {
+        updateVersionHighlightsContrastForBuiltIn();
+        return;
+      }
+      const idx = Number.isInteger(window.__HOYO_SELECTED_CIRCLE_INDEX) ? window.__HOYO_SELECTED_CIRCLE_INDEX : selectedCircleIndex;
+      const col = (window.__HOYO_CIRCLE_COLORS && window.__HOYO_CIRCLE_COLORS[idx]) || '#ffffff';
+      btn.style.color = col;
+      btn.style.borderColor = col;
+      btn.style.textShadow = '';
+    };
+    setTimeout(() => {
+      try { window.__hoyoplayRefreshVersionButton(); } catch (_) {}
+    }, 0);
+  } catch (_) {}
   // Recompute contrast on resize in built-in mode
   window.addEventListener('resize', () => { try { if (isUsingBuiltin()) updateVersionHighlightsContrastForBuiltIn(); } catch (_) {} });
   function setUseBuiltInBackground(enabled) {
@@ -4007,13 +4624,7 @@ rightCircle.addEventListener('mouseenter', () => {
         } catch (_) {}
         // Restore currently-selected Hoyoplay background for the active circle
         try {
-          updateCircles(selectedCircleIndex);
-          // Re-apply cached URL for current selection
-          let url = null;
-          if (selectedCircleIndex === 0) url = getCachedUrlByIndex(leftBgKey, 0) || getCachedUrlByIndex(rightBgKey, 0);
-          else if (selectedCircleIndex === 1) url = getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-          else url = getCachedUrlByIndex(rightBgKey, 1) || getCachedUrlByIndex(rightBgKey, 0) || getCachedUrlByIndex(leftBgKey, 0);
-          if (url) setCustomBackground(url);
+          selectHoYoPlayCircle(selectedCircleIndex);
         } catch (e) { /* ignore */ }
       }
     } catch (e) { /* ignore */ }
@@ -4135,6 +4746,316 @@ rightCircle.addEventListener('mouseenter', () => {
   try { refreshGroupedRows(); } catch (_) {}
   // Ensure non-transparent background on offline cold start
   ensureOfflineDefaultBackground();
+
+  // HoYoPlay-style overlay scrollbars: hidden at rest, visible while scrolling
+  // or hovering a scrollable area, and kept visible while dragging the track.
+  (function setupHoYoPlayScrollbars() {
+    const controllers = new WeakMap();
+    const liveControllers = new Set();
+    let scanScheduled = false;
+    const scrollableSelector = [
+      '#menuContent',
+      '#settings-about-page',
+      '#advanced-options-page',
+      '.custom-dropdown-menu',
+      '.ModDownloadList',
+      '.ModList',
+      '.ModListInner',
+      '.ExtrasMenuContent'
+    ].join(',');
+
+    function isNewsScrollbarExcluded(el) {
+      try {
+        return !!(el && el.closest && el.closest('#newsContent, .NewsContent, .newsContent'));
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function isScrollableCandidate(el) {
+      if (!(el instanceof HTMLElement)) return false;
+      if (el === document.body || el === document.documentElement) return false;
+      if (isNewsScrollbarExcluded(el)) return false;
+      if (el.classList.contains('hoyoplay-scrollbar-track') || el.classList.contains('hoyoplay-scrollbar-thumb')) return false;
+      const tag = el.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return false;
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      const scrollableOverflow = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay';
+      return scrollableOverflow && el.scrollHeight > el.clientHeight + 1;
+    }
+
+    function enhanceScrollbar(el) {
+      if (!isScrollableCandidate(el)) return;
+      const existing = controllers.get(el);
+      if (existing) {
+        existing.update();
+        return;
+      }
+
+      const computed = window.getComputedStyle(el);
+      if (computed.position === 'static') {
+        el.dataset.hoyoplayScrollPosition = 'static';
+        el.style.position = 'relative';
+      }
+
+      el.classList.add('hoyoplay-scroll-enhanced');
+
+      const track = document.createElement('div');
+      track.className = 'hoyoplay-scrollbar-track hidden';
+      const thumb = document.createElement('div');
+      thumb.className = 'hoyoplay-scrollbar-thumb';
+      track.appendChild(thumb);
+      el.appendChild(track);
+
+      let hideTimer = null;
+      let hovering = false;
+      let dragging = false;
+      let dragOffset = 0;
+      let dragTrackTop = 0;
+      let dragTrackLeft = 0;
+      let dragTrackRight = 0;
+      let dragTrackHeight = 0;
+      let dragAvailable = 1;
+      let dragMaxScroll = 0;
+      let rafPending = false;
+      const SETTINGS_SCROLLBAR_BOTTOM_GAP = 12;
+      const DROPDOWN_SCROLLBAR_VERTICAL_GAP = 5;
+      const isDropdownScrollbar = el.classList.contains('custom-dropdown-menu');
+
+      const getScrollbarTopGap = () => isDropdownScrollbar ? DROPDOWN_SCROLLBAR_VERTICAL_GAP : 0;
+
+      const getScrollbarBottomGap = () => {
+        try {
+          if (isDropdownScrollbar) return DROPDOWN_SCROLLBAR_VERTICAL_GAP;
+          const menuDialog = el.closest('#menuContainer.Menu, #advancedDialogContainer.Menu.Options');
+          const isMenuContent = el.id === 'menuContent';
+          const isSettingsSubPage = el.id === 'settings-about-page' || el.id === 'advanced-options-page';
+          return menuDialog && (isMenuContent || isSettingsSubPage) ? SETTINGS_SCROLLBAR_BOTTOM_GAP : 0;
+        } catch (_) {
+          return 0;
+        }
+      };
+
+      const clearHideTimer = () => {
+        if (hideTimer) {
+          clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+      };
+
+      const show = () => {
+        clearHideTimer();
+        el.classList.remove('hoyoplay-scrollbar-fast-hide');
+        el.classList.add('hoyoplay-scrollbar-visible');
+      };
+
+      const scheduleHide = (delay = 850, fast = false) => {
+        clearHideTimer();
+        if (hovering || dragging) return;
+        el.classList.toggle('hoyoplay-scrollbar-fast-hide', !!fast);
+        hideTimer = setTimeout(() => {
+          el.classList.remove('hoyoplay-scrollbar-visible');
+          hideTimer = null;
+        }, delay);
+      };
+
+      const update = () => {
+        rafPending = false;
+        if (!el.isConnected) {
+          cleanup();
+          return;
+        }
+
+        const maxScroll = el.scrollHeight - el.clientHeight;
+        if (maxScroll <= 1 || el.clientHeight <= 0) {
+          track.classList.add('hidden');
+          el.classList.remove('hoyoplay-scrollbar-visible');
+          return;
+        }
+
+        track.classList.remove('hidden');
+        const topGap = getScrollbarTopGap();
+        const bottomGap = getScrollbarBottomGap();
+        const trackHeight = Math.max(0, el.clientHeight - topGap - bottomGap);
+        track.style.top = topGap + 'px';
+        track.style.height = trackHeight + 'px';
+        track.style.transform = 'translateY(' + el.scrollTop + 'px)';
+
+        const minThumb = 28;
+        const thumbHeight = Math.min(trackHeight, Math.max(minThumb, Math.round((el.clientHeight / el.scrollHeight) * trackHeight)));
+        const available = Math.max(0, trackHeight - thumbHeight);
+        const thumbTop = maxScroll > 0 ? Math.round((el.scrollTop / maxScroll) * available) : 0;
+        thumb.style.height = thumbHeight + 'px';
+        thumb.style.transform = 'translateY(' + thumbTop + 'px)';
+      };
+
+      const requestUpdate = () => {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(update);
+      };
+
+      const onScroll = () => {
+        show();
+        requestUpdate();
+        scheduleHide();
+      };
+
+      const scrollFromPointer = (clientY) => {
+        const nextTop = Math.max(0, Math.min(clientY - dragTrackTop - dragOffset, dragAvailable));
+        el.scrollTop = (nextTop / dragAvailable) * dragMaxScroll;
+      };
+
+      const syncDragHoverState = (clientX, clientY) => {
+        if (!dragging) return;
+        const wasInsideTrack = track.classList.contains('dragging-over');
+        const insideTrack =
+          clientX >= dragTrackLeft &&
+          clientX <= dragTrackRight &&
+          clientY >= dragTrackTop &&
+          clientY <= dragTrackTop + dragTrackHeight;
+        if (insideTrack !== wasInsideTrack) {
+          track.classList.add('dragging-instant');
+          requestAnimationFrame(() => {
+            try { track.classList.remove('dragging-instant'); } catch (_) {}
+          });
+        }
+        track.classList.toggle('dragging-over', insideTrack);
+      };
+
+      const onPointerMove = (event) => {
+        if (!dragging) return;
+        event.preventDefault();
+        syncDragHoverState(event.clientX, event.clientY);
+        scrollFromPointer(event.clientY);
+      };
+
+      const endDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        track.classList.remove('dragging', 'dragging-over', 'dragging-instant');
+        try { track.releasePointerCapture?.(track.dataset.pointerId); } catch (_) {}
+        scheduleHide();
+      };
+
+      const onScrollableEnter = () => {
+        hovering = true;
+        show();
+      };
+
+      const onScrollableLeave = () => {
+        hovering = false;
+        scheduleHide(20, true);
+      };
+
+      el.addEventListener('mouseenter', onScrollableEnter);
+      el.addEventListener('mouseleave', onScrollableLeave);
+
+      track.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        event.preventDefault();
+        show();
+        dragging = true;
+        track.classList.add('dragging');
+        track.dataset.pointerId = String(event.pointerId);
+        try { track.setPointerCapture(event.pointerId); } catch (_) {}
+        const trackRect = track.getBoundingClientRect();
+        const thumbRect = thumb.getBoundingClientRect();
+        const thumbHeight = thumb.offsetHeight || 28;
+        dragTrackTop = trackRect.top;
+        dragTrackLeft = trackRect.left;
+        dragTrackRight = trackRect.right;
+        dragTrackHeight = trackRect.height;
+        dragAvailable = Math.max(1, dragTrackHeight - thumbHeight);
+        dragMaxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+        syncDragHoverState(event.clientX, event.clientY);
+        if (event.target === thumb) {
+          dragOffset = Math.max(0, Math.min(event.clientY - thumbRect.top, thumbHeight));
+        } else {
+          dragOffset = thumbHeight / 2;
+          scrollFromPointer(event.clientY);
+        }
+      });
+
+      track.addEventListener('pointermove', onPointerMove);
+      track.addEventListener('pointerup', endDrag);
+      track.addEventListener('pointercancel', endDrag);
+      track.addEventListener('lostpointercapture', endDrag);
+      el.addEventListener('scroll', onScroll, { passive: true });
+
+      let resizeObserver = null;
+      try {
+        resizeObserver = new ResizeObserver(() => requestUpdate());
+        resizeObserver.observe(el);
+      } catch (_) {}
+
+      const controller = {
+        el,
+        update: requestUpdate,
+        cleanup
+      };
+
+      function cleanup() {
+        clearHideTimer();
+        try { resizeObserver?.disconnect(); } catch (_) {}
+        try { el.removeEventListener('scroll', onScroll); } catch (_) {}
+        try { el.removeEventListener('mouseenter', onScrollableEnter); } catch (_) {}
+        try { el.removeEventListener('mouseleave', onScrollableLeave); } catch (_) {}
+        try { track.remove(); } catch (_) {}
+        try { el.classList.remove('hoyoplay-scroll-enhanced', 'hoyoplay-scrollbar-visible', 'hoyoplay-scrollbar-fast-hide'); } catch (_) {}
+        controllers.delete(el);
+        liveControllers.delete(controller);
+      }
+
+      controllers.set(el, controller);
+      liveControllers.add(controller);
+      requestUpdate();
+    }
+
+    function scanScrollbars() {
+      scanScheduled = false;
+      liveControllers.forEach(controller => {
+        if (!controller.el || !controller.el.isConnected) {
+          controller.cleanup();
+        } else if (isNewsScrollbarExcluded(controller.el)) {
+          controller.cleanup();
+        } else {
+          controller.update();
+        }
+      });
+      const candidates = new Set();
+      document.querySelectorAll(scrollableSelector).forEach(el => candidates.add(el));
+      document.querySelectorAll('*').forEach(el => {
+        if (isScrollableCandidate(el)) {
+          candidates.add(el);
+        }
+      });
+      candidates.forEach(enhanceScrollbar);
+    }
+
+    function scheduleScrollbarScan() {
+      if (scanScheduled) return;
+      scanScheduled = true;
+      setTimeout(() => {
+        requestAnimationFrame(scanScrollbars);
+      }, 120);
+    }
+
+    const scrollbarObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const target = mutation.target;
+        if (target instanceof HTMLElement && target.closest('.hoyoplay-scrollbar-track')) {
+          continue;
+        }
+        scheduleScrollbarScan();
+        break;
+      }
+    });
+    scrollbarObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    window.addEventListener('resize', scheduleScrollbarScan);
+    scheduleScrollbarScan();
+  })();
 
   // Re-layout backdrop panels on resize; only when visible
   window.addEventListener('resize', () => {
@@ -4510,29 +5431,37 @@ _runHoyoplayRefreshOnStartup();
 // Also check periodically in case menu is recreated
 //setInterval(injectCustomOptionSection, 1000);
 
-// Auto-apply cached background after refresh (prefer left-default image1, then right)
+// Auto-apply cached background after refresh, advancing from the last selected HoYoPlay circle.
 async function _applyCachedBackgroundOnStartup() {
   try {
     const res = await window.hoyoplayRefresh();
+    if (isBuiltInBackgroundEnabled()) return;
     // res.left/res.right are arrays returned by refreshHoYoPlayCache
     const left = res && res.left && res.left[0];
     const right = res && res.right && res.right[0];
-    const toApply = left || right;
+    const canApplySavedSelection = !!(window && typeof window.__hoyoplayApplySavedSelection === 'function');
+    const toApply = (() => {
+      if (canApplySavedSelection) return true;
+      return left || right;
+    })();
     if (toApply) {
       // small delay to ensure .App exists
       setTimeout(() => {
-        try { window.setCustomBackground(toApply); } catch (e) {}
         try {
-          // keep control visible on startup in left-selected state
+          if (canApplySavedSelection) {
+            window.__hoyoplayApplySavedSelection();
+          } else {
+            window.setCustomBackground(toApply);
+          }
+        } catch (e) {}
+        try {
+          // keep control visibility in sync with the restored selected circle
           if (typeof ensureVideoElements === 'function') ensureVideoElements();
-          if (typeof updateCircles === 'function') updateCircles(0);
           try { if (window && typeof window._hoyoplayUpdateCircles === 'function') window._hoyoplayUpdateCircles(); } catch (e) {}
           if (typeof showVideoOverlay === 'function' && window) {
-            // hide overlay but show control
+            // Keep control visibility in sync without overriding restored autoplay overlay state.
             const btn = document.getElementById('hoyoplay-video-control');
             if (btn) btn.style.display = 'block';
-            const ov = document.getElementById('hoyoplay-video-overlay');
-            if (ov) ov.style.opacity = '0';
           }
         } catch (e) {}
       }, 180);
@@ -4545,6 +5474,36 @@ _applyCachedBackgroundOnStartup();
 // --- Custom Dropdown Hijacker ---
 (function hijackNativeDropdowns() {
   const hijackedSelects = new WeakSet();
+  const dropdownControllers = new Set();
+
+  function pruneDropdownControllers() {
+    dropdownControllers.forEach(controller => {
+      if (!controller.wrapper || !controller.wrapper.isConnected) {
+        try { if (typeof controller.cleanup === 'function') controller.cleanup(); } catch (_) {}
+        dropdownControllers.delete(controller);
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    pruneDropdownControllers();
+    dropdownControllers.forEach(controller => {
+      if (controller.wrapper && !controller.wrapper.contains(e.target)) {
+        controller.close();
+      }
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    pruneDropdownControllers();
+    dropdownControllers.forEach(controller => {
+      if (controller.wrapper && controller.wrapper.classList.contains('open')) {
+        controller.close();
+        try { controller.trigger.focus(); } catch (_) {}
+      }
+    });
+  });
   
   // Close all open custom dropdowns except the one provided
   function closeAllDropdowns(exceptWrapper) {
@@ -4552,12 +5511,20 @@ _applyCachedBackgroundOnStartup();
       const openWrappers = document.querySelectorAll('.custom-dropdown-wrapper.open');
       openWrappers.forEach(w => {
         if (w !== exceptWrapper) {
+          try { w.dispatchEvent(new CustomEvent('hoyoplay-dropdown-force-close')); } catch (_) {}
           const m = w.querySelector('.custom-dropdown-menu');
           if (m) {
             m.classList.remove('opening', 'closing');
             m.style.display = 'none';
           }
           w.classList.remove('open');
+          w.removeAttribute('data-open');
+          const t = w.querySelector('.custom-dropdown-trigger');
+          if (t) {
+            t.classList.remove('open');
+            t.removeAttribute('data-open');
+            t.setAttribute('aria-expanded', 'false');
+          }
         }
       });
     } catch (_) {}
@@ -4573,8 +5540,11 @@ _applyCachedBackgroundOnStartup();
     // If this select belongs to the Profiles option, force the menu to open upwards
     // and mark it so we can show a leading icon in the trigger.
     let isProfilesDropdown = false;
+    let dropdownHost = null;
     try {
       const parentId = nativeSelect.parentNode && nativeSelect.parentNode.id;
+      dropdownHost = nativeSelect.parentNode instanceof HTMLElement ? nativeSelect.parentNode : null;
+      if (dropdownHost) dropdownHost.classList.add('custom-dropdown-host');
       if (nativeSelect.id === 'menuOptionsSelectMenuProfiles' || parentId === 'menuOptionsSelectProfiles') {
         wrapper.classList.add('open-up');
         wrapper.classList.add('custom-dropdown-profiles');
@@ -4611,6 +5581,31 @@ _applyCachedBackgroundOnStartup();
     const menu = document.createElement('div');
     menu.className = 'custom-dropdown-menu';
     menu.style.display = 'none';
+    let dropdownOpen = false;
+    let closeMenuTimer = null;
+    let triggerPressStartedAt = 0;
+    let suppressNextPointerClick = false;
+    let pointerHeldDown = false;
+    let pointerLeftDuringPress = false;
+    let pointerReturnedDuringPress = false;
+    let nativeSelectObserver = null;
+    const DROPDOWN_HOLD_CLICK_MS = 350;
+
+    function syncDropdownOpenState(isOpen) {
+      dropdownOpen = !!isOpen;
+      wrapper.classList.toggle('open', dropdownOpen);
+      trigger.classList.toggle('open', dropdownOpen);
+      trigger.setAttribute('aria-expanded', dropdownOpen ? 'true' : 'false');
+      if (dropdownOpen) {
+        wrapper.setAttribute('data-open', 'true');
+        trigger.setAttribute('data-open', 'true');
+        if (dropdownHost) dropdownHost.classList.add('custom-dropdown-open');
+      } else {
+        wrapper.removeAttribute('data-open');
+        trigger.removeAttribute('data-open');
+        if (dropdownHost) dropdownHost.classList.remove('custom-dropdown-open');
+      }
+    }
     
     // Text measurement helpers for pixel-accurate truncation
     const __measureCanvas = document.createElement('canvas');
@@ -4638,6 +5633,32 @@ _applyCachedBackgroundOnStartup();
         if (sliceW <= maxPx) low = mid; else high = mid - 1;
       }
       return codepoints.slice(0, Math.max(0, low)).join('') + ellipsis;
+    }
+
+    function getWheelDeltaY(event) {
+      let delta = event.deltaY || 0;
+      if (event.deltaMode === 1) delta *= 16;
+      if (event.deltaMode === 2) delta *= Math.max(1, menu.clientHeight || 1);
+      return delta;
+    }
+
+    function containDropdownWheel(event) {
+      const maxScroll = Math.max(0, menu.scrollHeight - menu.clientHeight);
+      if (maxScroll <= 0) return;
+      const deltaY = getWheelDeltaY(event);
+      if (!deltaY) {
+        event.stopPropagation();
+        return;
+      }
+
+      const atTop = menu.scrollTop <= 0;
+      const atBottom = menu.scrollTop >= maxScroll - 1;
+      const wouldScrollPastEdge = (deltaY < 0 && atTop) || (deltaY > 0 && atBottom);
+      if (wouldScrollPastEdge) {
+        event.preventDefault();
+        menu.scrollTop = deltaY < 0 ? 0 : maxScroll;
+      }
+      event.stopPropagation();
     }
 
     // Helper: format Profiles trigger text by pixel width (about 10ch of current font)
@@ -4711,7 +5732,11 @@ _applyCachedBackgroundOnStartup();
     
     function openMenu() {
       // Avoid re-running open logic if already open (prevents scroll resets on hover spam)
-      if (wrapper.classList.contains('open') && menu.style.display !== 'none') return;
+      if (dropdownOpen && wrapper.classList.contains('open') && menu.style.display !== 'none') return;
+      if (closeMenuTimer) {
+        clearTimeout(closeMenuTimer);
+        closeMenuTimer = null;
+      }
       // Ensure only one dropdown can be open at a time
       closeAllDropdowns(wrapper);
       
@@ -4761,8 +5786,7 @@ _applyCachedBackgroundOnStartup();
       menu.style.display = 'block';
       menu.classList.remove('closing');
       menu.classList.add('opening');
-      wrapper.classList.add('open');
-      trigger.setAttribute('aria-expanded', 'true');
+      syncDropdownOpenState(true);
 
       // If wrapper has open-up class, position menu above the trigger
       if (wrapper.classList.contains('open-up')) {
@@ -4822,34 +5846,100 @@ _applyCachedBackgroundOnStartup();
     }
     
     function closeMenu() {
+      if (!dropdownOpen && menu.style.display === 'none') return;
+      if (closeMenuTimer) {
+        clearTimeout(closeMenuTimer);
+        closeMenuTimer = null;
+      }
       menu.classList.remove('opening');
       menu.classList.add('closing');
-      wrapper.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
+      syncDropdownOpenState(false);
       // Reset per-open recenter guard
       try { wrapper.removeAttribute('data-recenter-done'); } catch(_) {}
       
       // Hide after animation completes
-      setTimeout(() => {
+      closeMenuTimer = setTimeout(() => {
         menu.style.display = 'none';
         menu.classList.remove('closing');
+        closeMenuTimer = null;
       }, 150);
     }
+
+    wrapper.addEventListener('hoyoplay-dropdown-force-close', () => {
+      closeMenu();
+    });
     
     function toggleMenu() {
-      if (menu.style.display === 'none') {
-        openMenu();
-      } else {
+      if (dropdownOpen && menu.style.display !== 'none') {
         closeMenu();
+      } else {
+        openMenu();
       }
     }
     
     // Event listeners
+    trigger.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.pointerType === 'mouse') e.preventDefault();
+      pointerHeldDown = true;
+      suppressNextPointerClick = false;
+      pointerLeftDuringPress = false;
+      pointerReturnedDuringPress = false;
+      triggerPressStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    });
+
+    trigger.addEventListener('pointerup', () => {
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      suppressNextPointerClick = pointerHeldDown && triggerPressStartedAt > 0 && (now - triggerPressStartedAt) > DROPDOWN_HOLD_CLICK_MS && !pointerReturnedDuringPress;
+      pointerHeldDown = false;
+      triggerPressStartedAt = 0;
+    });
+
+    trigger.addEventListener('pointerleave', () => {
+      if (pointerHeldDown) pointerLeftDuringPress = true;
+    });
+
+    trigger.addEventListener('pointerenter', () => {
+      if (pointerHeldDown && pointerLeftDuringPress) pointerReturnedDuringPress = true;
+    });
+
+    trigger.addEventListener('pointercancel', () => {
+      pointerHeldDown = false;
+      triggerPressStartedAt = 0;
+      suppressNextPointerClick = false;
+      pointerLeftDuringPress = false;
+      pointerReturnedDuringPress = false;
+    });
+
+    trigger.addEventListener('lostpointercapture', () => {
+      pointerHeldDown = false;
+      triggerPressStartedAt = 0;
+      pointerLeftDuringPress = false;
+      pointerReturnedDuringPress = false;
+    });
+
     // Click still toggles the menu for all dropdowns
     trigger.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
-      closeAllDropdowns(wrapper);
+      if (isProfilesDropdown) {
+        return;
+      }
+      if (suppressNextPointerClick) {
+        suppressNextPointerClick = false;
+        pointerLeftDuringPress = false;
+        pointerReturnedDuringPress = false;
+        if (typeof trigger.blur === 'function') {
+          try { trigger.blur(); } catch (_) {}
+        }
+        return;
+      }
+      pointerLeftDuringPress = false;
+      pointerReturnedDuringPress = false;
       toggleMenu();
+      if (!dropdownOpen && typeof trigger.blur === 'function') {
+        try { trigger.blur(); } catch (_) {}
+      }
     });
 
     // For the Profiles dropdown, also open on hover (mouseenter) and keep it
@@ -4874,10 +5964,11 @@ _applyCachedBackgroundOnStartup();
       };
 
       const scheduleOpenOnHover = () => {
+        if (pointerHeldDown) return;
         if (hoverOpenTimeout) return; // already scheduled
         hoverOpenTimeout = setTimeout(() => {
           // Only open on hover if it's currently closed
-          if (menu.style.display === 'none') {
+          if (!dropdownOpen && !pointerHeldDown) {
             openMenu();
           }
           hoverOpenTimeout = null;
@@ -4902,25 +5993,11 @@ _applyCachedBackgroundOnStartup();
       });
     }
     
-    // Close on outside click
-    document.addEventListener('click', (e) => {
-      if (!wrapper.contains(e.target)) {
-        closeMenu();
-      }
-    });
-    
-    // Close on ESC
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && wrapper.classList.contains('open')) {
-        closeMenu();
-        trigger.focus();
-      }
-    });
-    
     // Keyboard navigation
     trigger.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        if (isProfilesDropdown) return;
         openMenu();
         menu.querySelector('.custom-dropdown-item:not(.disabled)')?.focus();
       }
@@ -4944,6 +6021,8 @@ _applyCachedBackgroundOnStartup();
         current?.click();
       }
     });
+
+    menu.addEventListener('wheel', containDropdownWheel, { passive: false });
     
     // Make menu items focusable
     menu.addEventListener('mouseover', (e) => {
@@ -4957,10 +6036,10 @@ _applyCachedBackgroundOnStartup();
     });
     
     // Watch for native select changes
-    const observer = new MutationObserver(() => {
+    nativeSelectObserver = new MutationObserver(() => {
       updateOptions();
     });
-    observer.observe(nativeSelect, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
+    nativeSelectObserver.observe(nativeSelect, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
     
     nativeSelect.addEventListener('change', () => {
       const selected = nativeSelect.options[nativeSelect.selectedIndex];
@@ -4989,6 +6068,16 @@ _applyCachedBackgroundOnStartup();
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.setAttribute('aria-expanded', 'false');
     menu.setAttribute('role', 'listbox');
+
+    dropdownControllers.add({
+      wrapper,
+      trigger,
+      close: closeMenu,
+      cleanup() {
+        try { if (nativeSelectObserver) nativeSelectObserver.disconnect(); } catch (_) {}
+        try { if (dropdownHost) dropdownHost.classList.remove('custom-dropdown-host', 'custom-dropdown-open'); } catch (_) {}
+      }
+    });
   }
   
   function hijackSelects() {
