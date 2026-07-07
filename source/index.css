@@ -169,7 +169,7 @@
   min-width: 200px; /* Minimum menu width */
   width: max-content; /* Expand to fit content */
   max-width: 300px; /* Maximum menu width */
-  padding: 6px 6px 0 6px;
+  padding: 6px;
   right: 0; /* Right-aligned to trigger */
   left: auto;
   /* Animation properties */
@@ -378,7 +378,8 @@
 }
 
 /* Last item spacing */
-.custom-dropdown-item:last-child {
+.custom-dropdown-item:last-child,
+.custom-dropdown-item:has(+ .hoyoplay-scrollbar-track) {
   margin-bottom: 0;
 }
 
