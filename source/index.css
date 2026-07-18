@@ -802,10 +802,14 @@
   position: relative;
 }
 
-/* Make the icon non-draggable */
+/* Images are visual UI assets, not draggable browser content. */
+img {
+  -webkit-user-drag: none !important;
+  user-select: none !important;
+}
+
 #leftBar img {
   pointer-events: auto !important; /* Override to make clickable */
-  user-select: none !important;
   cursor: default !important; /* Use default cursor instead of pointer */
 }
 

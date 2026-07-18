@@ -99,6 +99,13 @@ if (!window.__hoyoplayContextMenuGuardInstalled) {
   window.__hoyoplayContextMenuGuardInstalled = true;
 }
 
+if (!window.__hoyoplayImageDragGuardInstalled) {
+  document.addEventListener('dragstart', (event) => {
+    if (event.target instanceof HTMLImageElement) event.preventDefault();
+  }, true);
+  window.__hoyoplayImageDragGuardInstalled = true;
+}
+
 if (!window.__hoyoplayOptionsClearGuardInstalled) {
   document.addEventListener('mousedown', (event) => {
     const target = event.target instanceof Element ? event.target : null;
