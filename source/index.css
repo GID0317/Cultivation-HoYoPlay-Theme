@@ -1614,6 +1614,46 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   margin-left: auto;
 }
 
+/* Keep standalone text fields aligned with the Options directory fields. */
+#menuContainer.Menu.Options {
+  --hoyoplay-options-text-input-width: 185px;
+  --hoyoplay-launch-args-input-width: 215px;
+}
+
+#menuContainer.Menu.Options :is(
+  .DirInput,
+  #profileConfigContainer,
+  #menuOptionsValueLaunchArgs
+) > .TextInputWrapper {
+  width: var(--hoyoplay-options-text-input-width);
+  min-width: var(--hoyoplay-options-text-input-width);
+  max-width: var(--hoyoplay-options-text-input-width);
+  flex: 0 0 var(--hoyoplay-options-text-input-width);
+}
+
+#menuContainer.Menu.Options :is(
+  .DirInput,
+  #profileConfigContainer,
+  #menuOptionsValueLaunchArgs
+) > .TextInputWrapper > .TextInput {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Launch Arguments has an additional OptionValue flex boundary. */
+#menuContainer.Menu.Options #menuOptionsValueLaunchArgs,
+#menuContainer.Menu.Options #menuOptionsContainerLaunchArgs .TextInputWrapper,
+#menuContainer.Menu.Options input#launch_args {
+  width: var(--hoyoplay-launch-args-input-width) !important;
+  min-width: var(--hoyoplay-launch-args-input-width) !important;
+  max-width: var(--hoyoplay-launch-args-input-width) !important;
+  box-sizing: border-box !important;
+}
+
+#menuContainer.Menu.Options #menuOptionsValueLaunchArgs {
+  flex: 0 0 var(--hoyoplay-launch-args-input-width) !important;
+}
+
 #menuContainer.Menu.Options #menuContainerTop,
 #advancedDialogContainer.Menu.Options #menuContainerTop {
   margin-left: 250px;
