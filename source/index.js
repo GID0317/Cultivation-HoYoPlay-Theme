@@ -5393,7 +5393,7 @@ if (extraCircle) {
     });
     scrollbarObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     window.addEventListener('resize', scheduleScrollbarScan);
-    scheduleScrollbarScan();
+    scanScrollbars();
   })();
 
   // Re-layout backdrop panels on resize; only when visible

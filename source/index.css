@@ -2530,6 +2530,35 @@ input#profile_name {
   height: 0 !important;
 }
 
+/* Hide native gutters before the JS overlay controller attaches. */
+:is(
+  #menuContent,
+  #settings-about-page,
+  #advanced-options-page,
+  .custom-dropdown-menu,
+  .ModDownloadList,
+  .ModList,
+  .ModListInner,
+  .ExtrasMenuContent
+) {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+:is(
+  #menuContent,
+  #settings-about-page,
+  #advanced-options-page,
+  .custom-dropdown-menu,
+  .ModDownloadList,
+  .ModList,
+  .ModListInner,
+  .ExtrasMenuContent
+)::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .hoyoplay-scrollbar-track {
   position: absolute;
   top: 0;
@@ -3908,9 +3937,9 @@ body:has(#ExtrasMenuButton) .NotifShow {
     margin-right: 10px;
 }
 
-/* When the menu actually scrolls, reserve gutter to prevent layout shift */
+/* The custom overlay never reserves a native scrollbar gutter. */
 .custom-dropdown-menu.has-scroll {
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 /* Profiles dropdown menu: allow smaller minimum and a slightly larger maximum */
