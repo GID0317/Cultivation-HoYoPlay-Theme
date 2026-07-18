@@ -90,9 +90,11 @@ function isBrowserContextMenuDisabled() {
   }
 }
 
+const browserContextMenuDisabledForSession = isBrowserContextMenuDisabled();
+
 if (!window.__hoyoplayContextMenuGuardInstalled) {
   document.addEventListener('contextmenu', (event) => {
-    if (isBrowserContextMenuDisabled()) event.preventDefault();
+    if (browserContextMenuDisabledForSession) event.preventDefault();
   }, true);
   window.__hoyoplayContextMenuGuardInstalled = true;
 }
@@ -1565,6 +1567,8 @@ function useOriginalMigotoDelayPlacement() {
   }
 }
 
+const useOriginalMigotoDelayPlacementForSession = useOriginalMigotoDelayPlacement();
+
 async function runThemedMigotoDelayFlow() {
   const invoke = getTauriInvoke();
   if (!invoke) {
@@ -1637,7 +1641,7 @@ function interceptMigotoDelayButton() {
   if (!migotoContainer || !originalButton || !originalSection) return;
 
   let button;
-  if (useOriginalMigotoDelayPlacement()) {
+  if (useOriginalMigotoDelayPlacementForSession) {
     originalSection.style.removeProperty('display');
     const improvedOption = document.getElementById('menuOptionsContainerMigotoDelay');
     if (improvedOption) improvedOption.remove();
@@ -2358,7 +2362,6 @@ function showAdvancedDialog() {
           originalMigotoDelayPlacementToggle.checked ? '1' : '0'
         );
       } catch (_) {}
-      interceptMigotoDelayButton();
       showAdvancedRestartDialog();
     });
   }
