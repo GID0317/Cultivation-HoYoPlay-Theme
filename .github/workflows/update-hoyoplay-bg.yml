@@ -52,6 +52,8 @@ jobs:
                   linkHover: (b && b.link_hover && b.link_hover.url) || ''
                 }))
                 .filter(slot => slot.image);
+              if (backgroundSlots.length < 3) throw new Error(`expected at least 3 background slots, got ${backgroundSlots.length}`);
+              const runtimeCircleCount = Math.min(backgroundSlots.length, 4);
 
               if (!backgroundSlots.length) throw new Error('no background urls found');
 
@@ -113,9 +115,22 @@ jobs:
               const imagePaths = backgroundSlots.map((_, i) => path.join(outDir, `image${i + 1}.webp`));
               for (let i = 0; i < backgroundSlots.length; i++) {
                 const imagePath = imagePaths[i];
-                try { await downloadTo(backgroundSlots[i].image, imagePath); } catch (e) { console.warn(`image${i + 1} download failed`, e.message); removeIfExists(imagePath); }
+                await downloadTo(backgroundSlots[i].image, imagePath);
               }
               removeStaleNumberedFiles('image', '.webp', backgroundSlots.length);
+
+              const sourceIndexPath = path.join(process.cwd(), 'source', 'index.js');
+              const countPattern = /const HOYO_CIRCLE_COUNT = \d+; \/\/ AUTO-UPDATED BY HOYOPLAY ASSET WORKFLOW/;
+              const sourceIndex = fs.readFileSync(sourceIndexPath, 'utf8');
+              if (!countPattern.test(sourceIndex)) throw new Error('HOYO_CIRCLE_COUNT workflow marker not found');
+              const nextSourceIndex = sourceIndex.replace(
+                countPattern,
+                `const HOYO_CIRCLE_COUNT = ${runtimeCircleCount}; // AUTO-UPDATED BY HOYOPLAY ASSET WORKFLOW`
+              );
+              if (nextSourceIndex !== sourceIndex) {
+                fs.writeFileSync(sourceIndexPath, nextSourceIndex);
+                console.log('Updated runtime background count to', runtimeCircleCount);
+              }
 
               // Download per-circle video/overlay assets if available
               const videoPaths = backgroundSlots.map((_, i) => path.join(outDir, `video${i + 1}.webm`));
@@ -244,8 +259,8 @@ jobs:
               const execSync = require('child_process').execSync;
               execSync('git config user.name "github-actions[bot]"');
               execSync('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
-              // Stage all changes in Background (including deletions)
-              execSync('git add -A Background');
+              // Stage generated assets and the deterministic runtime count.
+              execSync('git add -A Background source/index.js');
               try {
                 execSync('git diff --cached --quiet')
                 console.log('No changes to commit');

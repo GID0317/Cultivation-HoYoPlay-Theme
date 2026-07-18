@@ -481,6 +481,8 @@
 #serverLaunchContainer {
   display: flex;
   width: 100%;               /* make the container span its parent */
+  margin-top: 5px;
+  margin-bottom: 8px;
   align-items: center;       /* vertically center the two buttons */
   justify-content: flex-end; /* push them to the right edge */
   gap: 0px;                 /* adjust space between “Start Game” & the circle */
@@ -497,10 +499,134 @@
 }
 
 #serverControls{
-  height: 40px;
+  height: 32px;
   text-shadow: none !important;
 }
 
+/* HoYoPlay-style feature strip for Connect to Grasscutter. */
+#serverControls .Checkbox:has(input#enableGC) {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
+  height: 32px;
+  margin-top: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+#serverControls input#enableGC + label {
+  position: relative;
+  isolation: isolate;
+  width: max-content;
+  max-width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0 14px;
+  align-items: center;
+  border-radius: inherit;
+  background: rgb(0 0 0 / 38%);
+  cursor: pointer;
+}
+
+#serverControls input#enableGC + label::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: url('background/bg.png');
+  background-position: 50% 38%;
+  background-size: cover;
+  border-radius: inherit;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+#serverControls input#enableGC + label::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(13, 13, 15, 0.34);
+  pointer-events: none;
+}
+
+#serverControls input#enableGC + label .CheckboxDisplay {
+  flex: 0 0 auto;
+  width: 12px !important;
+  height: 12px !important;
+  border: 2px solid #737986 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  box-shadow: none;
+  transition: border-color 0.2s, background 0.2s !important;
+}
+
+#serverControls input#enableGC + label:hover .CheckboxDisplay {
+  border-color: #ffdb29 !important;
+}
+
+#serverControls input#enableGC + label .CheckboxDisplay::after {
+  content: '' !important;
+  display: none !important;
+}
+
+#serverControls input#enableGC:checked + label .CheckboxDisplay {
+  border-color: #f6d429 !important;
+  background: #f6d429 !important;
+}
+
+#serverControls input#enableGC:checked + label .CheckboxDisplay::after {
+  content: '\F78C' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  width: 12px !important;
+  height: 12px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: #2E3136 !important;
+  font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: 0.35px 0 currentColor, -0.35px 0 currentColor !important;
+  transform: none !important;
+}
+
+#serverControls input#enableGC + label > span:not(.hoyoplay-grasscutter-details) {
+  min-width: 0;
+  color: #f1f2f3;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: none;
+}
+
+#serverControls input#enableGC + label .hoyoplay-grasscutter-brand {
+  color: #f6d429;
+}
+
+#serverControls input#enableGC + label .hoyoplay-grasscutter-details {
+  flex: 0 0 auto;
+  margin-left: 0;
+  padding-left: 0;
+  color: #f1f2f3;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-shadow: none;
+}
 
 #officialPlay {
   background: #FFDB29;
@@ -825,7 +951,8 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 /* Hide animation: fade out only (no vertical slide) */
 .GameInstallNotify.hiding {
   /* Fade out only so the element doesn't slide - preserves horizontal centering */
-  animation: notifyFadeOut 0.3s ease forwards;
+  /* Important overrides the inline entrance replay animation. */
+  animation: notifyFadeOut 0.3s ease forwards !important;
 }
 
 @keyframes notifyFadeOut {
@@ -1716,14 +1843,39 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 
 /* 6. Checkbox/switch custom look */
 .CheckboxDisplay {
-  width: 31.5px !important;
-  height: 18px !important;
+  width: 29px !important;
+  height: 16px !important;
   background: #2E3136 !important;
   border: 2px solid #5C5E62 !important;
-  border-radius: 10px !important;
+  border-radius: 9px !important;
   position: relative !important;
   transition: background 0.2s, border-color 0.3s !important;
 }
+
+/* New main Settings dialogs stay hidden until loaded config values are ready. */
+#menuContainer.Menu.Options:not(.hoyoplay-toggle-ready) .CheckboxDisplay {
+  visibility: hidden !important;
+  transition: none !important;
+}
+
+#menuContainer.Menu.Options:not(.hoyoplay-toggle-ready) .CheckboxDisplay::after {
+  transition: none !important;
+}
+
+/* Settings switches animate only while a user is actively toggling one. */
+#menuContainer.Menu.Options .CheckboxDisplay,
+#menuContainer.Menu.Options .CheckboxDisplay::after {
+  transition: none !important;
+}
+
+#menuContainer.Menu.Options .Checkbox.hoyoplay-toggle-user-changing .CheckboxDisplay {
+  transition: background 0.2s, border-color 0.3s !important;
+}
+
+#menuContainer.Menu.Options .Checkbox.hoyoplay-toggle-user-changing .CheckboxDisplay::after {
+  transition: transform 0.2s, background 0.2s !important;
+}
+
 .Checkbox input:checked + label .CheckboxDisplay {
   border-color: #f6d429 !important;
   background: #2E3136 !important;
@@ -1740,15 +1892,15 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   position: absolute !important;
   top: 2px !important;
   left: 2px !important;
-  width: 14px !important;
-  height: 14px !important;
+  width: 12px !important;
+  height: 12px !important;
   background: #fff !important;
   border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   font-family: 'Segoe MDL2 Assets', 'Segoe Fluent Icons', 'Segoe UI Symbol', sans-serif !important;
-  font-size: 8px !important;
+  font-size: 7px !important;
   line-height: 1 !important;
   color: transparent !important;
   transition: transform 0.2s, background 0.2s !important;
@@ -1756,9 +1908,9 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
 .Checkbox input:checked + label .CheckboxDisplay::after {
   content: '\F78C' !important;
   color: #2E3136 !important;
-  transform: translateX(14px) !important;
+  transform: translateX(13px) !important;
   font-weight: 900 !important;
-  font-size: 9px !important;
+  font-size: 8px !important;
   text-shadow: 0.35px 0 currentColor, -0.35px 0 currentColor;
 }
 
@@ -2050,6 +2202,17 @@ body.hoyoplay-video-playing #hoyoplay-video-overlay {
   pointer-events: none;
 }
 
+#menuOptionsButtonMigotoDelay .BigButton::before {
+  content: '\E90F';
+  font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+  font-size: 0.9em;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+  pointer-events: none;
+}
+
 #menuOptionsContainerAdvanced .BigButton::before {
   content: '\E74D'; /* Unicode for the icon */
   font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
@@ -2254,6 +2417,55 @@ input#profile_name {
 .TextClear {
     position: sticky;
     display: none !important;
+}
+
+/* Use Cultivation's own clear control only while editing an Options field. */
+#menuContainer.Menu.Options .TextInputWrapper:has(.TextClear) {
+  position: relative;
+}
+
+#menuContainer.Menu.Options .TextInputWrapper:has(.TextClear) .TextInput {
+  padding-right: 30px;
+}
+
+#menuContainer.Menu.Options .TextClear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex !important;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-app-region: no-drag;
+  transform: translateY(-50%);
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+#menuContainer.Menu.Options .TextInputWrapper:has(.TextInput:not(:placeholder-shown)):has(.TextInput:focus, .TextClear:hover) .TextClear {
+  opacity: 0.68;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#menuContainer.Menu.Options .TextInputWrapper:has(.TextInput:not(:placeholder-shown)) .TextClear:hover {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 1;
+}
+
+#menuContainer.Menu.Options .TextClear img {
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
 }
 
 #playButton {
@@ -3324,9 +3536,15 @@ body:has(.MainProgressBarWrapper .InnerProgress[style*="width"]:not([style*="wid
     top: 84%;
     right: 30%;
     z-index: 12040 !important;
-    transition: none !important;
+    opacity: 1;
+    transition: top 0.2s ease, opacity 0.3s ease !important;
     background-color: #0d0d0f !important;
     border-radius: 12px !important;
+}
+
+.Notification:not(.NotifShow) {
+    opacity: 0;
+    transition: top 0.2s ease, opacity 0.3s ease !important;
 }
 
 /* When ExtrasMenuButton exists, move notification more to the right */
