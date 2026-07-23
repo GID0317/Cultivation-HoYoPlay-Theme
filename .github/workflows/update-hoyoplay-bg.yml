@@ -122,14 +122,17 @@ jobs:
               const sourceIndexPath = path.join(process.cwd(), 'source', 'index.js');
               const countPattern = /const HOYO_CIRCLE_COUNT = \d+; \/\/ AUTO-UPDATED BY HOYOPLAY ASSET WORKFLOW/;
               const sourceIndex = fs.readFileSync(sourceIndexPath, 'utf8');
-              if (!countPattern.test(sourceIndex)) throw new Error('HOYO_CIRCLE_COUNT workflow marker not found');
-              const nextSourceIndex = sourceIndex.replace(
-                countPattern,
-                `const HOYO_CIRCLE_COUNT = ${runtimeCircleCount}; // AUTO-UPDATED BY HOYOPLAY ASSET WORKFLOW`
-              );
-              if (nextSourceIndex !== sourceIndex) {
-                fs.writeFileSync(sourceIndexPath, nextSourceIndex);
-                console.log('Updated runtime background count to', runtimeCircleCount);
+              if (countPattern.test(sourceIndex)) {
+                const nextSourceIndex = sourceIndex.replace(
+                  countPattern,
+                  `const HOYO_CIRCLE_COUNT = ${runtimeCircleCount}; // AUTO-UPDATED BY HOYOPLAY ASSET WORKFLOW`
+                );
+                if (nextSourceIndex !== sourceIndex) {
+                  fs.writeFileSync(sourceIndexPath, nextSourceIndex);
+                  console.log('Updated runtime background count to', runtimeCircleCount);
+                }
+              } else {
+                console.log('Skipping runtime background count update: HOYO_CIRCLE_COUNT marker not present in source/index.js');
               }
 
               // Download per-circle video/overlay assets if available
